@@ -18,6 +18,22 @@ const checkFunnelOwnership = (funnel, req) => {
     }
 };
 
+const handleDuplicateKeyError = (error, next) => {
+    if (error?.code === 11000) {
+        let message = 'Duplicate value detected.';
+        if (error?.keyPattern?.name && error?.keyPattern?.coachId) {
+            message = 'A funnel with this name already exists. Please choose a different name.';
+        } else if (error?.keyPattern?.funnelUrl) {
+            message = 'This funnel URL is already in use. Please choose a different URL slug.';
+        } else if (error?.keyPattern?.['stages.pageId']) {
+            message = 'Stage pageId must be unique within a funnel.';
+        }
+        next(new ErrorResponse(message, 400));
+        return true;
+    }
+    return false;
+};
+
 const getFunnelsByCoachId = asyncHandler(async (req, res, next) => {
     // Get coach ID using unified service (handles both coach and staff)
     const coachId = CoachStaffService.getCoachIdForQuery(req);
@@ -176,7 +192,15 @@ const createFunnel = asyncHandler(async (req, res, next) => {
         });
     }
     
-    const funnel = await Funnel.create(req.body); // `stages` array comes directly in `req.body`
+    let funnel;
+    try {
+        funnel = await Funnel.create(req.body);
+    } catch (error) {
+        if (handleDuplicateKeyError(error, next)) {
+            return;
+        }
+        return next(error);
+    }
     
     // Filter response data based on staff permissions
     const filteredFunnel = CoachStaffService.filterResponseData(req, funnel, 'funnels');
@@ -218,10 +242,17 @@ const updateFunnel = asyncHandler(async (req, res, next) => {
             return next(new ErrorResponse('Custom domain is not valid, not active, or not owned by you.', 400));
         }
     }
-    funnel = await Funnel.findByIdAndUpdate(req.params.funnelId, req.body, {
-        new: true,
-        runValidators: true
-    });
+    try {
+        funnel = await Funnel.findByIdAndUpdate(req.params.funnelId, req.body, {
+            new: true,
+            runValidators: true
+        });
+    } catch (error) {
+        if (handleDuplicateKeyError(error, next)) {
+            return;
+        }
+        return next(error);
+    }
     
     // Filter response data based on staff permissions
     const filteredFunnel = CoachStaffService.filterResponseData(req, funnel, 'funnels');

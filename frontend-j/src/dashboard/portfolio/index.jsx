@@ -56,6 +56,7 @@ import {
   Center,
   Skeleton,
   SkeletonText,
+  Stack,
   TableContainer,
   Spinner,
   Progress,
@@ -341,57 +342,51 @@ const StatsCard = ({ title, value, icon, color = "blue", trend, isLoading = fals
   const borderColor = useColorModeValue(`${color}.200`, `${color}.700`);
   
   return (
-    <Card 
-      bg={bgColor} 
-      border="1px" 
+    <Box
+      bg={bgColor}
+      border="1px"
       borderColor={borderColor}
-      borderRadius="xl"
-      _hover={{ transform: 'translateY(-3px)', shadow: 'xl', borderColor: `${color}.300` }}
-      transition="all 0.3s"
-      position="relative"
-      overflow="hidden"
-      boxShadow="md"
+      borderRadius="lg"
+      p={4}
+      transition="all 0.2s"
+      _hover={{ transform: 'translateY(-2px)', borderColor: `${color}.300`, boxShadow: 'md' }}
     >
-      <CardBody p={6}>
-        <HStack spacing={4} align="center" w="full">
-          <Box
-            p={4}
-            bg={`${color}.100`}
-            borderRadius="xl"
-            color={`${color}.600`}
-            boxShadow="md"
-            _groupHover={{ transform: 'scale(1.1)', bg: `${color}.200` }}
-            transition="all 0.3s"
-          >
-            {icon}
-          </Box>
-          <VStack align="start" spacing={1} flex={1}>
-            <Text fontSize="sm" color={`${color}.700`} fontWeight="medium" textTransform="uppercase" letterSpacing="wide">
-              {title}
+      <HStack spacing={3} align="center">
+        <Box
+          p={2}
+          bg={`${color}.100`}
+          borderRadius="md"
+          color={`${color}.600`}
+          fontSize="lg"
+        >
+          {icon}
+        </Box>
+        <VStack align="start" spacing={0} flex={1}>
+          <Text fontSize="xs" fontWeight="600" color={`${color}.600`} textTransform="uppercase" letterSpacing="0.2em">
+            {title}
+          </Text>
+          {isLoading ? (
+            <Skeleton height="22px" width="60px" mt={1} />
+          ) : (
+            <Text fontSize="xl" fontWeight="600" color={`${color}.800`} mt={0.5}>
+              {value}
             </Text>
-            {isLoading ? (
-              <Skeleton height="28px" width="70px" />
-            ) : (
-              <Text fontSize="3xl" fontWeight="bold" color={`${color}.800`}>
-                {value}
-              </Text>
-            )}
-          </VStack>
-          {trend && (
-            <Badge 
-              colorScheme={trend > 0 ? 'green' : 'red'} 
-              variant="solid" 
-              size="sm"
-              borderRadius="full"
-              px={3}
-              py={1}
-            >
-              {trend > 0 ? '+' : ''}{trend}%
-            </Badge>
           )}
-        </HStack>
-      </CardBody>
-    </Card>
+        </VStack>
+        {trend !== undefined && trend !== null && (
+          <Badge 
+            colorScheme={trend > 0 ? 'green' : 'red'} 
+            variant="solid" 
+            size="sm"
+            borderRadius="md"
+            px={2}
+            py={0.5}
+          >
+            {trend > 0 ? '+' : ''}{trend}%
+          </Badge>
+        )}
+      </HStack>
+    </Box>
   );
 };
 
@@ -435,26 +430,19 @@ const FunnelToggleSwitch = ({ isActive, onToggle, isLoading }) => {
 };
 
 // Status Badge Component
-const StatusBadge = ({ status, isActive }) => {
-  return (
-    <VStack spacing={1}>
-      <Badge 
-        colorScheme={isActive ? "green" : "red"} 
-        variant="solid" 
-        borderRadius="full" 
-        px={3}
-        py={1}
-        fontSize="xs"
-        fontWeight="semibold"
-      >
-        {isActive ? "Active" : "Inactive"}
-      </Badge>
-      <Text fontSize="xs" color="gray.500">
-        {status || 'Unknown'}
-      </Text>
-    </VStack>
-  );
-};
+const StatusBadge = ({ status, isActive }) => (
+  <Badge 
+    colorScheme={isActive ? "green" : "red"} 
+    variant="solid" 
+    borderRadius="md" 
+    px={2}
+    py={0.5}
+    fontSize="10px"
+    fontWeight="semibold"
+  >
+    {isActive ? "Active" : "Inactive"}
+  </Badge>
+);
 
 // Type Badge Component
 const TypeBadge = ({ type }) => {
@@ -495,6 +483,8 @@ function FunnelManagementComponent() {
   const [publishLoading, setPublishLoading] = useState(false);
   const [publishingId, setPublishingId] = useState(null);
   const [filterType, setFilterType] = useState('default');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [sortBy, setSortBy] = useState('name');
   const [selectedFunnels, setSelectedFunnels] = useState([]);
   const [isAllSelected, setIsAllSelected] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
@@ -582,6 +572,19 @@ function FunnelManagementComponent() {
     if (!name) return '';
     const sanitizedName = name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
     return `${sanitizedName}-${Date.now().toString(36)}`;
+  };
+
+  const formatDateWithTime = (value) => {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   const copyToClipboard = async (text) => {
@@ -1161,21 +1164,41 @@ function FunnelManagementComponent() {
         ? funnel.targetAudience === 'customer' || !funnel.targetAudience
         : funnel.targetAudience === 'coach';
 
-      return matchesSearch && matchesType;
+      const normalizedStatus = (funnel.status || (funnel.isActive ? 'active' : 'draft')).toString().toLowerCase();
+      const matchesStatus = filterStatus === 'all' || normalizedStatus === filterStatus;
+
+      return matchesSearch && matchesType && matchesStatus;
     });
     
     // Update total items for pagination
     setTotalItems(filtered.length);
     
     return filtered;
-  }, [funnels, searchTerm, filterType]);
+  }, [funnels, searchTerm, filterType, filterStatus]);
+
+  const sortedFunnels = useMemo(() => {
+    return [...filteredFunnels].sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return (a.name || '').localeCompare(b.name || '');
+        case 'conversionRate':
+          return (b.conversionRate || 0) - (a.conversionRate || 0);
+        case 'revenue':
+          return (b.revenue || 0) - (a.revenue || 0);
+        case 'createdAt':
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        default:
+          return 0;
+      }
+    });
+  }, [filteredFunnels, sortBy]);
 
   // Pagination logic
   const paginatedFunnels = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return filteredFunnels.slice(startIndex, endIndex);
-  }, [filteredFunnels, currentPage, itemsPerPage]);
+    return sortedFunnels.slice(startIndex, endIndex);
+  }, [sortedFunnels, currentPage, itemsPerPage]);
 
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
@@ -1259,7 +1282,7 @@ function FunnelManagementComponent() {
                   <VStack align={{ base: 'center', md: 'start' }} spacing={2}>
                     <HStack spacing={3}>
                       <Heading size="lg" color={textColor} fontWeight="bold">
-                        Funnel Management
+                        Funnel Management 
                       </Heading>
                     </HStack>
                     <Text color={secondaryTextColor} fontSize="sm" fontWeight="medium">
@@ -1267,86 +1290,34 @@ function FunnelManagementComponent() {
                     </Text>
                   </VStack>
                   
-                  <HStack spacing={4}>
-                   <InputGroup maxW="400px">
-                      <InputLeftElement>
-                        <SearchIcon color={secondaryTextColor} />
-                      </InputLeftElement>
-                      <Input
-                        placeholder="Search funnels..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        bg={inputBg}
-                        borderRadius="lg"
-                        border="2px"
-                        borderColor={borderColor}
-                        _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px #3b82f6' }}
-                        _hover={{ borderColor: 'blue.300' }}
-                        size="md"
-                        color={textColor}
-                        _placeholder={{ color: secondaryTextColor }}
-                      />
-                    </InputGroup>
-                    
+                  <HStack spacing={3} flexWrap="wrap">
                     <Button
                       leftIcon={<AddIcon />}
-                      bg="blue.500"
-                      color="white"
-                      size="lg"
+                      bg="white"
+                      color="blue.900"
+                      borderRadius="md"
+                      px={6}
+                      py={5}
+                      fontWeight="600"
+                      fontSize="sm"
                       onClick={() => handleOpenModal(false, null)}
-                      borderRadius="xl"
-                      px={8}
-                      py={3}
-                      _hover={{ 
-                        bg: "blue.600",
-                        transform: 'translateY(-3px)', 
-                        boxShadow: '2xl',
-                        filter: 'brightness(1.1)'
-                      }}
-                      _active={{ 
-                        bg: "blue.700",
-                        transform: 'translateY(-1px)',
-                        boxShadow: 'lg'
-                      }}
-                      _focus={{
-                        boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.4)',
-                        outline: 'none'
-                      }}
-                      transition="all 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
-                      fontWeight="bold"
-                      fontSize="md"
-                      letterSpacing="wide"
-                      textTransform="uppercase"
-                      position="relative"
-                      overflow="hidden"
-                      _before={{
-                        content: '""',
-                        position: 'absolute',
-                        top: 0,
-                        left: '-100%',
-                        width: '100%',
-                        height: '100%',
-                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
-                        transition: 'left 0.5s',
-                        _groupHover: { left: '100%' }
-                      }}
-                      sx={{
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: '-100%',
-                          width: '100%',
-                          height: '100%',
-                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
-                          transition: 'left 0.5s'
-                        },
-                        '&:hover::before': {
-                          left: '100%'
-                        }
-                      }}
+                      _hover={{ bg: 'whiteAlpha.900', transform: 'translateY(-2px)' }}
+                      _active={{ bg: 'whiteAlpha.800' }}
                     >
                       New Funnel
+                    </Button>
+                    <Button
+                      variant="outline"
+                      borderColor="whiteAlpha.700"
+                      color="white"
+                      borderRadius="md"
+                      px={6}
+                      py={5}
+                      fontSize="sm"
+                      fontWeight="600"
+                      _hover={{ bg: 'whiteAlpha.200' }}
+                    >
+                      View Templates
                     </Button>
                   </HStack>
                 </Flex>
@@ -1402,76 +1373,142 @@ function FunnelManagementComponent() {
             transform={loading ? 'scale(0.98)' : 'scale(1)'}
           >
             <CardHeader py={6}>
-              <Flex justify="space-between" align="center">
-                <VStack align="start" spacing={1}>
-                  <Heading size="lg" color="gray.800" fontWeight="bold">Funnel List</Heading>
-                  <Text color="gray.500" fontSize="sm">Manage and monitor your sales funnels</Text>
-                </VStack>
-                <VStack spacing={2}>
-                  <Text fontSize="sm" color="gray.600" fontWeight="medium">Filter by Type:</Text>
-                  <HStack spacing={3}>
+              <VStack align="stretch" spacing={4}>
+                <Stack
+                  direction={{ base: 'column', md: 'row' }}
+                  spacing={4}
+                  align={{ base: 'stretch', md: 'center' }}
+                >
+                  <InputGroup flex="1">
+                    <InputLeftElement pointerEvents="none">
+                      <SearchIcon color={secondaryTextColor} />
+                    </InputLeftElement>
+                    <Input
+                      placeholder="Search funnels..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      bg="white"
+                      borderRadius="lg"
+                      border="1px"
+                      borderColor="gray.200"
+                      _focus={{ borderColor: 'gray.400', boxShadow: 'none' }}
+                    />
+                  </InputGroup>
+                  <HStack spacing={2}>
+                    <Select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      bg="white"
+                      borderRadius="lg"
+                      border="1px"
+                      borderColor="gray.200"
+                      _focus={{ borderColor: 'gray.400', boxShadow: 'none' }}
+                    >
+                      <option value="all">All Status</option>
+                      <option value="active">Active</option>
+                      <option value="draft">Draft</option>
+                      <option value="paused">Paused</option>
+                    </Select>
+                    <Select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      bg="white"
+                      borderRadius="lg"
+                      border="1px"
+                      borderColor="gray.200"
+                      _focus={{ borderColor: 'gray.400', boxShadow: 'none' }}
+                    >
+                      <option value="name">Sort by Name</option>
+                      <option value="conversionRate">Sort by Conversion</option>
+                      <option value="revenue">Sort by Revenue</option>
+                      <option value="createdAt">Sort by Date</option>
+                    </Select>
+                  </HStack>
+                </Stack>
+                <VStack align="flex-start" spacing={1}>
+                  <Text fontSize="sm" color="gray.600" fontWeight="medium">
+                    Select Funnel Type
+                  </Text>
+                  <HStack
+                    spacing={2}
+                    bg="gray.100"
+                    borderRadius="md"
+                    p={1}
+                    w="100%"
+                    maxW={{ base: '100%', sm: '320px' }}
+                  >
                     <Button
                       size="sm"
-                      variant={filterType === 'default' ? 'solid' : 'outline'}
+                      borderRadius="md"
+                      flex="1"
+                      variant={filterType === 'default' ? 'solid' : 'ghost'}
                       colorScheme="blue"
                       onClick={() => setFilterType('default')}
-                      leftIcon={<Box as={FiTarget} />}
                     >
-                      Customer Funnels
+                      Customer
                     </Button>
                     <Button
                       size="sm"
-                      variant={filterType === 'coach' ? 'solid' : 'outline'}
+                      borderRadius="md"
+                      flex="1"
+                      variant={filterType === 'coach' ? 'solid' : 'ghost'}
                       colorScheme="purple"
                       onClick={() => setFilterType('coach')}
-                      leftIcon={<Box as={FiUsers} />}
                     >
-                      Coach Funnels
+                      Coach
                     </Button>
                   </HStack>
                 </VStack>
-              </Flex>
-              {selectedFunnels.length > 0 && (
-                <Box px={6} py={4} bg="blue.50" borderTop="1px" borderColor="blue.200">
-                  <Flex justify="space-between" align="center">
-                    <Text color="blue.700" fontWeight="semibold" fontSize="sm">
-                      {selectedFunnels.length} funnel(s) selected
-                    </Text>
-                    <HStack spacing={3}>
-                      <Button
-                        size="sm"
-                        colorScheme="green"
-                        variant="outline"
-                        onClick={() => handleBulkToggleStatus(true)}
-                        isLoading={actionLoading}
-                        leftIcon={<Box as={FiCheckCircle} />}
-                      >
-                        Activate All
-                      </Button>
-                      <Button
-                        size="sm"
-                        colorScheme="orange"
-                        variant="outline"
-                        onClick={() => handleBulkToggleStatus(false)}
-                        isLoading={actionLoading}
-                        leftIcon={<Box as={FiX} />}
-                      >
-                        Deactivate All
-                      </Button>
-                      <Button
-                        size="sm"
-                        colorScheme="red"
-                        variant="outline"
-                        onClick={handleBulkDelete}
-                        isLoading={actionLoading}
-                        leftIcon={<Box as={FiX} />}
-                      >
-                        Delete All
-                      </Button>
-                    </HStack>
-                  </Flex>
-                </Box>
-              )}
+                {selectedFunnels.length > 0 && (
+                  <Box px={5} py={3} bg="gray.50" borderRadius="xl" border="1px" borderColor="gray.100">
+                    <Flex
+                      justify="space-between"
+                      align={{ base: 'flex-start', md: 'center' }}
+                      direction={{ base: 'column', md: 'row' }}
+                      gap={3}
+                    >
+                      <Text color="gray.700" fontWeight="semibold" fontSize="sm">
+                        {selectedFunnels.length} funnel(s) selected
+                      </Text>
+                      <HStack spacing={3}>
+                        <Button
+                          size="sm"
+                          colorScheme="green"
+                          variant="ghost"
+                          borderRadius="full"
+                          onClick={() => handleBulkToggleStatus(true)}
+                          isLoading={actionLoading}
+                          leftIcon={<Box as={FiCheckCircle} />}
+                        >
+                          Activate
+                        </Button>
+                        <Button
+                          size="sm"
+                          colorScheme="orange"
+                          variant="ghost"
+                          borderRadius="full"
+                          onClick={() => handleBulkToggleStatus(false)}
+                          isLoading={actionLoading}
+                          leftIcon={<Box as={FiX} />}
+                        >
+                          Pause
+                        </Button>
+                        <Button
+                          size="sm"
+                          colorScheme="red"
+                          variant="ghost"
+                          borderRadius="full"
+                          onClick={handleBulkDelete}
+                          isLoading={actionLoading}
+                          leftIcon={<Box as={FiX} />}
+                        >
+                          Delete
+                        </Button>
+                      </HStack>
+                    </Flex>
+                  </Box>
+                )}
+              </VStack>
             </CardHeader>
             <CardBody pt={0} px={0}>
               <TableContainer w="full" overflowX="auto" overflowY="visible" borderRadius="lg" border="1px" borderColor="gray.100" position="relative">
@@ -1482,7 +1519,7 @@ function FunnelManagementComponent() {
                 }}>
                   <Thead>
                     <Tr bg="gray.50" borderBottom="2px" borderColor="gray.200">
-                      <Th px={6} py={5} color="gray.800" fontWeight="bold" fontSize="sm" textAlign="center" borderBottom="2px" borderColor="gray.200">
+                      <Th px={6} py={5} color="gray.500" fontWeight="semibold" fontSize="xs" textAlign="center">
                         <Checkbox
                           isChecked={isAllSelected}
                           onChange={handleSelectAll}
@@ -1490,32 +1527,20 @@ function FunnelManagementComponent() {
                           size="md"
                         />
                       </Th>
-                      <Th px={6} py={5} color="gray.800" fontWeight="bold" fontSize="sm" textAlign="center" borderBottom="2px" borderColor="gray.200">
+                      <Th px={4} py={5} color="gray.500" fontWeight="semibold" fontSize="xs" textAlign="center">
                         #
                       </Th>
-                      <Th px={6} py={5} color="gray.800" fontWeight="bold" fontSize="sm" textAlign="left" borderBottom="2px" borderColor="gray.200">
-                        Funnel Details
+                      <Th px={6} py={5} color="gray.500" fontWeight="semibold" fontSize="xs">
+                        Funnel Overview
                       </Th>
-                      <Th px={6} py={5} color="gray.800" fontWeight="bold" fontSize="sm" textAlign="center" borderBottom="2px" borderColor="gray.200">
-                        Funnel Link
+                      <Th px={6} py={5} color="gray.500" fontWeight="semibold" fontSize="xs">
+                        Status & Activity
                       </Th>
-                      <Th px={6} py={5} color="gray.800" fontWeight="bold" fontSize="sm" textAlign="center" borderBottom="2px" borderColor="gray.200">
-                        Status
-                      </Th>
-                      <Th px={6} py={5} color="gray.800" fontWeight="bold" fontSize="sm" textAlign="center" borderBottom="2px" borderColor="gray.200">
-                        Toggle
-                      </Th>
-                      <Th px={6} py={5} color="gray.800" fontWeight="bold" fontSize="sm" textAlign="center" borderBottom="2px" borderColor="gray.200">
+                      <Th px={6} py={5} color="gray.500" fontWeight="semibold" fontSize="xs">
                         Stages
                       </Th>
-                      <Th px={6} py={5} color="gray.800" fontWeight="bold" fontSize="sm" textAlign="center" borderBottom="2px" borderColor="gray.200">
-                        Created Date & Time
-                      </Th>
-                      <Th px={6} py={5} color="gray.800" fontWeight="bold" fontSize="sm" textAlign="center" borderBottom="2px" borderColor="gray.200">
-                        Last Updated
-                      </Th>
-                      <Th px={6} py={5} color="gray.800" fontWeight="bold" fontSize="sm" textAlign="center" borderBottom="2px" borderColor="gray.200">
-                        Actions
+                      <Th px={4} py={5} color="gray.500" fontWeight="semibold" fontSize="xs" textAlign="right">
+                        Quick Actions
                       </Th>
                     </Tr>
                   </Thead>
@@ -1523,7 +1548,7 @@ function FunnelManagementComponent() {
                     {loading && funnels.length === 0 ? (
                       [...Array(5)].map((_, index) => (
                         <Tr key={index}>
-                          {[...Array(10)].map((_, cellIndex) => (
+                          {[...Array(7)].map((_, cellIndex) => (
                             <Td key={cellIndex}>
                               <Skeleton 
                                 height="20px" 
@@ -1552,7 +1577,7 @@ function FunnelManagementComponent() {
                           position="relative"
                           zIndex={1}
                         >
-                          <Td px={6} py={4} textAlign="center">
+                          <Td px={6} py={5} textAlign="center">
                             <Checkbox
                               isChecked={selectedFunnels.includes(funnel.id)}
                               onChange={() => handleSelectFunnel(funnel.id)}
@@ -1561,37 +1586,25 @@ function FunnelManagementComponent() {
                               onClick={(e) => e.stopPropagation()}
                             />
                           </Td>
-                          <Td px={6} py={4} textAlign="center">
+                          <Td px={4} py={5} textAlign="center">
                             <Text fontWeight="bold" color="gray.600" fontSize="sm">
                               {(currentPage - 1) * itemsPerPage + index + 1}
                             </Text>
                           </Td>
-                          <Td px={6} py={4}>
+                          <Td px={6} py={5}>
                             <VStack align="start" spacing={2}>
-                              <Text fontWeight="bold" fontSize="lg" color="gray.800">
+                              <Text fontWeight="600" fontSize="md" color="gray.900">
                                 {funnel.name}
                               </Text>
-                              <Text color="gray.600" fontSize="sm" noOfLines={2} maxW="250px">
-                                {funnel.description || 'No description provided'}
-                              </Text>
-                              <HStack spacing={3}>
-                                <Badge colorScheme="blue" variant="subtle" size="sm" px={3} py={1} borderRadius="full">
-                                  {funnel.targetAudience || 'General'}
-                                </Badge>
-                              </HStack>
-                            </VStack>
-                          </Td>
-                          <Td px={6} py={4}>
-                            <Center>
                               {(() => {
                                 const funnelLink = getFunnelUrl(funnel);
                                 return funnelLink ? (
-                                  <HStack spacing={2} justify="center" onClick={(e) => e.stopPropagation()}>
+                                  <HStack spacing={2} onClick={(e) => e.stopPropagation()}>
                                     <Text 
                                       fontSize="xs" 
                                       color="blue.600" 
                                       fontWeight="medium"
-                                      maxW="200px"
+                                      maxW="220px"
                                       isTruncated
                                       fontFamily="mono"
                                       cursor="pointer"
@@ -1617,79 +1630,65 @@ function FunnelManagementComponent() {
                                   </HStack>
                                 ) : (
                                   <Text fontSize="xs" color="gray.400" fontStyle="italic">
-                                    Not available
+                                    Link not available
                                   </Text>
                                 );
                               })()}
-                            </Center>
+                              <Text color="gray.600" fontSize="sm" noOfLines={2}>
+                                {funnel.description || 'No description provided'}
+                              </Text>
+                            </VStack>
                           </Td>
-                          <Td px={6} py={4}>
-                            <Center>
-                              <StatusBadge status={funnel.status} isActive={funnel.isActive} />
-                            </Center>
-                          </Td>
-                          <Td px={6} py={4}>
-                            <Center>
-                              <Box onClick={(e) => e.stopPropagation()}>
-                                <Switch
-                                  isChecked={funnel.isActive}
-                                  onChange={() => handleToggleStatus(funnel.id, funnel.isActive)}
-                                  colorScheme="green"
-                                  size="md"
-                                  _focus={{ boxShadow: '0 0 0 3px rgba(72, 187, 120, 0.2)' }}
-                                />
-                              </Box>
-                            </Center>
-                          </Td>
-                          <Td px={6} py={4}>
-                            <Center>
-                              <HStack spacing={2} justify="center">
-                                <Box
-                                  p={2}
-                                  bg="blue.100"
-                                  borderRadius="md"
-                                  display="flex"
-                                  alignItems="center"
-                                  justifyContent="center"
-                                >
-                                  <Box as={FiTarget} color="blue.600" size={16} />
-                                </Box>
-                                <VStack spacing={0} align="center">
-                                  <Text fontWeight="bold" color="gray.800" fontSize="md">
-                                    {funnel.stageCount || 0}
-                                  </Text>
-                                  <Text fontSize="xs" color="gray.500">stages</Text>
-                                </VStack>
+                          <Td px={6} py={5}>
+                            <VStack align="start" spacing={3}>
+                              <HStack spacing={3} align="center">
+                                <StatusBadge status={funnel.status} isActive={funnel.isActive} />
+                                {publishLoading && publishingId === funnel.id ? (
+                                  <Spinner size="sm" color="green.500" />
+                                ) : (
+                                  <Box onClick={(e) => e.stopPropagation()}>
+                                    <Switch
+                                      isChecked={funnel.isActive}
+                                      onChange={() => handleToggleStatus(funnel.id, funnel.isActive)}
+                                      colorScheme="green"
+                                      size="md"
+                                      _focus={{ boxShadow: '0 0 0 3px rgba(72, 187, 120, 0.2)' }}
+                                    />
+                                  </Box>
+                                )}
                               </HStack>
-                            </Center>
+                              <HStack spacing={2} color="gray.500" fontSize="xs">
+                                <Box w="6px" h="6px" borderRadius="full" bg="gray.300" />
+                                <Text>Created • {formatDateWithTime(funnel.createdAt)}</Text>
+                              </HStack>
+                              <HStack spacing={2} color="gray.500" fontSize="xs">
+                                <Box w="6px" h="6px" borderRadius="full" bg="gray.300" />
+                                <Text>Updated • {formatDateWithTime(funnel.updatedAt)}</Text>
+                              </HStack>
+                            </VStack>
                           </Td>
-                          <Td px={6} py={4}>
-                            <Center>
-                              <VStack spacing={0.5} align="center">
-                                <Text fontSize="xs" color="gray.600" fontWeight="medium">
-                                  {new Date(funnel.createdAt).toLocaleDateString()}
+                          <Td px={6} py={5}>
+                            <HStack spacing={2}>
+                              <Box
+                                p={2}
+                                bg="blue.50"
+                                borderRadius="md"
+                                display="flex"
+                                alignItems="center"
+                                justifyContent="center"
+                              >
+                                <Box as={FiTarget} color="blue.600" size={16} />
+                              </Box>
+                              <VStack spacing={0} align="flex-start">
+                                <Text fontWeight="bold" color="gray.800" fontSize="md">
+                                  {funnel.stageCount || 0}
                                 </Text>
-                                <Text fontSize="xs" color="gray.400">
-                                  {new Date(funnel.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                </Text>
+                                <Text fontSize="xs" color="gray.500">stages</Text>
                               </VStack>
-                            </Center>
+                            </HStack>
                           </Td>
-                          <Td px={6} py={4}>
-                            <Center>
-                              <VStack spacing={0.5} align="center">
-                                <Text fontSize="xs" color="gray.600" fontWeight="medium">
-                                  {funnel.updatedAt ? new Date(funnel.updatedAt).toLocaleDateString() : 'N/A'}
-                                </Text>
-                                <Text fontSize="xs" color="gray.400">
-                                  {funnel.updatedAt ? new Date(funnel.updatedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A'}
-                                </Text>
-                              </VStack>
-                            </Center>
-                          </Td>
-                          <Td px={6} py={4}>
-                            <Center>
-                              <HStack spacing={1} justify="center">
+                          <Td px={4} py={5}>
+                            <HStack spacing={1} justify="flex-end">
                                 <Tooltip label="View Funnel">
                                   <IconButton
                                     size="sm"
@@ -1846,13 +1845,12 @@ function FunnelManagementComponent() {
                                   )}
                                 </Box>
                               </HStack>
-                            </Center>
                           </Td>
                         </Tr>
                       ))
                     ) : (
                       <Tr>
-                        <Td colSpan={10} textAlign="center" py={20}>
+                        <Td colSpan={7} textAlign="center" py={20}>
                           <VStack spacing={6}>
                             <Box
                               w="120px"
@@ -2313,9 +2311,9 @@ function FunnelManagementComponent() {
                                   {stage.isEnabled ? "Enabled" : "Disabled"}
                                 </Badge>
                               </HStack>
-                              <Text color="gray.600" fontSize="sm">
+                              {/* <Text color="gray.600" fontSize="sm">
                                 Type: {stage.type || 'Unknown'}
-                              </Text>
+                              </Text> */}
                               {stage.basicInfo?.title && (
                                 <Text color="gray.600" fontSize="sm">
                                   Title: {stage.basicInfo.title}
