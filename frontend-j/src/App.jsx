@@ -3,7 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { Box } from '@chakra-ui/react';
 import MainLayout from './dashboard/MainLayout';
 import DashboardView from './dashboard/DashboardView';
-import Funnels from './dashboard/Funnels';
+// import Funnels from './dashboard/Funnels';
 import Team from './dashboard/Team';
 import Portfolio from './dashboard/Portfolio';
 import Leads from './dashboard/Leads';
@@ -20,7 +20,7 @@ import Inbox from './dashboard/setup/index.jsx';
 import Ads from './dashboard/ads/index.jsx';
 // Also trying backup in case index isn't working
 // import Ads from './dashboard/ads/backup.jsx';
-import Funnels1 from './dashboard/Funnels.jsx';
+// import Funnels1 from './dashboard/Funnels.jsx';
 import Mlm from './dashboard/mlm/index.jsx';
 import Leads_couch from './dashboard/leads/couch/index.jsx';
 import Leads_customar from './dashboard/leads/customar/index.jsx';
@@ -93,7 +93,7 @@ function App() {
           <Route path="calender" element={<Calender />} />
           <Route path="inbox" element={<Inbox />} />
           <Route path="ads" element={<Ads />} />
-          <Route path="funnels1" element={<Funnels1 />} />  
+          {/* <Route path="funnels1" element={<Funnels1 />} />   */}
           <Route path="leads_couch" element={<Leads_couch />} />
           <Route path="leads_customer" element={<Leads_customar />} />
           <Route path="mlm" element={<Mlm />} />
