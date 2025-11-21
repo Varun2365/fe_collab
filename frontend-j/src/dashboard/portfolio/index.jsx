@@ -347,7 +347,10 @@ const StatsCard = ({ title, value, icon, color = "blue", trend, isLoading = fals
       border="1px"
       borderColor={borderColor}
       borderRadius="lg"
-      p={4}
+      p={5}
+      minH="120px"
+      display="flex"
+      alignItems="center"
       transition="all 0.2s"
       _hover={{ transform: 'translateY(-2px)', borderColor: `${color}.300`, boxShadow: 'md' }}
     >
@@ -1290,34 +1293,23 @@ function FunnelManagementComponent() {
                     </Text>
                   </VStack>
                   
-                  <HStack spacing={3} flexWrap="wrap">
+                  <HStack spacing={3} flexWrap="wrap" alignSelf="flex-start">
                     <Button
                       leftIcon={<AddIcon />}
-                      bg="white"
-                      color="blue.900"
-                      borderRadius="md"
-                      px={6}
+                      bg="linear-gradient(120deg, rgba(59,130,246,0.95), rgba(99,102,241,0.95))"
+                      color="white"
+                      borderRadius="lg"
+                      px={8}
                       py={5}
                       fontWeight="600"
                       fontSize="sm"
+                      letterSpacing="0.05em"
                       onClick={() => handleOpenModal(false, null)}
-                      _hover={{ bg: 'whiteAlpha.900', transform: 'translateY(-2px)' }}
-                      _active={{ bg: 'whiteAlpha.800' }}
+                      boxShadow="0 15px 40px -25px rgba(59,130,246,1)"
+                      _hover={{ transform: 'translateY(-2px)', boxShadow: '0 20px 45px -25px rgba(59,130,246,1)' }}
+                      _active={{ transform: 'translateY(0)' }}
                     >
                       New Funnel
-                    </Button>
-                    <Button
-                      variant="outline"
-                      borderColor="whiteAlpha.700"
-                      color="white"
-                      borderRadius="md"
-                      px={6}
-                      py={5}
-                      fontSize="sm"
-                      fontWeight="600"
-                      _hover={{ bg: 'whiteAlpha.200' }}
-                    >
-                      View Templates
                     </Button>
                   </HStack>
                 </Flex>
