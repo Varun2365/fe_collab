@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaSync, FaDownload, FaArrowLeft, FaMagic, FaFileAlt, FaSave, FaFileExport, FaArrowDown, FaCalendarDay, FaGripVertical, FaCode, FaMoon, FaSun } from 'react-icons/fa';
+import { FaSync, FaDownload, FaArrowLeft, FaMagic, FaFileAlt, FaSave, FaFileExport, FaArrowDown, FaCalendarDay, FaGripVertical, FaCode, FaMoon, FaSun, FaLaptop, FaTabletAlt, FaMobileAlt } from 'react-icons/fa';
 import axios from "axios";
 import { updateProjectData, setSelectedTemplateForStage, updateStageBasicInfo,
    saveFunnelToBackend, fetchFunnelBySlug, resetState } from '../../../redux/funnel.jsx';
@@ -12,7 +12,6 @@ import { getCoachId, getToken, debugAuthState } from '../../../utils/authUtils';
 import grapesjs from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
 import gjsPresetWebpage from "grapesjs-preset-webpage";
-import gjsForms from "grapesjs-plugin-forms";
 import gjsCountdown from "grapesjs-component-countdown";
 import gjsTabs from "grapesjs-tabs";
 import gjsCustomCode from "grapesjs-custom-code";
@@ -24,6 +23,125 @@ import gjsBlocksBasic from "grapesjs-blocks-basic";
 // 🆕 NEW FREE PLUGINS (100% FREE - NO TOKEN REQUIRED)
 import gjsStyleGradient from 'grapesjs-style-gradient';
 import gjsPluginExport from 'grapesjs-plugin-export';
+
+const DAY_NAME_TO_INDEX = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6
+};
+
+const DAY_DATE_LOCALE = 'en-IN';
+const DAY_DATE_TIMEZONE = 'Asia/Kolkata';
+
+const getLocalizedNow = () => {
+  const now = new Date();
+  return new Date(
+    now.toLocaleString('en-US', { timeZone: DAY_DATE_TIMEZONE })
+  );
+};
+
+const formatRecentDateDisplay = (date) =>
+  new Intl.DateTimeFormat(DAY_DATE_LOCALE, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: DAY_DATE_TIMEZONE
+  }).format(date);
+
+const getUpcomingDateForDay = (dayName) => {
+  if (!dayName || typeof DAY_NAME_TO_INDEX[dayName] === 'undefined') {
+    return '';
+  }
+
+  const today = getLocalizedNow();
+  const targetDay = DAY_NAME_TO_INDEX[dayName];
+  const currentDay = today.getDay();
+
+  const daysToAdd = (targetDay - currentDay + 7) % 7;
+  const upcomingDate = new Date(today);
+  upcomingDate.setDate(today.getDate() + daysToAdd);
+
+  return formatRecentDateDisplay(upcomingDate);
+};
+
+const normalizeDaySelection = (selectionInput, fallbackDate) => {
+  if (!selectionInput) return [];
+
+  if (Array.isArray(selectionInput)) {
+    return selectionInput
+      .map(item => {
+        if (!item) return null;
+        if (typeof item === 'string') {
+          return { day: item, date: getUpcomingDateForDay(item) };
+        }
+        if (typeof item === 'object') {
+          const normalizedDay = item.day || item.value;
+          if (!normalizedDay) return null;
+          return {
+            day: normalizedDay,
+            date: item.date || getUpcomingDateForDay(normalizedDay)
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+  }
+
+  if (typeof selectionInput === 'string') {
+    return [{
+      day: selectionInput,
+      date: fallbackDate || getUpcomingDateForDay(selectionInput)
+    }];
+  }
+
+  if (typeof selectionInput === 'object') {
+    const normalizedDay = selectionInput.day || selectionInput.value;
+    if (!normalizedDay) return [];
+    return [{
+      day: normalizedDay,
+      date: selectionInput.date || fallbackDate || getUpcomingDateForDay(normalizedDay)
+    }];
+  }
+
+  return [];
+};
+
+const formatDaySummary = (entries) => (
+  entries.length ? entries.map(entry => entry.day).join(', ') : 'Click Day Selector to choose'
+);
+
+const formatDateSummary = (entries) => (
+  entries.length ? entries.map(entry => entry.date || getUpcomingDateForDay(entry.day)).join(', ') : 'No day selected'
+);
+
+const parseDaySelectionFromElement = (element) => {
+  if (!element) return [];
+
+  const multiAttr = element.getAttribute('data-selected-days');
+  if (multiAttr) {
+    try {
+      const parsed = JSON.parse(multiAttr);
+      const normalized = normalizeDaySelection(parsed);
+      if (normalized.length) {
+        return normalized;
+      }
+    } catch (error) {
+      console.warn('Failed to parse data-selected-days', error);
+    }
+  }
+
+  const singleDay = element.getAttribute('data-selected-day');
+  if (singleDay) {
+    const singleDate = element.getAttribute('data-recent-date');
+    return normalizeDaySelection(singleDay, singleDate);
+  }
+
+  return [];
+};
 
 //** Floating Form Button Component **//
 const FloatingFormButton = ({ forms, onScrollToForm }) => {
@@ -49,38 +167,95 @@ const FloatingFormButton = ({ forms, onScrollToForm }) => {
 //** Redirect Page Selector Popup **//
 const RedirectPageSelector = ({ stages, currentStageId, onSelect, onClose }) => {
   const [selectedPage, setSelectedPage] = useState('');
+  const [redirectMode, setRedirectMode] = useState('page');
+  const [customLink, setCustomLink] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!selectedPage) {
-      alert('Please select a redirect page');
+
+    if (redirectMode === 'page') {
+      if (!selectedPage) {
+        alert('Please select a redirect page');
+        return;
+      }
+      onSelect(selectedPage);
+      onClose();
       return;
     }
-    onSelect(selectedPage);
+
+    const trimmedLink = customLink.trim();
+    if (!trimmedLink) {
+      alert('Please enter a redirect link');
+      return;
+    }
+    if (!/^https?:\/\//i.test(trimmedLink)) {
+      alert('Please enter a full URL starting with http:// or https://');
+      return;
+    }
+
+    onSelect(trimmedLink);
     onClose();
   };
 
   return (
     <div className="redirect-popup-content">
-      <h3>Select Redirect Page</h3>
-      <p>Choose where users should be redirected after form submission:</p>
+      <h3>Select Redirect Destination</h3>
+      <p>Choose a funnel page or enter a custom link for post-submit redirect.</p>
+
+      <div className="redirect-mode-toggle">
+        <button
+          type="button"
+          className={`redirect-mode-btn ${redirectMode === 'page' ? 'active' : ''}`}
+          onClick={() => setRedirectMode('page')}
+        >
+          Funnel Pages
+        </button>
+        <button
+          type="button"
+          className={`redirect-mode-btn ${redirectMode === 'link' ? 'active' : ''}`}
+          onClick={() => setRedirectMode('link')}
+        >
+          Custom Link
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <select
-            value={selectedPage}
-            onChange={(e) => setSelectedPage(e.target.value)}
-            required
-          >
-            <option value="">-- Select a page --</option>
-            {stages
-              .filter(stage => stage.id !== currentStageId)
-              .map(stage => (
-                <option key={stage.id} value={stage.slug || stage.id}>
-                  {stage.name} ({stage.type})
-                </option>
-              ))}
-          </select>
-        </div>
+        {redirectMode === 'page' && (
+          <div className="form-group">
+            <label className="input-label">Choose a funnel page</label>
+            <select
+              value={selectedPage}
+              onChange={(e) => setSelectedPage(e.target.value)}
+              required
+            >
+              <option value="">-- Select a page --</option>
+              {stages
+                .filter(stage => stage.id !== currentStageId)
+                .map(stage => (
+                  <option key={stage.id} value={stage.slug || stage.id}>
+                    {stage.name} ({stage.type})
+                  </option>
+                ))}
+            </select>
+          </div>
+        )}
+
+        {redirectMode === 'link' && (
+          <div className="form-group">
+            <label className="input-label">Custom redirect URL</label>
+            <input
+              type="url"
+              placeholder="https://example.com/thank-you"
+              value={customLink}
+              onChange={(e) => setCustomLink(e.target.value)}
+              required
+            />
+            <small className="helper-text">
+              Include the full URL (https://...) to redirect outside the funnel.
+            </small>
+          </div>
+        )}
+
         <div className="popup-buttons">
           <button type="button" onClick={onClose} className="cancel-btn">
             Cancel
@@ -269,95 +444,153 @@ const SuccessPopup = ({ message, onClose }) => {
 };
 
 //** Day Selector Popup Component **//
-const DaySelectorPopup = ({ onSelect, onClose }) => {
-  const [selectedDay, setSelectedDay] = useState('');
-  const [recentDate, setRecentDate] = useState('');
+const DaySelectorPopup = ({ onSelect, onClose, initialSelection = [] }) => {
+  const normalizedInitialSelection = useMemo(
+    () => normalizeDaySelection(initialSelection),
+    [initialSelection]
+  );
+  const [selectedDays, setSelectedDays] = useState(normalizedInitialSelection);
+
+  useEffect(() => {
+    setSelectedDays(normalizedInitialSelection);
+  }, [normalizedInitialSelection]);
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  // Function to find most recent date for a day
-  const findMostRecentDateForDay = (dayName) => {
-    const today = new Date();
-    const dayMap = {
-      'Monday': 1,
-      'Tuesday': 2,
-      'Wednesday': 3,
-      'Thursday': 4,
-      'Friday': 5,
-      'Saturday': 6,
-      'Sunday': 0
-    };
-
-    const targetDay = dayMap[dayName];
-    const currentDay = today.getDay();
-    
-    let daysToSubtract = (currentDay - targetDay + 7) % 7;
-    if (daysToSubtract === 0) {
-      daysToSubtract = 0;
-    }
-    
-    const recentDate = new Date(today);
-    recentDate.setDate(today.getDate() - daysToSubtract);
-    
-    return recentDate.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+  const toggleDaySelection = (day) => {
+    setSelectedDays((prev) => {
+      const exists = prev.find((item) => item.day === day);
+      if (exists) {
+        return prev.filter((item) => item.day !== day);
+      }
+      return [
+        ...prev,
+        {
+          day,
+          date: getUpcomingDateForDay(day)
+        }
+      ];
     });
   };
 
-  const handleDaySelect = (day) => {
-    setSelectedDay(day);
-    const recent = findMostRecentDateForDay(day);
-    setRecentDate(recent);
+  const applyPresetDays = (presetDays) => {
+    const uniqueDays = Array.from(new Set(presetDays));
+    setSelectedDays(uniqueDays.map((day) => ({
+      day,
+      date: getUpcomingDateForDay(day)
+    })));
+  };
+
+  const handleQuickSelect = (type) => {
+    switch (type) {
+      case 'weekdays':
+        applyPresetDays(daysOfWeek.slice(0, 5));
+        break;
+      case 'weekend':
+        applyPresetDays(daysOfWeek.slice(5));
+        break;
+      case 'all':
+        applyPresetDays(daysOfWeek);
+        break;
+      case 'clear':
+        setSelectedDays([]);
+        break;
+      default:
+        break;
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!selectedDay) {
-      alert('Please select a day');
+    if (selectedDays.length === 0) {
+      alert('Please select at least one day');
       return;
     }
-    console.log('📤 Submitting from popup:', selectedDay, recentDate);
-    onSelect(selectedDay, recentDate);
+    const normalized = normalizeDaySelection(selectedDays);
+    console.log('📤 Submitting from popup:', normalized);
+    onSelect(normalized);
     onClose();
   };
 
   return (
     <div className="day-selector-popup-content">
-      <h3>Select Day & View Recent Date</h3>
-      <p>Choose a day to see its most recent date:</p>
+      <div className="day-popup-header">
+        <div className="day-popup-icon">📅</div>
+        <div className="day-popup-copy">
+          <h3>Schedule Days</h3>
+          <p>Select any combination of days to keep the widget dated automatically.</p>
+        </div>
+        <div className="selected-count">
+          <span>{selectedDays.length}</span>
+          <small>Selected</small>
+        </div>
+      </div>
+
+      <div className="quick-select-row">
+        <button type="button" className="quick-select-btn" onClick={() => handleQuickSelect('weekdays')}>
+          Weekdays
+        </button>
+        <button type="button" className="quick-select-btn" onClick={() => handleQuickSelect('weekend')}>
+          Weekend
+        </button>
+        <button type="button" className="quick-select-btn" onClick={() => handleQuickSelect('all')}>
+          All Days
+        </button>
+        <button type="button" className="quick-select-btn ghost" onClick={() => handleQuickSelect('clear')}>
+          Clear
+        </button>
+      </div>
       
       <form onSubmit={handleSubmit}>
         <div className="day-grid-popup">
           {daysOfWeek.map((day) => (
             <div
               key={day}
-              className={`day-card-popup ${selectedDay === day ? 'selected' : ''}`}
-              onClick={() => handleDaySelect(day)}
+              className={`day-card-popup ${selectedDays.some((item) => item.day === day) ? 'selected' : ''}`}
+              onClick={() => toggleDaySelection(day)}
             >
               <span className="day-name">{day}</span>
+              <span className="day-date">{getUpcomingDateForDay(day)}</span>
             </div>
           ))}
         </div>
 
-        {selectedDay && (
-          <div className="selected-day-info">
-            <div className="selected-day-display">
-              <strong>Selected Day:</strong> {selectedDay}
+        {selectedDays.length > 0 && (
+          <div className="day-summary-panel">
+            <div className="summary-header">
+              <div>
+                <p className="summary-label">Selected Snapshot</p>
+                <h4>{selectedDays.length} day{selectedDays.length > 1 ? 's' : ''} scheduled</h4>
             </div>
-            <div className="recent-date-display">
-              <strong>Most Recent Date:</strong> {recentDate}
+              <button type="button" className="ghost-btn small" onClick={() => setSelectedDays([])}>
+                Clear Selection
+              </button>
+            </div>
+
+            <div className="summary-chip-list">
+              {selectedDays.map((item) => (
+                <div key={item.day} className="summary-chip">
+                  <strong>{item.day}</strong>
+                  <span>{item.date}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
         <div className="popup-buttons">
+          <button
+            type="button"
+            onClick={() => setSelectedDays(normalizedInitialSelection)}
+            className="ghost-btn"
+          >
+            Reset
+          </button>
           <button type="button" onClick={onClose} className="cancel-btn">
             Cancel
           </button>
-          <button type="submit" className="submit-btn" disabled={!selectedDay}>
-            Add to Page
+          <button type="submit" className="submit-btn" disabled={selectedDays.length === 0}>
+            Apply Selection
           </button>
         </div>
       </form>
@@ -635,6 +868,10 @@ const PortfolioEdit = () => {
   const [showPagesSidebar, setShowPagesSidebar] = useState(true);
   const [selectedPageId, setSelectedPageId] = useState(stageId);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+
+  const hasDirectForms = availableForms.some(
+    (form) => form.type === 'direct-form' || form.type === 'direct-form-v2'
+  );
   const [successMessage, setSuccessMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -652,6 +889,8 @@ const PortfolioEdit = () => {
   const [daySelectedComponents, setDaySelectedComponents] = useState(new Set());
   const [selectedDaySelectorId, setSelectedDaySelectorId] = useState(null);
   const [selectedComponentElement, setSelectedComponentElement] = useState(null);
+  const [daySelectorInitialSelection, setDaySelectorInitialSelection] = useState([]);
+  const [hasDaySelectors, setHasDaySelectors] = useState(false);
   
   // Frame width resize state
   const [frameWidth, setFrameWidth] = useState(null); // null means use default max-width
@@ -744,7 +983,38 @@ const PortfolioEdit = () => {
     });
 
     setAvailableForms(forms);
-  }, []); // Empty dependencies to prevent re-creation
+
+    const daySelectorTargets = [
+      '.day-selector-display-widget',
+      '.day-selector-widget-element',
+      '[data-component-id*="day-selector"]'
+    ];
+
+    const hasDaySelectorComponents = daySelectorTargets.some(selector => wrapper.find(selector).length > 0);
+    setHasDaySelectors(hasDaySelectorComponents);
+  }, [editorInstance]);
+
+  useEffect(() => {
+    if (!editorInstance) return;
+
+    const refreshForms = () => {
+      detectFormsOnPage();
+    };
+
+    const events = ['component:add', 'component:remove', 'component:update', 'component:drag:end', 'page:select'];
+
+    events.forEach((eventName) => {
+      editorInstance.on(eventName, refreshForms);
+    });
+
+    refreshForms();
+
+    return () => {
+      events.forEach((eventName) => {
+        editorInstance.off(eventName, refreshForms);
+      });
+    };
+  }, [editorInstance, detectFormsOnPage]);
 
   // Function to scroll to a specific form
   const scrollToForm = (selector) => {
@@ -2374,7 +2644,7 @@ const PortfolioEdit = () => {
     editor.BlockManager.add('day-selector-widget', {
       label: 'Day Selector',
       category: 'Interactive Components',
-      content: `<div class="day-selector-display-widget" data-component-id="${Date.now()}"><div class="day-selector-header"><span class="calendar-icon">📅</span><h3>Day Information</h3></div><div class="day-info-content"><div class="selected-day-info"><strong>Selected Day:</strong> <span class="day-value">Click Day Selector to choose</span></div><div class="recent-date-info"><strong>Most Recent Date:</strong> <span class="date-value">No day selected</span></div></div><div class="day-selector-instructions"><p>Use "Day Selector" button to set day for this component</p></div></div>`,
+      content: `<div class="day-selector-display-widget" data-component-id="${Date.now()}"><div class="day-selector-header"><div class="day-selector-title"><span class="calendar-icon">📅</span><div><h3>Day Information</h3><p>Upcoming schedule snapshot</p></div></div><button class="day-refresh-btn" data-refresh-days>Refresh</button></div><div class="day-info-content"><div class="selected-day-info"><div class="info-label">Selected Days</div><span class="day-value">Click Day Selector to choose</span></div><div class="recent-date-info"><div class="info-label">Upcoming Dates</div><span class="date-value">No day selected</span></div></div></div>`,
       attributes: { 
         class: 'day-selector-widget-element',
         'data-selected-day': '',
@@ -2385,12 +2655,13 @@ const PortfolioEdit = () => {
     });
 
     // Add CSS for Day Selector Widget
-    editor.setStyle(`.day-selector-display-widget{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:15px;padding:20px;margin:20px 0;box-shadow:0 10px 30px rgba(0,0,0,0.2);color:white;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;text-align:center;min-height:150px;display:flex;flex-direction:column;justify-content:center;transition:all 0.3s ease;border:3px solid transparent}.day-selector-display-widget.selected{border:3px solid #4CAF50!important;box-shadow:0 0 20px rgba(76,175,80,0.5);animation:selectedPulse 2s infinite}@keyframes selectedPulse{0%{box-shadow:0 0 20px rgba(76,175,80,0.5)}50%{box-shadow:0 0 30px rgba(76,175,80,0.8)}100%{box-shadow:0 0 20px rgba(76,175,80,0.5)}}.day-selector-display{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:15px;padding:20px;margin:20px 0;box-shadow:0 10px 30px rgba(0,0,0,0.2);color:white;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;text-align:center;min-height:150px;display:flex;flex-direction:column;justify-content:center}.day-selector-header{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:20px}.calendar-icon{font-size:24px}.day-selector-header h3{margin:0;font-size:24px;font-weight:600;text-shadow:0 2px 4px rgba(0,0,0,0.3)}.day-info-content{display:flex;flex-direction:column;gap:15px}.selected-day-info,.recent-date-info{background:rgba(255,255,255,0.15);padding:15px 20px;border-radius:10px;border-left:4px solid #ffd700;backdrop-filter:blur(10px)}.selected-day-info strong,.recent-date-info strong{color:#ffd700;margin-right:10px}.selected-day-value,.recent-date-value,.day-value,.date-value{color:#fff;font-weight:500}.day-selector-instructions{margin-top:20px;padding:15px;background:rgba(255,255,255,0.1);border-radius:8px;border:1px dashed rgba(255,255,255,0.3)}.day-selector-instructions p{margin:0;color:rgba(255,255,255,0.8);font-size:14px;font-style:italic}@media (max-width:768px){.day-selector-display-widget,.day-selector-display{margin:10px 0;padding:15px;min-height:120px}.day-selector-header h3{font-size:20px}.selected-day-info,.recent-date-info{padding:12px 15px;font-size:14px}}@media (max-width:480px){.day-selector-header{flex-direction:column;gap:5px}.day-selector-header h3{font-size:18px}.day-info-content{gap:10px}}`);
+    editor.setStyle(`.day-selector-display-widget{background:linear-gradient(120deg,#312e81 0%,#7c3aed 40%,#9333ea 100%);border-radius:20px;padding:24px;margin:20px 0;box-shadow:0 25px 60px rgba(76,29,149,0.35);color:white;font-family:'Inter','Segoe UI',sans-serif;display:flex;flex-direction:column;gap:18px;border:1px solid rgba(255,255,255,0.15);position:relative}.day-selector-display-widget::after{content:'';position:absolute;inset:16px;border-radius:16px;border:1px solid rgba(255,255,255,0.1);pointer-events:none}.day-selector-display-widget.selected{border:1px solid rgba(16,185,129,0.7);box-shadow:0 0 0 1px rgba(16,185,129,0.6),0 25px 60px rgba(16,185,129,0.15)}.day-selector-header{display:flex;align-items:center;justify-content:space-between;gap:16px;z-index:1}.day-selector-title{display:flex;align-items:center;gap:12px}.calendar-icon{font-size:42px;background:rgba(255,255,255,0.12);padding:14px;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.2)}.day-selector-title h3{margin:0;font-size:26px;font-weight:700}.day-selector-title p{margin:2px 0 0 0;font-size:13px;letter-spacing:0.6px;text-transform:uppercase;color:rgba(255,255,255,0.75)}.day-refresh-btn{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:white;padding:10px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .3s ease}.day-refresh-btn:hover{background:rgba(255,255,255,0.25)}.day-info-content{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;z-index:1}.selected-day-info,.recent-date-info{background:rgba(15,23,42,0.25);border-radius:16px;padding:18px;box-shadow:0 15px 30px rgba(2,6,23,0.25);border:1px solid rgba(255,255,255,0.18)}.info-label{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.65);margin-bottom:8px}.day-value,.date-value{font-size:18px;font-weight:600;color:#f8fafc;line-height:1.5}.day-selector-display-widget ::selection{background:rgba(59,130,246,0.4)}@media (max-width:640px){.day-selector-header{flex-direction:column;align-items:flex-start}.day-refresh-btn{width:100%;text-align:center}.day-info-content{grid-template-columns:1fr}}`);
 
     // Component selection handler - REPLACE EXISTING
     editor.on('component:selected', (component) => {
       // Clear all selections first
-      document.querySelectorAll('.day-selector-display-widget, .day-selector-widget-element').forEach(el => {
+      const canvasDocument = getDaySelectorDocument(editor);
+      canvasDocument.querySelectorAll('.day-selector-display-widget, .day-selector-widget-element').forEach(el => {
         el.classList.remove('selected');
       });
       
@@ -2422,6 +2693,7 @@ const PortfolioEdit = () => {
         // Update states
         setSelectedDaySelectorId(componentId);
         setSelectedComponentElement(element);
+        setDaySelectorInitialSelection(parseDaySelectionFromElement(element));
         
         // Visual feedback
         element.classList.add('selected');
@@ -2430,6 +2702,7 @@ const PortfolioEdit = () => {
       } else {
         setSelectedDaySelectorId(null);
         setSelectedComponentElement(null);
+        setDaySelectorInitialSelection([]);
       }
     });
 
@@ -2460,6 +2733,7 @@ const PortfolioEdit = () => {
               editor.select(component);
               setSelectedDaySelectorId(componentId);
               setSelectedComponentElement(element);
+              setDaySelectorInitialSelection(parseDaySelectionFromElement(element));
               element.classList.add('selected');
               console.log('✅ Auto-selected new component:', componentId);
               console.log('Element classes:', element.className);
@@ -2481,42 +2755,16 @@ const PortfolioEdit = () => {
     // Auto-update day selector components
     const setupAutoUpdateDaySelectors = () => {
       const updateDaySelectors = () => {
-        const dayComponents = document.querySelectorAll('[data-selected-day]:not([data-selected-day=""])');
+        const canvasDocument = getDaySelectorDocument(editor);
+        const dayComponents = canvasDocument.querySelectorAll('.day-selector-display-widget');
         dayComponents.forEach(component => {
-          const selectedDay = component.getAttribute('data-selected-day');
-          if (selectedDay) {
-            const findMostRecentDateForDay = (dayName) => {
-              const today = new Date();
-              const dayMap = {
-                'Monday': 1,
-                'Tuesday': 2,
-                'Wednesday': 3,
-                'Thursday': 4,
-                'Friday': 5,
-                'Saturday': 6,
-                'Sunday': 0
-              };
-              
-              const targetDay = dayMap[dayName];
-              const currentDay = today.getDay();
-              let daysToSubtract = (currentDay - targetDay + 7) % 7;
-              if (daysToSubtract === 0) daysToSubtract = 0;
-              
-              const recentDate = new Date(today);
-              recentDate.setDate(today.getDate() - daysToSubtract);
-              
-              return recentDate.toLocaleDateString('en-US', {
-                year: 'numeric', month: 'long', day: 'numeric'
-              });
-            };
-            
-            const newDate = findMostRecentDateForDay(selectedDay);
-            const dateValue = component.querySelector('.date-value');
-            if (dateValue && dateValue.textContent !== newDate) {
-              dateValue.textContent = newDate;
-              component.setAttribute('data-recent-date', newDate);
-            }
-          }
+          const selection = parseDaySelectionFromElement(component);
+          if (!selection.length) return;
+          const refreshedSelection = selection.map(item => ({
+            day: item.day,
+            date: getUpcomingDateForDay(item.day)
+          }));
+          applyDaySelectionToDomElement(component, refreshedSelection);
         });
       };
       
@@ -2530,41 +2778,31 @@ const PortfolioEdit = () => {
     setupAutoUpdateDaySelectors();
 
     // Direct DOM update function for day selector
-    window.updateDaySelectorDirectly = (selectedDay, recentDate) => {
-      console.log('Direct DOM update called with:', selectedDay, recentDate);
+    window.updateDaySelectorDirectly = (selectionPayload, legacyRecentDate) => {
+      console.log('Direct DOM update called with:', selectionPayload);
+      const normalizedSelection = normalizeDaySelection(selectionPayload, legacyRecentDate);
+      if (!normalizedSelection.length) return 0;
       
-      // Find all day selector components
-      const dayComponents = document.querySelectorAll('.day-selector-display-widget');
+      const canvasDocument = getDaySelectorDocument(editor);
+      const dayComponents = canvasDocument.querySelectorAll('.day-selector-display-widget');
       console.log('Found day components for direct update:', dayComponents.length);
       
-      dayComponents.forEach((component, index) => {
-        const dayValue = component.querySelector('.day-value');
-        const dateValue = component.querySelector('.date-value');
-        
-        if (dayValue) {
-          dayValue.textContent = selectedDay;
-          console.log(`Updated day-value ${index}:`, selectedDay);
-        }
-        
-        if (dateValue) {
-          dateValue.textContent = recentDate;
-          console.log(`Updated date-value ${index}:`, recentDate);
-        }
-        
-        // Update attributes
-        component.setAttribute('data-selected-day', selectedDay);
-        component.setAttribute('data-recent-date', recentDate);
+      dayComponents.forEach((component) => {
+        const applied = applyDaySelectionToDomElement(component, normalizedSelection);
+        syncDaySelectorComponentModel(component, applied, editor);
       });
       
       return dayComponents.length;
     };
 
     // Function to update day selector widget
-    window.updateDaySelectorWidget = (selectedDay, recentDate) => {
-      console.log('Updating day selector widgets with:', selectedDay, recentDate);
+    window.updateDaySelectorWidget = (selectionPayload, legacyRecentDate) => {
+      console.log('Updating day selector widgets with:', selectionPayload);
+      const normalizedSelection = normalizeDaySelection(selectionPayload, legacyRecentDate);
+      if (!normalizedSelection.length) return;
       
-      // Find all day selector widgets on the page with multiple selectors
-      const widgets = document.querySelectorAll(
+      const canvasDocument = getDaySelectorDocument(editor);
+      const widgets = canvasDocument.querySelectorAll(
         '.day-selector-widget-element, .day-selector-display, .day-selector-display-widget, [data-selected-day], .day-info-content'
       );
       
@@ -2572,59 +2810,13 @@ const PortfolioEdit = () => {
       
       widgets.forEach((widget, index) => {
         console.log(`Updating widget ${index}:`, widget);
-        
-        // Try multiple selectors for day value
-        let dayValue = widget.querySelector('.day-value') || 
-                      widget.querySelector('.selected-day-value') ||
-                      widget.querySelector('[class*="day-value"]');
-        
-        // Try multiple selectors for date value  
-        let dateValue = widget.querySelector('.date-value') || 
-                       widget.querySelector('.recent-date-value') ||
-                       widget.querySelector('[class*="date-value"]');
-        
-        // If not found, try to find by text content
-        if (!dayValue) {
-          const allSpans = widget.querySelectorAll('span');
-          allSpans.forEach(span => {
-            if (span.textContent.includes('Select Day') || span.textContent.includes('Day')) {
-              dayValue = span;
-            }
-          });
-        }
-        
-        if (!dateValue) {
-          const allSpans = widget.querySelectorAll('span');
-          allSpans.forEach(span => {
-            if (span.textContent.includes('Invalid Date') || span.textContent.includes('Date')) {
-              dateValue = span;
-            }
-          });
-        }
-        
-        console.log('Day value element:', dayValue);
-        console.log('Date value element:', dateValue);
-        
-        if (dayValue) {
-          dayValue.textContent = selectedDay;
-          console.log('Updated day value to:', selectedDay);
-        }
-        if (dateValue) {
-          dateValue.textContent = recentDate;
-          console.log('Updated date value to:', recentDate);
-        }
-        
-        // Update data attributes
-        widget.setAttribute('data-selected-day', selectedDay);
-        widget.setAttribute('data-recent-date', recentDate);
-        
-        console.log('Updated widget attributes');
+        const applied = applyDaySelectionToDomElement(widget, normalizedSelection);
+        syncDaySelectorComponentModel(widget, applied, editor);
       });
       
-      // Also try to update using GrapesJS editor if available
       if (window.editor || editorInstance) {
-        const editor = window.editor || editorInstance;
-        const components = editor.DomComponents.getComponents();
+        const activeEditor = window.editor || editorInstance;
+        const components = activeEditor.DomComponents.getComponents();
         
         components.forEach(component => {
           const componentEl = component.getEl();
@@ -2634,25 +2826,16 @@ const PortfolioEdit = () => {
             componentEl.classList.contains('day-selector-display-widget')
           )) {
             console.log('Updating GrapesJS component:', component);
-            
-            const dayValue = componentEl.querySelector('.day-value') || 
-                            componentEl.querySelector('.selected-day-value');
-            const dateValue = componentEl.querySelector('.date-value') || 
-                             componentEl.querySelector('.recent-date-value');
-            
-            if (dayValue) dayValue.textContent = selectedDay;
-            if (dateValue) dateValue.textContent = recentDate;
-            
-            // Update component attributes
+            applyDaySelectionToDomElement(componentEl, normalizedSelection);
             component.addAttributes({
-              'data-selected-day': selectedDay,
-              'data-recent-date': recentDate
+              'data-selected-day': normalizedSelection[0]?.day || '',
+              'data-recent-date': normalizedSelection[0]?.date || '',
+              'data-selected-days': JSON.stringify(normalizedSelection)
             });
           }
         });
         
-        // Refresh the editor
-        editor.trigger('change:canvas');
+        activeEditor.trigger('change:canvas');
       }
     };
 
@@ -3078,7 +3261,6 @@ const PortfolioEdit = () => {
       },
       plugins: [
         gjsPresetWebpage,
-        gjsForms,
         gjsCountdown,
         gjsTabs,
         gjsCustomCode,
@@ -4044,23 +4226,39 @@ setTimeout(fillAppointmentForms, 5000);
     setShowTemplateSelector(false);
   };
 
-  const handleRedirectSelect = (pageSlug) => {
-    const formattedSlug = pageSlug.replace(/^\/|\/$/g, '');
-    console.log('Setting redirect page to:', formattedSlug);
+  const handleRedirectSelect = (targetValue) => {
+    if (!targetValue) {
+      alert('Please choose a redirect destination');
+      return;
+    }
 
-    setSelectedRedirectPage(formattedSlug);
+    let formattedTarget = targetValue.trim();
+    const isExternalLink = /^https?:\/\//i.test(formattedTarget);
+
+    if (!isExternalLink) {
+      formattedTarget = formattedTarget.replace(/^\/|\/$/g, '');
+    }
+
+    if (!formattedTarget) {
+      alert('Please provide a valid redirect destination');
+      return;
+    }
+
+    console.log('Setting redirect destination to:', formattedTarget);
+
+    setSelectedRedirectPage(formattedTarget);
 
     if (editorInstance) {
       const currentPage = editorInstance.Pages.getSelected();
       if (currentPage) {
-        currentPage.set('redirectPage', formattedSlug);
-        console.log('Updated current page redirect to:', formattedSlug);
+        currentPage.set('redirectPage', formattedTarget);
+        console.log('Updated current page redirect to:', formattedTarget);
       }
 
-      updateDirectFormsRedirect(editorInstance, formattedSlug);
+      updateDirectFormsRedirect(editorInstance, formattedTarget);
 
       setTimeout(() => {
-        updateDirectFormsRedirect(editorInstance, formattedSlug);
+        updateDirectFormsRedirect(editorInstance, formattedTarget);
       }, 500);
 
       if (currentStage) {
@@ -4068,7 +4266,7 @@ setTimeout(fillAppointmentForms, 5000);
           stageId: currentStage.id,
           stageType: currentStage.type,
           basicInfo: currentStage.basicInfo || {},
-          redirectPage: formattedSlug
+          redirectPage: formattedTarget
         };
         dispatch(updateStageBasicInfo(updateData));
         console.log('Dispatched redirect page update to Redux:', updateData);
@@ -4076,26 +4274,130 @@ setTimeout(fillAppointmentForms, 5000);
     }
 
     setShowRedirectPopup(false);
-    alert(`Redirect page set to: ${formattedSlug}\nAll direct forms will now redirect to this page after submission.`);
+    alert(`Redirect destination set to: ${formattedTarget}\nAll direct forms will now redirect here after submission.`);
   };
 
-  const handleDaySelectorSelect = (selectedDay, recentDate) => {
-    console.log('🎯 Day selected:', selectedDay, 'Date:', recentDate);
+  const getDaySelectorDocument = (instanceOverride) => {
+    const activeEditor = instanceOverride || window.editor || editorInstance;
+    const frameEl = activeEditor?.Canvas?.getFrameEl?.();
+    if (frameEl?.contentDocument) {
+      return frameEl.contentDocument;
+    }
+    if (frameEl?.contentWindow?.document) {
+      return frameEl.contentWindow.document;
+    }
+    return document;
+  };
+
+  const applyDaySelectionToDomElement = (targetElement, selectionInput) => {
+    if (!targetElement) return [];
+    const normalizedSelection = normalizeDaySelection(selectionInput);
+    const daySummary = formatDaySummary(normalizedSelection);
+    const dateSummary = formatDateSummary(normalizedSelection);
+
+    const daySpan = targetElement.querySelector('.day-value');
+    const dateSpan = targetElement.querySelector('.date-value');
+
+    if (daySpan) {
+      daySpan.textContent = daySummary;
+    }
+    if (dateSpan) {
+      dateSpan.textContent = dateSummary;
+    }
+
+    const primaryDay = normalizedSelection[0]?.day || '';
+    const primaryDate = normalizedSelection[0]?.date || (primaryDay ? getUpcomingDateForDay(primaryDay) : '');
+
+    targetElement.setAttribute('data-selected-days', JSON.stringify(normalizedSelection));
+    targetElement.setAttribute('data-selected-day', primaryDay);
+    targetElement.setAttribute('data-recent-date', primaryDate);
+
+    return normalizedSelection;
+  };
+
+  const syncDaySelectorComponentModel = (targetElement, selectionInput, editorOverride) => {
+    const activeEditor = editorOverride || window.editor || editorInstance;
+    if (!activeEditor || !targetElement) {
+      return;
+    }
+
+    const normalizedSelection = normalizeDaySelection(selectionInput);
+    const componentId = targetElement.getAttribute('data-component-id');
+    const wrapper = activeEditor.DomComponents?.getWrapper?.();
+    let componentModel = null;
+
+    if (componentId && wrapper?.find) {
+      const matches = wrapper.find(`[data-component-id="${componentId}"]`);
+      if (matches?.length) {
+        componentModel = matches[0];
+      }
+    }
+
+    if (!componentModel) {
+      const selected = activeEditor.getSelected?.();
+      if (selected?.getEl?.() === targetElement) {
+        componentModel = selected;
+      }
+    }
+
+    if (!componentModel) return;
+
+    const primaryDay = normalizedSelection[0]?.day || '';
+    const primaryDate = normalizedSelection[0]?.date || (primaryDay ? getUpcomingDateForDay(primaryDay) : '');
+
+    componentModel.addAttributes?.({
+      'data-selected-day': primaryDay,
+      'data-recent-date': primaryDate,
+      'data-selected-days': JSON.stringify(normalizedSelection)
+    });
+
+    const dayValueComponent = componentModel.find?.('.day-value')?.[0];
+    const dateValueComponent = componentModel.find?.('.date-value')?.[0];
+
+    if (dayValueComponent) {
+      dayValueComponent.components?.(formatDaySummary(normalizedSelection));
+    }
+    if (dateValueComponent) {
+      dateValueComponent.components?.(formatDateSummary(normalizedSelection));
+    }
+
+    componentModel.view?.render?.();
+    activeEditor.trigger?.('change:canvas');
+  };
+
+  const openDaySelectorPopupForElement = (element) => {
+    if (element) {
+      setDaySelectorInitialSelection(parseDaySelectionFromElement(element));
+    } else {
+      setDaySelectorInitialSelection([]);
+    }
+    setShowDaySelectorPopup(true);
+  };
+
+  const handleDaySelectorSelect = (selectionPayload, legacyRecentDate) => {
+    const normalizedSelection = normalizeDaySelection(selectionPayload, legacyRecentDate);
+    console.log('🎯 Day selected:', normalizedSelection);
     console.log('🔍 Selected ID:', selectedDaySelectorId);
     console.log('📍 Selected Element:', selectedComponentElement);
     console.log('📊 Editor Instance:', !!editorInstance);
 
+    if (!normalizedSelection.length) {
+      alert('Please select at least one day');
+      return;
+    }
+
     let targetElement = null;
+    const canvasDocument = getDaySelectorDocument();
     
     // Method 1: Use stored element reference
-    if (selectedComponentElement && document.contains(selectedComponentElement)) {
+    if (selectedComponentElement && canvasDocument.contains(selectedComponentElement)) {
       targetElement = selectedComponentElement;
       console.log('✅ Using stored element reference');
     }
     
     // Method 2: Find by component ID
     if (!targetElement && selectedDaySelectorId) {
-      targetElement = document.querySelector(`[data-component-id="${selectedDaySelectorId}"]`);
+      targetElement = canvasDocument.querySelector(`[data-component-id="${selectedDaySelectorId}"]`);
       console.log('✅ Found by component ID:', !!targetElement);
     }
     
@@ -4113,7 +4415,7 @@ setTimeout(fillAppointmentForms, 5000);
     
     // Method 4: Find any available day selector
     if (!targetElement) {
-      const allDayComponents = document.querySelectorAll('.day-selector-display-widget');
+      const allDayComponents = canvasDocument.querySelectorAll('.day-selector-display-widget');
       if (allDayComponents.length > 0) {
         targetElement = allDayComponents[0];
         console.log('✅ Using first available component');
@@ -4123,50 +4425,11 @@ setTimeout(fillAppointmentForms, 5000);
     if (targetElement) {
       console.log('🔄 Updating component...');
       
-      // Direct DOM update - using exact selectors from component structure
-      const daySpan = targetElement.querySelector('.day-value');
-      const dateSpan = targetElement.querySelector('.date-value');
-      
-      console.log('Day span found:', !!daySpan);
-      console.log('Date span found:', !!dateSpan);
-      console.log('Target element HTML:', targetElement.innerHTML);
-      
-      if (daySpan) {
-        daySpan.textContent = selectedDay;
-        daySpan.innerHTML = selectedDay;
-        console.log('✅ Day updated:', selectedDay);
-      } else {
-        // Try finding by text content
-        const allSpans = targetElement.querySelectorAll('span');
-        allSpans.forEach((span, index) => {
-          console.log(`Span ${index}:`, span.textContent, span.className);
-          if (span.textContent.includes('Click Day Selector')) {
-            span.textContent = selectedDay;
-            span.innerHTML = selectedDay;
-            console.log('✅ Day updated via text search');
-          }
-        });
-      }
-      
-      if (dateSpan) {
-        dateSpan.textContent = recentDate;
-        dateSpan.innerHTML = recentDate;
-        console.log('✅ Date updated:', recentDate);
-      } else {
-        // Try finding by text content
-        const allSpans = targetElement.querySelectorAll('span');
-        allSpans.forEach((span, index) => {
-          if (span.textContent.includes('No day selected')) {
-            span.textContent = recentDate;
-            span.innerHTML = recentDate;
-            console.log('✅ Date updated via text search');
-          }
-        });
-      }
-      
-      // Update attributes
-      targetElement.setAttribute('data-selected-day', selectedDay);
-      targetElement.setAttribute('data-recent-date', recentDate);
+      const appliedSelection = applyDaySelectionToDomElement(targetElement, normalizedSelection);
+
+      // Sync GrapesJS component model so the value persists after save/export
+      syncDaySelectorComponentModel(targetElement, appliedSelection);
+      setDaySelectorInitialSelection(appliedSelection);
       
       // Force visual update
       targetElement.style.display = 'none';
@@ -4347,37 +4610,16 @@ setTimeout(fillAppointmentForms, 5000);
   // Auto-update functionality - onEditorReady के अंत में add करो:
   useEffect(() => {
     const autoUpdateInterval = setInterval(() => {
-      const dayComponents = document.querySelectorAll('[data-selected-day]:not([data-selected-day=""])');
+      const dayComponents = document.querySelectorAll('.day-selector-display-widget');
       
       dayComponents.forEach(component => {
-        const selectedDay = component.getAttribute('data-selected-day');
-        if (selectedDay) {
-          const findMostRecentDateForDay = (dayName) => {
-            const today = new Date();
-            const dayMap = {
-              'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
-              'Friday': 5, 'Saturday': 6, 'Sunday': 0
-            };
-            
-            const targetDay = dayMap[dayName];
-            const currentDay = today.getDay();
-            let daysToSubtract = (currentDay - targetDay + 7) % 7;
-            
-            const recentDate = new Date(today);
-            recentDate.setDate(today.getDate() - daysToSubtract);
-            
-            return recentDate.toLocaleDateString('en-US', {
-              year: 'numeric', month: 'long', day: 'numeric'
-            });
-          };
-          
-          const newDate = findMostRecentDateForDay(selectedDay);
-          const dateSpan = component.querySelector('.date-value');
-          if (dateSpan && dateSpan.textContent !== newDate) {
-            dateSpan.textContent = newDate;
-            component.setAttribute('data-recent-date', newDate);
-          }
-        }
+        const selection = parseDaySelectionFromElement(component);
+        if (!selection.length) return;
+        const refreshedSelection = selection.map(item => ({
+          day: item.day,
+          date: getUpcomingDateForDay(item.day)
+        }));
+        applyDaySelectionToDomElement(component, refreshedSelection);
       });
     }, 60000); // Update every minute
 
@@ -4386,15 +4628,29 @@ setTimeout(fillAppointmentForms, 5000);
 
   // Global function for day selector popup
   useEffect(() => {
-    window.openDaySelectorPopup = (currentDay, currentDate) => {
-      console.log('Opening day selector popup for:', currentDay, currentDate);
+    window.openDaySelectorPopup = (selectionPayload, legacyRecentDate) => {
+      console.log('Opening day selector popup for:', selectionPayload);
+
+      if (selectionPayload instanceof Element) {
+        openDaySelectorPopupForElement(selectionPayload);
+        return;
+      }
+
+      if (selectionPayload) {
+        setDaySelectorInitialSelection(normalizeDaySelection(selectionPayload, legacyRecentDate));
+      } else if (selectedComponentElement) {
+        setDaySelectorInitialSelection(parseDaySelectionFromElement(selectedComponentElement));
+      } else {
+        setDaySelectorInitialSelection([]);
+      }
+
       setShowDaySelectorPopup(true);
     };
     
     return () => {
       delete window.openDaySelectorPopup;
     };
-  }, []);
+  }, [selectedComponentElement]);
 
   const getSelectedTemplateKey = () => {
     if (!currentStage) return null;
@@ -4701,7 +4957,7 @@ setTimeout(fillAppointmentForms, 5000);
 
       {showTemplateSelector && currentStage && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content day-selector-modal-content">
             <button
               className="modal-close-btn"
               onClick={() => setShowTemplateSelector(false)}
@@ -4776,6 +5032,7 @@ setTimeout(fillAppointmentForms, 5000);
             </button>
             <DaySelectorPopup
               onSelect={handleDaySelectorSelect}
+              initialSelection={daySelectorInitialSelection}
               onClose={() => setShowDaySelectorPopup(false)}
             />
           </div>
@@ -4804,6 +5061,33 @@ setTimeout(fillAppointmentForms, 5000);
           <div className="page-info">
             <span className="page-title">{currentStage?.name || 'Editor'}</span>
             <span className="page-subtitle">Visual Page Builder</span>
+          </div>
+
+          <div className="btn-divider"></div>
+
+          {/* Device Preview Controls - moved next to Pages sidebar */}
+          <div className="device-preview-controls left-aligned-device-controls">
+            <button
+              onClick={() => handlePresetWidth(null)}
+              className={`device-preview-btn desktop ${frameWidth === null ? 'active' : ''}`}
+              title="Desktop preview"
+            >
+              <FaLaptop />
+            </button>
+            <button
+              onClick={() => handlePresetWidth(1024)}
+              className={`device-preview-btn tablet ${frameWidth === 1024 ? 'active' : ''}`}
+              title="Tablet preview (1024px)"
+            >
+              <FaTabletAlt />
+            </button>
+            <button
+              onClick={() => handlePresetWidth(414)}
+              className={`device-preview-btn mobile ${frameWidth === 414 ? 'active' : ''}`}
+              title="Mobile preview (414px)"
+            >
+              <FaMobileAlt />
+            </button>
           </div>
         </div>
 
@@ -4886,37 +5170,49 @@ setTimeout(fillAppointmentForms, 5000);
 
           <div className="btn-divider"></div>
 
-          <button
-            onClick={() => setShowRedirectPopup(true)}
-            className="modern-btn info-btn"
-            title="Set Form Redirect"
-          >
-            <FaFileAlt />
-            <span>Redirect</span>
-          </button>
+          {hasDirectForms && (
+            <button
+              onClick={() => setShowRedirectPopup(true)}
+              className="modern-btn info-btn"
+              title="Set Form Redirect"
+            >
+              <FaFileAlt />
+              <span>Redirect</span>
+            </button>
+          )}
 
+          {hasDaySelectors && (
           <button
             onClick={() => {
               console.log('📅 Day Selector button clicked');
-              const dayComponents1 = document.querySelectorAll('.day-selector-display-widget');
-              const dayComponents2 = document.querySelectorAll('.day-selector-widget-element');
-              const dayComponents3 = document.querySelectorAll('[data-component-id*="day-selector"]');
+                const canvasDocument = getDaySelectorDocument();
+                const dayComponents1 = canvasDocument.querySelectorAll('.day-selector-display-widget');
+                const dayComponents2 = canvasDocument.querySelectorAll('.day-selector-widget-element');
+                const dayComponents3 = canvasDocument.querySelectorAll('[data-component-id*="day-selector"]');
               
               const allDayComponents = [...dayComponents1, ...dayComponents2, ...dayComponents3];
               const uniqueComponents = [...new Set(allDayComponents)];
               
-              if (selectedDaySelectorId || selectedComponentElement) {
-                setShowDaySelectorPopup(true);
-              } else if (uniqueComponents.length > 0) {
-                const firstComp = uniqueComponents[0];
-                const compId = firstComp.getAttribute('data-component-id') || 
-                              `day-selector-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-                
-                firstComp.setAttribute('data-component-id', compId);
+                let targetElement = null;
+
+                if (selectedComponentElement && canvasDocument.contains(selectedComponentElement)) {
+                  targetElement = selectedComponentElement;
+                } else if (selectedDaySelectorId) {
+                  targetElement = canvasDocument.querySelector(`[data-component-id="${selectedDaySelectorId}"]`);
+                }
+
+                if (!targetElement && uniqueComponents.length > 0) {
+                  targetElement = uniqueComponents[0];
+                  const compId = targetElement.getAttribute('data-component-id') || 
+                                 `day-selector-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+                  targetElement.setAttribute('data-component-id', compId);
                 setSelectedDaySelectorId(compId);
-                setSelectedComponentElement(firstComp);
-                firstComp.classList.add('selected');
-                setShowDaySelectorPopup(true);
+                  setSelectedComponentElement(targetElement);
+                  targetElement.classList.add('selected');
+                }
+
+                if (targetElement) {
+                  openDaySelectorPopupForElement(targetElement);
               } else {
                 alert('⚠️ No Day Selector found!\n\n1. Drag "Day Selector" from left panel\n2. Drop it on the page\n3. Click to select\n4. Then click this button');
               }
@@ -4927,6 +5223,7 @@ setTimeout(fillAppointmentForms, 5000);
             <FaCalendarDay />
             <span>Day Selector</span>
           </button>
+          )}
 
           <button
             onClick={() => setShowCustomCodePopup(true)}
@@ -5393,6 +5690,12 @@ setTimeout(fillAppointmentForms, 5000);
 
         .action-bar-section.left-section {
           min-width: 250px;
+          flex: 0 0 auto;
+        }
+
+        .left-aligned-device-controls {
+          margin-left: 8px;
+          flex-shrink: 0;
         }
 
         .action-bar-section.center-section {
@@ -5598,6 +5901,59 @@ setTimeout(fillAppointmentForms, 5000);
           height: 32px;
           background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.2), transparent);
           margin: 0 8px;
+        }
+
+        /* Device Preview Controls */
+        .device-preview-controls {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: white;
+          padding: 4px 10px;
+          border-radius: 999px;
+          box-shadow: 0 6px 18px rgba(15, 23, 42, 0.2);
+          border: 1px solid rgba(15, 23, 42, 0.1);
+        }
+
+        .device-preview-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 6px;
+          border: 1px solid rgba(15, 23, 42, 0.2);
+          color: #0f172a;
+          background: transparent;
+          transition: all 0.2s ease;
+          cursor: pointer;
+          padding: 0;
+        }
+
+        .device-preview-btn.desktop {
+          width: 38px;
+          height: 34px;
+          font-size: 18px;
+        }
+
+        .device-preview-btn.tablet {
+          width: 30px;
+          height: 26px;
+          font-size: 16px;
+        }
+
+        .device-preview-btn.mobile {
+          width: 24px;
+          height: 24px;
+          font-size: 14px;
+        }
+
+        .device-preview-btn:hover {
+          border-color: #2563eb;
+        }
+
+        .device-preview-btn.active {
+          border-color: #2563eb;
+          box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+          color: #2563eb;
         }
 
         /* Frame Width Controls */
@@ -6033,6 +6389,13 @@ setTimeout(fillAppointmentForms, 5000);
         .gjs-pn-panel[data-pn-type="traits"],
         .gjs-pn-panel[data-pn-type="style-manager"] {
           background: #ffffff !important;
+        }
+
+        /* Remove default GrapesJS device buttons (replaced with custom controls) */
+        .gjs-pn-devices,
+        .gjs-pn-devices-c,
+        .gjs-pn-panel .gjs-pn-btn.gjs-pn-device {
+          display: none !important;
         }
 
         /* Force White Background for All Panel Content */
@@ -8001,6 +8364,11 @@ setTimeout(fillAppointmentForms, 5000);
           transition: background 0.3s ease, border-color 0.3s ease;
         }
 
+        .day-selector-modal-content {
+          width: clamp(320px, 92vw, 760px);
+          padding: clamp(20px, 4vw, 36px);
+        }
+
         @keyframes slideUp {
           from {
             transform: translateY(30px);
@@ -8199,6 +8567,45 @@ setTimeout(fillAppointmentForms, 5000);
           margin-bottom: 24px;
         }
 
+        .redirect-mode-toggle {
+          display: flex;
+          gap: 12px;
+          margin-bottom: 20px;
+          background: #f8fafc;
+          padding: 6px;
+          border-radius: 12px;
+          border: 1px solid #e2e8f0;
+        }
+
+        .redirect-mode-btn {
+          flex: 1;
+          padding: 10px 16px;
+          border-radius: 10px;
+          border: none;
+          background: transparent;
+          font-weight: 600;
+          font-size: 14px;
+          color: #475569;
+          cursor: pointer;
+          transition: all 0.25s ease;
+        }
+
+        .redirect-mode-btn.active {
+          background: #2563eb;
+          color: #fff;
+          box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+        }
+
+        .redirect-popup-content .input-label {
+          display: block;
+          font-size: 13px;
+          font-weight: 600;
+          color: #475569;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
         .redirect-popup-content select {
           width: 100%;
           padding: 14px 16px;
@@ -8225,31 +8632,132 @@ setTimeout(fillAppointmentForms, 5000);
           background: #ffffff;
         }
 
+        .redirect-popup-content input[type="url"] {
+          width: 100%;
+          padding: 14px 16px;
+          border: 2px solid #e5e7eb;
+          border-radius: 12px;
+          font-size: 15px;
+          font-family: 'Inter', sans-serif;
+          font-weight: 500;
+          background: #ffffff;
+          color: #1e293b;
+          outline: none;
+          transition: all 0.3s ease;
+        }
+
+        .redirect-popup-content input[type="url"]:focus {
+          border-color: #22c55e;
+          box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+        }
+
+        .redirect-popup-content .helper-text {
+          display: block;
+          margin-top: 6px;
+          font-size: 12px;
+          color: #94a3b8;
+        }
+
         /* Day Selector Popup - Modern Design */
         .day-selector-popup-content {
-          min-width: 560px;
-          max-width: 640px;
+          width: 100%;
         }
 
-        .day-selector-popup-content h3 {
-          margin: 0 0 12px 0;
+        .day-popup-header {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          padding: 18px;
+          border: 1px solid #e2e8f0;
+          border-radius: 18px;
+          background: linear-gradient(120deg, rgba(59,130,246,0.08), rgba(244,114,182,0.1));
+          margin-bottom: 24px;
+        }
+
+        .day-popup-icon {
+          width: 56px;
+          height: 56px;
+          border-radius: 16px;
+          background: #1d4ed8;
+          color: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 26px;
+          box-shadow: 0 12px 30px rgba(29, 78, 216, 0.25);
+        }
+
+        .day-popup-copy h3 {
+          margin: 0;
           font-size: 24px;
           font-weight: 700;
-          color: #1e293b;
-          letter-spacing: -0.5px;
+          color: #0f172a;
         }
 
-        .day-selector-popup-content p {
-          color: #64748b;
-          margin-bottom: 28px;
+        .day-popup-copy p {
+          margin: 4px 0 0 0;
+          color: #475569;
           font-size: 14px;
-          line-height: 1.6;
+        }
+
+        .selected-count {
+          margin-left: auto;
+          text-align: center;
+          min-width: 80px;
+          background: rgba(15, 23, 42, 0.06);
+          border-radius: 14px;
+          padding: 8px 12px;
+          border: 1px solid rgba(15, 23, 42, 0.08);
+        }
+
+        .selected-count span {
+          display: block;
+          font-size: 24px;
+          font-weight: 700;
+          color: #0f172a;
+        }
+
+        .selected-count small {
+          font-size: 11px;
+          letter-spacing: 0.5px;
+          color: #475569;
+          text-transform: uppercase;
+        }
+
+        .quick-select-row {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-bottom: 20px;
+        }
+
+        .quick-select-btn {
+          padding: 10px 18px;
+          border-radius: 999px;
+          border: none;
+          background: rgba(59, 130, 246, 0.12);
+          color: #1d4ed8;
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.25s ease;
+        }
+
+        .quick-select-btn:hover {
+          background: rgba(59, 130, 246, 0.2);
+          transform: translateY(-1px);
+        }
+
+        .quick-select-btn.ghost {
+          background: rgba(15, 23, 42, 0.08);
+          color: #0f172a;
         }
 
         .day-grid-popup {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 12px;
+          justify-items: center;
           margin-bottom: 24px;
         }
 
@@ -8257,15 +8765,18 @@ setTimeout(fillAppointmentForms, 5000);
           background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
           border: 2px solid #e5e7eb;
           border-radius: 12px;
-          padding: 18px 12px;
-          text-align: center;
+          padding: 16px 18px;
           cursor: pointer;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           font-weight: 600;
-          font-size: 14px;
-          color: #475569;
+          color: #0f172a;
           position: relative;
           overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          width: min(100%, 240px);
+          min-height: 95px;
         }
 
         .day-card-popup::before {
@@ -8300,37 +8811,79 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         .day-name {
-          font-size: 14px;
+          font-size: 16px;
           position: relative;
           z-index: 1;
-        }
-
-        .selected-day-info {
-          background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-          border-radius: 12px;
-          padding: 24px;
-          margin-bottom: 24px;
-          border-left: 4px solid #3b82f6;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
-        }
-
-        .selected-day-display, .recent-date-display {
-          margin-bottom: 12px;
-          padding: 14px 16px;
-          background: white;
-          border-radius: 10px;
-          border: 1px solid #e0e7ff;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-        }
-
-        .selected-day-display:last-child, .recent-date-display:last-child {
-          margin-bottom: 0;
-        }
-
-        .selected-day-display strong, .recent-date-display strong {
-          color: #3b82f6;
-          margin-right: 8px;
           font-weight: 700;
+        }
+
+        .day-date {
+          font-size: 12px;
+          color: #475569;
+          margin-top: 4px;
+          opacity: 0.85;
+        }
+
+        .day-card-popup.selected .day-date {
+          color: rgba(255,255,255,0.85);
+        }
+
+        .day-summary-panel {
+          background: linear-gradient(135deg, #fdf2f8 0%, #eef2ff 100%);
+          border-radius: 16px;
+          padding: 20px;
+          margin-bottom: 24px;
+          border: 1px solid rgba(59, 130, 246, 0.2);
+          box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+        }
+
+        .summary-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 16px;
+        }
+
+        .summary-label {
+          margin: 0;
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: #475569;
+        }
+
+        .day-summary-panel h4 {
+          margin: 2px 0 0 0;
+          font-size: 18px;
+          color: #0f172a;
+        }
+
+        .summary-chip-list {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 12px;
+        }
+
+        .summary-chip {
+          background: #fff;
+          border-radius: 12px;
+          padding: 12px 14px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .summary-chip strong {
+          color: #111827;
+          font-size: 15px;
+        }
+
+        .summary-chip span {
+          font-size: 12px;
+          color: #475569;
         }
 
         /* Popup Buttons - Modern Design */
@@ -8370,6 +8923,94 @@ setTimeout(fillAppointmentForms, 5000);
           background: linear-gradient(135deg, #10b981 0%, #059669 100%);
           color: white;
           box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .ghost-btn {
+          background: #f8fafc;
+          color: #0f172a;
+          border: 1px solid #e2e8f0;
+          box-shadow: none;
+        }
+
+        .ghost-btn:hover {
+          background: #e2e8f0;
+          transform: translateY(-2px);
+        }
+
+        .ghost-btn.small {
+          padding: 8px 16px;
+          font-size: 12px;
+          border-radius: 999px;
+        }
+
+        @media (max-width: 640px) {
+          .day-popup-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+
+          .selected-count {
+            margin-left: 0;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          }
+
+          .selected-count span {
+            font-size: 20px;
+          }
+
+          .quick-select-row {
+            flex-direction: column;
+          }
+
+          .quick-select-btn,
+          .quick-select-btn.ghost {
+            width: 100%;
+            text-align: center;
+          }
+
+          .day-grid-popup {
+            gap: 10px;
+          }
+
+          @media (max-width: 420px) {
+            .day-grid-popup {
+              grid-template-columns: 1fr;
+            }
+
+            .day-card-popup {
+              width: 100%;
+            }
+          }
+
+          .day-card-popup {
+            min-height: 90px;
+          }
+
+          .day-summary-panel {
+            padding: 16px;
+          }
+
+          .summary-header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .summary-chip-list {
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+          }
+
+          .popup-buttons {
+            flex-direction: column;
+          }
+
+          .popup-buttons button {
+            width: 100%;
+            text-align: center;
+          }
         }
 
         .submit-btn:hover {
@@ -9756,6 +10397,35 @@ setTimeout(fillAppointmentForms, 5000);
         .dark-mode .redirect-popup-content select:hover {
           background: #334155 !important;
           border-color: #475569 !important;
+        }
+
+        .dark-mode .redirect-popup-content input[type="url"] {
+          background: #0f172a !important;
+          border-color: #334155 !important;
+          color: #e2e8f0 !important;
+        }
+
+        .dark-mode .redirect-popup-content input[type="url"]:focus {
+          border-color: #22c55e !important;
+          box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2) !important;
+        }
+
+        .dark-mode .redirect-mode-toggle {
+          background: rgba(15, 23, 42, 0.8) !important;
+          border-color: #334155 !important;
+        }
+
+        .dark-mode .redirect-mode-btn {
+          color: #cbd5f5 !important;
+        }
+
+        .dark-mode .redirect-mode-btn.active {
+          background: #2563eb !important;
+          box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35) !important;
+        }
+
+        .dark-mode .redirect-popup-content .helper-text {
+          color: #94a3b8 !important;
         }
 
         .dark-mode .day-card-popup {
