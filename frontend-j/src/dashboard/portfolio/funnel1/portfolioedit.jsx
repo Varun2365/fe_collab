@@ -11,7 +11,7 @@ import { getCoachId, getToken, debugAuthState } from '../../../utils/authUtils';
 // GrapesJS Core and Plugins (100% FREE - Open Source MIT License - No payment/keys required for live server)
 // ✅ Completely free to use in production, commercial projects, and live servers
 // ✅ No API keys, no subscriptions, no payments needed
-// ✅ MIT License allows commercial use without restrictions jassi 2
+// ✅ MIT License allows commercial use without restrictions jassi 3
 import grapesjs from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
 import gjsPresetWebpage from "grapesjs-preset-webpage";
@@ -943,6 +943,7 @@ const PortfolioEdit = () => {
   const API_BASE_URL = window.API_BASE_URL || 'https://api.funnelseye.com';
 
   const [editorInstance, setEditorInstance] = useState(null);
+  const [isEditorLoading, setIsEditorLoading] = useState(true);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showAIPopup, setShowAIPopup] = useState(false);
   const [showRedirectPopup, setShowRedirectPopup] = useState(false);
@@ -2773,6 +2774,7 @@ const PortfolioEdit = () => {
     
     window.editor = editor;
     setEditorInstance(editor);
+    setIsEditorLoading(false);
 
     // Ensure block categories dropdown functionality works
     // This will be called after editor is ready
@@ -4425,6 +4427,11 @@ const PortfolioEdit = () => {
       
       console.log('✅ Editor initialization completed');
       
+      // Fallback: Hide loading after 8 seconds as safety measure
+      setTimeout(() => {
+        setIsEditorLoading(false);
+      }, 8000);
+      
       // Initialize auto-update for day selectors
       setupAutoUpdateDaySelectors();
 
@@ -4501,6 +4508,7 @@ const PortfolioEdit = () => {
     }
 
     console.log('🚀 Initializing GrapesJS editor...');
+    setIsEditorLoading(true);
     editorInitializedRef.current = true;
 
     // FIXED: Generate project data ONCE and cache it
@@ -4709,7 +4717,10 @@ const PortfolioEdit = () => {
       // Note: Page-specific CSS is injected via injectPageCSS function for each page
     }
 
-    onEditorReady(editor);
+    // Call onEditorReady after a small delay to ensure editor is fully initialized
+    setTimeout(() => {
+      onEditorReady(editor);
+    }, 100);
 
     // Add Copy, Duplicate, and Delete Functions - FIXED TO WORK PROPERLY!
     setTimeout(() => {
@@ -7526,14 +7537,382 @@ setTimeout(fillAppointmentForms, 5000);
 
   if (apiStatus === 'loading') {
     return (
-      <div className="portfolio-edit-container" style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh'
-      }}>
-        <h2>Loading Funnel Editor...</h2>
-      </div>
+      <>
+        <style>{`
+          @keyframes skeleton-shimmer {
+            0% {
+              background-position: -200% 0;
+            }
+            100% {
+              background-position: 200% 0;
+            }
+          }
+          
+          .skeleton-loader-wrapper {
+            width: 100%;
+            height: 100vh;
+            background: #0f172a;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+          }
+          
+          .skeleton-sidebar {
+            width: 280px;
+            height: 100vh;
+            background: #1e293b;
+            border-right: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+          }
+          
+          .skeleton-sidebar-header {
+            padding: 16px 18px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #1e293b;
+          }
+          
+          .skeleton-box {
+            background: linear-gradient(
+              90deg,
+              #1e293b 0%,
+              #334155 25%,
+              #475569 50%,
+              #334155 75%,
+              #1e293b 100%
+            );
+            background-size: 400% 100%;
+            animation: skeleton-shimmer 2s ease-in-out infinite;
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+          }
+          
+          .skeleton-box::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+              90deg,
+              transparent,
+              rgba(255, 255, 255, 0.1),
+              transparent
+            );
+            animation: skeleton-shimmer 2s ease-in-out infinite;
+          }
+          
+          .skeleton-header-title {
+            width: 90px;
+            height: 22px;
+          }
+          
+          .skeleton-header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+          }
+          
+          .skeleton-icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+          }
+          
+          .skeleton-pages-list {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+          }
+          
+          .skeleton-page-item {
+            height: 64px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: #1e293b;
+            border: 1px solid #334155;
+          }
+          
+          .skeleton-page-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            flex-shrink: 0;
+          }
+          
+          .skeleton-page-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+          
+          .skeleton-page-title {
+            height: 18px;
+            width: 75%;
+            border-radius: 4px;
+          }
+          
+          .skeleton-page-subtitle {
+            height: 14px;
+            width: 55%;
+            border-radius: 4px;
+          }
+          
+          .skeleton-main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #0f172a;
+            position: relative;
+          }
+          
+          .skeleton-top-bar {
+            height: 68px;
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+          }
+          
+          .skeleton-top-left {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+          }
+          
+          .skeleton-logo {
+            width: 140px;
+            height: 28px;
+            border-radius: 6px;
+          }
+          
+          .skeleton-top-right {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+          }
+          
+          .skeleton-btn {
+            width: 110px;
+            height: 38px;
+            border-radius: 8px;
+          }
+          
+          .skeleton-editor-canvas {
+            flex: 1;
+            margin: 24px;
+            background: #1e293b;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+          }
+          
+          .skeleton-canvas-content {
+            width: 92%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+            padding: 48px;
+          }
+          
+          .skeleton-hero-section {
+            height: 220px;
+            border-radius: 10px;
+          }
+          
+          .skeleton-content-section {
+            height: 160px;
+            border-radius: 10px;
+          }
+          
+          .skeleton-feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+          }
+          
+          .skeleton-feature-card {
+            height: 140px;
+            border-radius: 10px;
+          }
+          
+          .skeleton-tools-panel {
+            width: 340px;
+            height: 100vh;
+            background: #1e293b;
+            border-left: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+          }
+          
+          .skeleton-tools-header {
+            padding: 18px;
+            border-bottom: 1px solid #334155;
+            background: #1e293b;
+          }
+          
+          .skeleton-tools-title {
+            width: 140px;
+            height: 22px;
+            margin-bottom: 14px;
+            border-radius: 6px;
+          }
+          
+          .skeleton-tabs {
+            display: flex;
+            gap: 10px;
+          }
+          
+          .skeleton-tab {
+            width: 90px;
+            height: 36px;
+            border-radius: 8px;
+          }
+          
+          .skeleton-tools-content {
+            flex: 1;
+            padding: 18px;
+            overflow-y: auto;
+          }
+          
+          .skeleton-property-group {
+            margin-bottom: 28px;
+          }
+          
+          .skeleton-property-label {
+            width: 120px;
+            height: 16px;
+            margin-bottom: 14px;
+            border-radius: 4px;
+          }
+          
+          .skeleton-property-input {
+            width: 100%;
+            height: 40px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+          }
+          
+          .skeleton-property-input-small {
+            width: 65%;
+            height: 40px;
+            border-radius: 8px;
+          }
+          
+          .skeleton-loader-wrapper::-webkit-scrollbar {
+            width: 8px;
+          }
+          
+          .skeleton-loader-wrapper::-webkit-scrollbar-track {
+            background: #1e293b;
+          }
+          
+          .skeleton-loader-wrapper::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+          }
+          
+          .skeleton-loader-wrapper::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+          }
+        `}</style>
+        
+        <div className="skeleton-loader-wrapper">
+          {/* Left Sidebar Skeleton */}
+          <div className="skeleton-sidebar">
+            <div className="skeleton-sidebar-header">
+              <div className="skeleton-box skeleton-header-title"></div>
+              <div className="skeleton-header-actions">
+                <div className="skeleton-box skeleton-icon-btn"></div>
+                <div className="skeleton-box skeleton-icon-btn"></div>
+                <div className="skeleton-box skeleton-icon-btn"></div>
+              </div>
+            </div>
+            <div className="skeleton-pages-list">
+              {[1, 2, 3, 4, 5, 6].map((item) => (
+                <div key={item} className="skeleton-page-item">
+                  <div className="skeleton-box skeleton-page-icon"></div>
+                  <div className="skeleton-page-content">
+                    <div className="skeleton-box skeleton-page-title"></div>
+                    <div className="skeleton-box skeleton-page-subtitle"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Main Editor Area Skeleton */}
+          <div className="skeleton-main-area">
+            <div className="skeleton-top-bar">
+              <div className="skeleton-top-left">
+                <div className="skeleton-box skeleton-logo"></div>
+              </div>
+              <div className="skeleton-top-right">
+                <div className="skeleton-box skeleton-btn"></div>
+                <div className="skeleton-box skeleton-btn"></div>
+                <div className="skeleton-box skeleton-icon-btn"></div>
+                <div className="skeleton-box skeleton-icon-btn"></div>
+              </div>
+            </div>
+            <div className="skeleton-editor-canvas">
+              <div className="skeleton-canvas-content">
+                <div className="skeleton-box skeleton-hero-section"></div>
+                <div className="skeleton-box skeleton-content-section"></div>
+                <div className="skeleton-feature-grid">
+                  <div className="skeleton-box skeleton-feature-card"></div>
+                  <div className="skeleton-box skeleton-feature-card"></div>
+                  <div className="skeleton-box skeleton-feature-card"></div>
+                </div>
+                <div className="skeleton-box skeleton-content-section"></div>
+                <div className="skeleton-box skeleton-content-section" style={{ width: '60%' }}></div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Right Tools Panel Skeleton */}
+          <div className="skeleton-tools-panel">
+            <div className="skeleton-tools-header">
+              <div className="skeleton-box skeleton-tools-title"></div>
+              <div className="skeleton-tabs">
+                <div className="skeleton-box skeleton-tab"></div>
+                <div className="skeleton-box skeleton-tab"></div>
+                <div className="skeleton-box skeleton-tab"></div>
+              </div>
+            </div>
+            <div className="skeleton-tools-content">
+              {[1, 2, 3, 4, 5].map((group) => (
+                <div key={group} className="skeleton-property-group">
+                  <div className="skeleton-box skeleton-property-label"></div>
+                  <div className="skeleton-box skeleton-property-input"></div>
+                  <div className="skeleton-box skeleton-property-input"></div>
+                  <div className="skeleton-box skeleton-property-input-small"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </>
     );
   }
 
@@ -7552,6 +7931,422 @@ setTimeout(fillAppointmentForms, 5000);
 
   return (
     <div className={`portfolio-edit-container ${isDarkMode ? 'dark-mode' : ''}`}>
+      {/* Professional Full Screen Skeleton Loader */}
+      {isEditorLoading && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh',
+          background: '#1a1a1a',
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}>
+          <style>{`
+            @keyframes skeleton-shimmer {
+              0% {
+                background-position: -200% 0;
+              }
+              100% {
+                background-position: 200% 0;
+              }
+            }
+            
+            .skel-box {
+              background: linear-gradient(
+                90deg,
+                #1e1e1e 0%,
+                #2a2a2a 25%,
+                #333333 50%,
+                #2a2a2a 75%,
+                #1e1e1e 100%
+              );
+              background-size: 400% 100%;
+              animation: skeleton-shimmer 1.5s ease-in-out infinite;
+              border-radius: 6px;
+              position: relative;
+              overflow: hidden;
+            }
+            
+            .skel-box::after {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.06),
+                transparent
+              );
+              animation: skeleton-shimmer 1.5s ease-in-out infinite;
+            }
+            
+            .skel-top-bar {
+              height: 68px;
+              background: #1e1e1e;
+              border-bottom: 1px solid #2d2d2d;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 12px 24px;
+              gap: 20px;
+            }
+            
+            .skel-top-left {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              min-width: 250px;
+            }
+            
+            .skel-top-center {
+              flex: 1;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 12px;
+              max-width: 900px;
+            }
+            
+            .skel-top-right {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+            }
+            
+            .skel-btn {
+              width: 100px;
+              height: 36px;
+            }
+            
+            .skel-btn-small {
+              width: 36px;
+              height: 36px;
+            }
+            
+            .skel-page-info {
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+            }
+            
+            .skel-page-title {
+              width: 120px;
+              height: 16px;
+            }
+            
+            .skel-page-subtitle {
+              width: 100px;
+              height: 12px;
+            }
+            
+            .skel-device-controls {
+              display: flex;
+              gap: 8px;
+            }
+            
+            .skel-device-btn {
+              width: 36px;
+              height: 36px;
+            }
+            
+            .skel-main-layout {
+              flex: 1;
+              display: flex;
+              height: calc(100vh - 68px);
+              overflow: hidden;
+            }
+            
+            .skel-left-sidebar {
+              width: 300px;
+              background: #1e1e1e;
+              border-right: 1px solid #2d2d2d;
+              display: flex;
+              flex-direction: column;
+            }
+            
+            .skel-sidebar-header {
+              padding: 16px 18px;
+              border-bottom: 1px solid #2d2d2d;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+            }
+            
+            .skel-sidebar-title {
+              width: 80px;
+              height: 20px;
+            }
+            
+            .skel-sidebar-actions {
+              display: flex;
+              gap: 8px;
+            }
+            
+            .skel-sidebar-btn {
+              width: 32px;
+              height: 32px;
+            }
+            
+            .skel-pages-list {
+              flex: 1;
+              padding: 12px;
+              overflow-y: auto;
+            }
+            
+            .skel-page-item {
+              height: 64px;
+              margin-bottom: 10px;
+              padding: 12px;
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              background: #1e1e1e;
+              border: 1px solid #2d2d2d;
+              border-radius: 8px;
+            }
+            
+            .skel-page-icon {
+              width: 40px;
+              height: 40px;
+              border-radius: 6px;
+              flex-shrink: 0;
+            }
+            
+            .skel-page-content {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+            }
+            
+            .skel-page-name {
+              width: 70%;
+              height: 16px;
+            }
+            
+            .skel-page-type {
+              width: 50%;
+              height: 12px;
+            }
+            
+            .skel-editor-area {
+              flex: 1;
+              background: #1a1a1a;
+              display: flex;
+              flex-direction: column;
+              position: relative;
+            }
+            
+            .skel-canvas {
+              flex: 1;
+              margin: 20px;
+              background: #252525;
+              border-radius: 8px;
+              border: 1px solid #2d2d2d;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              overflow: hidden;
+            }
+            
+            .skel-canvas-content {
+              width: 90%;
+              max-width: 1200px;
+              display: flex;
+              flex-direction: column;
+              gap: 24px;
+              padding: 40px;
+            }
+            
+            .skel-hero {
+              height: 200px;
+              border-radius: 8px;
+            }
+            
+            .skel-section {
+              height: 150px;
+              border-radius: 8px;
+            }
+            
+            .skel-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 16px;
+            }
+            
+            .skel-card {
+              height: 120px;
+              border-radius: 8px;
+            }
+            
+            .skel-right-sidebar {
+              width: 280px;
+              background: #1e1e1e;
+              border-left: 1px solid #2d2d2d;
+              display: flex;
+              flex-direction: column;
+            }
+            
+            .skel-tools-header {
+              padding: 16px;
+              border-bottom: 1px solid #2d2d2d;
+            }
+            
+            .skel-tools-title {
+              width: 120px;
+              height: 18px;
+              margin-bottom: 12px;
+            }
+            
+            .skel-tabs {
+              display: flex;
+              gap: 8px;
+            }
+            
+            .skel-tab {
+              width: 70px;
+              height: 32px;
+            }
+            
+            .skel-tools-content {
+              flex: 1;
+              padding: 16px;
+              overflow: hidden;
+            }
+            
+            .skel-right-sidebar {
+              overflow: hidden;
+            }
+            
+            .skel-pages-list {
+              overflow: hidden;
+            }
+            
+            .skel-property-group {
+              margin-bottom: 24px;
+            }
+            
+            .skel-property-label {
+              width: 100px;
+              height: 14px;
+              margin-bottom: 12px;
+            }
+            
+            .skel-property-input {
+              width: 100%;
+              height: 36px;
+              margin-bottom: 8px;
+            }
+            
+            .skel-property-input-small {
+              width: 60%;
+              height: 36px;
+            }
+          `}</style>
+          
+          {/* Top Header Skeleton */}
+          <div className="skel-top-bar">
+            <div className="skel-top-left">
+              <div className="skel-box skel-btn-small"></div>
+              <div className="skel-page-info">
+                <div className="skel-box skel-page-title"></div>
+                <div className="skel-box skel-page-subtitle"></div>
+              </div>
+              <div className="skel-device-controls">
+                <div className="skel-box skel-device-btn"></div>
+                <div className="skel-box skel-device-btn"></div>
+                <div className="skel-box skel-device-btn"></div>
+              </div>
+            </div>
+            <div className="skel-top-center">
+              <div className="skel-box skel-btn"></div>
+              <div className="skel-box skel-btn"></div>
+              <div className="skel-box skel-btn-small"></div>
+              <div className="skel-box skel-btn-small"></div>
+            </div>
+            <div className="skel-top-right">
+              <div className="skel-box skel-btn"></div>
+              <div className="skel-box skel-btn-small"></div>
+              <div className="skel-box skel-btn-small"></div>
+            </div>
+          </div>
+          
+          {/* Main Layout Skeleton */}
+          <div className="skel-main-layout">
+            {/* Left Sidebar Skeleton */}
+            <div className="skel-left-sidebar">
+              <div className="skel-sidebar-header">
+                <div className="skel-box skel-sidebar-title"></div>
+                <div className="skel-sidebar-actions">
+                  <div className="skel-box skel-sidebar-btn"></div>
+                  <div className="skel-box skel-sidebar-btn"></div>
+                  <div className="skel-box skel-sidebar-btn"></div>
+                </div>
+              </div>
+              <div className="skel-pages-list">
+                {[1, 2, 3, 4, 5].map((item) => (
+                  <div key={item} className="skel-page-item">
+                    <div className="skel-box skel-page-icon"></div>
+                    <div className="skel-page-content">
+                      <div className="skel-box skel-page-name"></div>
+                      <div className="skel-box skel-page-type"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Main Editor Area Skeleton */}
+            <div className="skel-editor-area">
+              <div className="skel-canvas">
+                <div className="skel-canvas-content">
+                  <div className="skel-box skel-hero"></div>
+                  <div className="skel-box skel-section"></div>
+                  <div className="skel-grid">
+                    <div className="skel-box skel-card"></div>
+                    <div className="skel-box skel-card"></div>
+                    <div className="skel-box skel-card"></div>
+                  </div>
+                  <div className="skel-box skel-section"></div>
+                  <div className="skel-box skel-section" style={{ width: '65%' }}></div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Right Sidebar Skeleton */}
+            <div className="skel-right-sidebar">
+              <div className="skel-tools-header">
+                <div className="skel-box skel-tools-title"></div>
+                <div className="skel-tabs">
+                  <div className="skel-box skel-tab"></div>
+                  <div className="skel-box skel-tab"></div>
+                  <div className="skel-box skel-tab"></div>
+                </div>
+              </div>
+              <div className="skel-tools-content">
+                {[1, 2, 3, 4, 5].map((group) => (
+                  <div key={group} className="skel-property-group">
+                    <div className="skel-box skel-property-label"></div>
+                    <div className="skel-box skel-property-input"></div>
+                    <div className="skel-box skel-property-input"></div>
+                    <div className="skel-box skel-property-input-small"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Left Sidebar - Pages Navigation */}
       <div className={`pages-sidebar ${showPagesSidebar ? 'show' : 'hide'}`}>
         <div className="pages-sidebar-header">
@@ -8092,7 +8887,14 @@ setTimeout(fillAppointmentForms, 5000);
           id="gjs" 
           key={`editor-${slug}-${forceRefreshKey}`}
           ref={editorContainerRef}
-          style={{ height: '100%', width: '100%', overflow: 'hidden', position: 'relative' }}
+          style={{ 
+            height: '100%', 
+            width: '100%', 
+            overflow: 'hidden', 
+            position: 'relative',
+            opacity: isEditorLoading ? 0 : 1,
+            transition: 'opacity 0.3s ease'
+          }}
         ></div> {/* GrapesJS container */}
         
         {/* Resize Handle - positioned outside #gjs to avoid GrapesJS interference */}
