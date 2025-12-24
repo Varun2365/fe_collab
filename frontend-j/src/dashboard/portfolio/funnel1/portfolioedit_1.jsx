@@ -11,7 +11,7 @@ import { getCoachId, getToken, debugAuthState } from '../../../utils/authUtils';
 // GrapesJS Core and Plugins (100% FREE - Open Source MIT License - No payment/keys required for live server)
 // ✅ Completely free to use in production, commercial projects, and live servers
 // ✅ No API keys, no subscriptions, no payments needed
-// ✅ MIT License allows commercial use without restrictions jassi 2
+// ✅ MIT License allows commercial use without restrictions jassi
 import grapesjs from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
 import gjsPresetWebpage from "grapesjs-preset-webpage";
@@ -943,6 +943,7 @@ const PortfolioEdit = () => {
   const API_BASE_URL = window.API_BASE_URL || 'https://api.funnelseye.com';
 
   const [editorInstance, setEditorInstance] = useState(null);
+  const [isEditorLoading, setIsEditorLoading] = useState(true);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showAIPopup, setShowAIPopup] = useState(false);
   const [showRedirectPopup, setShowRedirectPopup] = useState(false);
@@ -955,19 +956,20 @@ const PortfolioEdit = () => {
   const [selectedRedirectPage, setSelectedRedirectPage] = useState('');
   const [availableForms, setAvailableForms] = useState([]);
   const [showPagesSidebar, setShowPagesSidebar] = useState(true);
+  const [sidebarActiveTab, setSidebarActiveTab] = useState('pages'); // 'pages', 'layers', 'tools'
   const [showBlocksPanel, setShowBlocksPanel] = useState(false);
   const [isToolsPanelOpen, setIsToolsPanelOpen] = useState(() => {
     if (typeof window === 'undefined') {
-      return true;
+      return false; // Start closed, integrated into sidebar
     }
     const savedPreference = localStorage.getItem('portfolioEditorToolsPanelOpen');
-    return savedPreference ? JSON.parse(savedPreference) : true;
+    return savedPreference ? JSON.parse(savedPreference) : false;
   });
   const [toolsPanelSide, setToolsPanelSide] = useState(() => {
     if (typeof window === 'undefined') {
-      return 'right';
+      return 'left'; // Always left, no right sidebar
     }
-    return localStorage.getItem('portfolioEditorToolsPanelSide') || 'right';
+    return localStorage.getItem('portfolioEditorToolsPanelSide') || 'left';
   });
   const [showBuilderPanel, setShowBuilderPanel] = useState(false);
   const [activeBuilderCategory, setActiveBuilderCategory] = useState('sections');
@@ -982,8 +984,10 @@ const PortfolioEdit = () => {
   );
   const [successMessage, setSuccessMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  // Light mode only - dark mode disabled
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('portfolioEditorDarkMode');
+    return saved ? JSON.parse(saved) : true;
+  });
   
   // Ref to prevent multiple editor initializations
   const editorInitializedRef = React.useRef(false);
@@ -1142,56 +1146,51 @@ const PortfolioEdit = () => {
   const toolsPanelSideRef = React.useRef(toolsPanelSide);
   const pagesSidebarVisibilityRef = React.useRef(showPagesSidebar);
 
-  const applyToolsPanelPlacement = useCallback(() => {
-    const rightPanels = document.querySelectorAll('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
-    if (!rightPanels.length) return;
-
-    const pagesSidebarElement = document.querySelector('.pages-sidebar');
-    const editorAreaElement = document.querySelector('.editor-main-area');
-    const editorRect = editorAreaElement ? editorAreaElement.getBoundingClientRect() : null;
-    const containerElement = document.querySelector('.portfolio-edit-container');
-    const containerStyles = containerElement ? window.getComputedStyle(containerElement) : null;
-    const toolsPanelWidth = containerStyles ? parseInt(containerStyles.getPropertyValue('--tools-panel-width'), 10) || 280 : 280;
-    const navSidebarWidth = pagesSidebarVisibilityRef.current && pagesSidebarElement
-      ? pagesSidebarElement.getBoundingClientRect().width || 300
-      : 0;
-
+  // Forcefully hide right sidebar panels - NO RIGHT SIDEBAR ALLOWED
+  const hideRightSidebar = useCallback(() => {
+    // Multiple selectors to catch all possible right sidebar variations
+    const rightPanels = document.querySelectorAll(`
+      .gjs-pn-panel.gjs-pn-views-container,
+      .gjs-pn-panel[data-pn-type="views-container"],
+      .gjs-pn-panel[data-pn-position="right"],
+      .gjs-pn-panel.gjs-pn-right,
+      [class*="gjs-pn"][class*="right"],
+      [id*="views-container"],
+      [data-pn-position="right"]
+    `);
+    
     rightPanels.forEach(panel => {
-      panel.style.display = 'block';
-      panel.style.visibility = 'visible';
-      panel.style.opacity = '1';
-      panel.style.position = 'fixed';
-      panel.style.top = '68px';
-      panel.style.height = 'calc(100vh - 68px)';
-      panel.style.maxHeight = 'calc(100vh - 68px)';
-      panel.style.zIndex = '1001';
-      panel.style.marginTop = '0';
-      panel.style.paddingTop = '0';
-      panel.style.overflowY = 'auto';
-      panel.style.overflowX = 'hidden';
-      if (toolsPanelSideRef.current === 'left') {
-        const editorLeft = editorRect ? editorRect.left : navSidebarWidth;
-        const targetLeft = Math.max((editorLeft || 0) - toolsPanelWidth, 0);
-        panel.style.left = `${targetLeft}px`;
-        panel.style.right = 'auto';
-        panel.style.borderRight = '1px solid #2d2d2d';
-        panel.style.borderLeft = 'none';
-        panel.style.transform = toolsPanelVisibilityRef.current ? 'translateX(0)' : `translateX(-${toolsPanelWidth + 40}px)`;
-      } else {
-        panel.style.left = 'auto';
-        panel.style.right = '0';
-        panel.style.borderLeft = '1px solid #2d2d2d';
-        panel.style.borderRight = 'none';
-        panel.style.transform = toolsPanelVisibilityRef.current ? 'translateX(0)' : `translateX(${toolsPanelWidth + 40}px)`;
-      }
-      panel.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
-      panel.style.width = `${toolsPanelWidth}px`;
-      panel.style.maxWidth = `${toolsPanelWidth}px`;
-      panel.style.minWidth = `${toolsPanelWidth}px`;
-      panel.style.pointerEvents = toolsPanelVisibilityRef.current ? 'auto' : 'none';
-      panel.style.opacity = toolsPanelVisibilityRef.current ? '1' : '0';
+      // Use setProperty with important flag for proper CSS application
+      panel.style.setProperty('display', 'none', 'important');
+      panel.style.setProperty('visibility', 'hidden', 'important');
+      panel.style.setProperty('opacity', '0', 'important');
+      panel.style.setProperty('width', '0', 'important');
+      panel.style.setProperty('height', '0', 'important');
+      panel.style.setProperty('min-width', '0', 'important');
+      panel.style.setProperty('max-width', '0', 'important');
+      panel.style.setProperty('overflow', 'hidden', 'important');
+      panel.style.setProperty('position', 'fixed', 'important');
+      panel.style.setProperty('left', '-99999px', 'important');
+      panel.style.setProperty('top', '-99999px', 'important');
+      panel.style.setProperty('right', '-99999px', 'important');
+      panel.style.setProperty('pointer-events', 'none', 'important');
+      panel.style.setProperty('z-index', '-99999', 'important');
+      panel.style.setProperty('transform', 'translateX(99999px)', 'important');
+      panel.setAttribute('data-force-hide', 'true');
+      
+      // Also hide all children
+      const children = panel.querySelectorAll('*');
+      children.forEach(child => {
+        child.style.setProperty('display', 'none', 'important');
+        child.style.setProperty('visibility', 'hidden', 'important');
+      });
     });
   }, []);
+
+  const applyToolsPanelPlacement = useCallback(() => {
+    // Always hide right sidebar - no right sidebar allowed
+    hideRightSidebar();
+  }, [hideRightSidebar]);
 
   useEffect(() => {
     toolsPanelVisibilityRef.current = isToolsPanelOpen;
@@ -1201,292 +1200,240 @@ const PortfolioEdit = () => {
   }, [isToolsPanelOpen, applyToolsPanelPlacement]);
 
   useEffect(() => {
-    toolsPanelSideRef.current = toolsPanelSide;
-    localStorage.setItem('portfolioEditorToolsPanelSide', toolsPanelSide);
-    const timer = setTimeout(() => applyToolsPanelPlacement(), 50);
-    return () => clearTimeout(timer);
-  }, [toolsPanelSide, applyToolsPanelPlacement]);
+    // Force left side only - no right sidebar
+    setToolsPanelSide('left');
+    toolsPanelSideRef.current = 'left';
+    localStorage.setItem('portfolioEditorToolsPanelSide', 'left');
+    hideRightSidebar();
+  }, [hideRightSidebar]);
 
   useEffect(() => {
     pagesSidebarVisibilityRef.current = showPagesSidebar;
-    applyToolsPanelPlacement();
+    hideRightSidebar();
     if (!showPagesSidebar) {
       setShowBuilderPanel(false);
     }
-  }, [showPagesSidebar, applyToolsPanelPlacement]);
+  }, [showPagesSidebar, hideRightSidebar]);
 
-  // Handle Layers panel toggle - properly move layers to left sidebar
+  // CRITICAL: Continuous monitor to hide right sidebar - runs on mount and continuously
+  useEffect(() => {
+    // Hide immediately
+    hideRightSidebar();
+    
+    // Set up continuous monitoring
+    const monitorInterval = setInterval(() => {
+      hideRightSidebar();
+    }, 300);
+    
+    // Also use MutationObserver to catch any dynamically added panels
+    const observer = new MutationObserver(() => {
+      hideRightSidebar();
+    });
+    
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style']
+    });
+    
+    return () => {
+      clearInterval(monitorInterval);
+      observer.disconnect();
+    };
+  }, [hideRightSidebar]);
+
+  // Move GrapesJS Blocks Panel to left sidebar Tools tab - NO RIGHT SIDEBAR
   useEffect(() => {
     if (!editorInstance) return;
 
-    let movedLayersElement = null;
-    let movedLayersView = null;
+    const moveBlocksToLeftSidebar = () => {
+      // Always hide right sidebar first
+      hideRightSidebar();
 
-    const findLayersContent = (container) => {
-      if (!container) return { layersView: null, layersContent: null };
+      const rightSidebarPanel = document.querySelector('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
+      const toolsTabContainer = document.getElementById('left-sidebar-blocks-container');
       
-      // First, try to find the layers view by data attribute
-      let layersView = container.querySelector('.gjs-pn-view[data-pn-type="layers"]');
+      if (!rightSidebarPanel || !toolsTabContainer || sidebarActiveTab !== 'tools') {
+        return;
+      }
+
+      // Find blocks view/content
+      const blocksView = rightSidebarPanel.querySelector('.gjs-pn-view[data-pn-type="blocks"]') || 
+                         rightSidebarPanel.querySelector('.gjs-pn-view.gjs-pn-active');
       
-      // If not found, try active view
-      if (!layersView) {
-        const activeView = container.querySelector('.gjs-pn-view.gjs-pn-active');
-        // Check if active view has layers content
-        if (activeView) {
-          const hasLayers = activeView.querySelector('.gjs-layer, .gjs-layer-item, .gjs-layer-wrapper');
-          if (hasLayers) {
-            layersView = activeView;
-          }
+      if (blocksView) {
+        // Activate blocks button if not active
+        const blocksBtn = document.querySelector('.gjs-pn-btn[data-pn-type="blocks"]');
+        if (blocksBtn && !blocksBtn.classList.contains('gjs-pn-active')) {
+          blocksBtn.click();
+        }
+
+        // Find blocks content
+        const blocksContent = blocksView.querySelector('.gjs-blocks, .gjs-blocks-c, .gjs-pn-view-content') || blocksView;
+        
+        if (blocksContent && blocksContent.parentNode !== toolsTabContainer) {
+          // Clear container
+          toolsTabContainer.innerHTML = '';
+          
+          // Move blocks content to Tools tab
+          toolsTabContainer.appendChild(blocksContent);
+          
+          // Apply styles
+          toolsTabContainer.style.display = 'flex';
+          toolsTabContainer.style.flexDirection = 'column';
+          toolsTabContainer.style.overflow = 'auto';
+          toolsTabContainer.style.height = '100%';
+          toolsTabContainer.style.width = '100%';
+          
+          blocksContent.style.display = 'block';
+          blocksContent.style.visibility = 'visible';
+          blocksContent.style.opacity = '1';
+          blocksContent.style.width = '100%';
+          blocksContent.style.height = 'auto';
+          
+          console.log('✅ Blocks panel moved to Tools tab');
         }
       }
-      
-      // If still not found, search all views for layers
-      if (!layersView) {
-        const allViews = container.querySelectorAll('.gjs-pn-view');
-        for (let view of allViews) {
-          const hasLayers = view.querySelector('.gjs-layer, .gjs-layer-item, .gjs-layer-wrapper, .gjs-layers');
-          if (hasLayers) {
-            layersView = view;
-            break;
-          }
+    };
+
+    // Move blocks when Tools tab is active
+    if (sidebarActiveTab === 'tools') {
+      const timer = setTimeout(() => {
+        moveBlocksToLeftSidebar();
+      }, 500);
+
+      // Monitor for blocks panel changes
+      const observer = new MutationObserver(() => {
+        if (sidebarActiveTab === 'tools') {
+          moveBlocksToLeftSidebar();
         }
+      });
+
+      const rightSidebarPanel = document.querySelector('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
+      if (rightSidebarPanel) {
+        observer.observe(rightSidebarPanel, {
+          childList: true,
+          subtree: true,
+          attributes: true
+        });
       }
+
+      return () => {
+        clearTimeout(timer);
+        observer.disconnect();
+      };
+    }
+  }, [editorInstance, sidebarActiveTab, hideRightSidebar]);
+
+  // Move Layers to left sidebar Layers tab
+  useEffect(() => {
+    if (!editorInstance) return;
+
+    const moveLayersToLeftSidebar = () => {
+      // Always hide right sidebar first
+      hideRightSidebar();
+
+      const rightSidebarPanel = document.querySelector('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
+      const layersTabContainer = document.getElementById('left-sidebar-layers-container');
+      
+      if (!rightSidebarPanel || !layersTabContainer || sidebarActiveTab !== 'layers') {
+        return;
+      }
+
+      // Find layers view/content
+      const layersView = rightSidebarPanel.querySelector('.gjs-pn-view[data-pn-type="layers"]') || 
+                         rightSidebarPanel.querySelector('.gjs-pn-view.gjs-pn-active');
       
       if (layersView) {
-        // Find the actual content container - prioritize the one with actual layer items
-        let layersContent = null;
-        
-        // First, try to find wrapper that contains actual layer items
-        const wrappers = layersView.querySelectorAll('.gjs-layer-wrapper, .gjs-layers, .gjs-pn-view-content');
-        for (let wrapper of wrappers) {
-          const hasItems = wrapper.querySelector('.gjs-layer, .gjs-layer-item');
-          if (hasItems) {
-            layersContent = wrapper;
-            break;
-          }
-        }
-        
-        // If no wrapper with items found, use first wrapper
-        if (!layersContent && wrappers.length > 0) {
-          layersContent = wrappers[0];
-        }
-        
-        // If still no content, check if view itself has layer items
-        if (!layersContent) {
-          const hasLayerItems = layersView.querySelector('.gjs-layer, .gjs-layer-item');
-          if (hasLayerItems) {
-            // Use the view but try to get its content div
-            const contentDiv = layersView.querySelector('div') || layersView;
-            layersContent = contentDiv;
-          }
-        }
-        
-        // Last resort: use the entire view
-        if (!layersContent) {
-          layersContent = layersView;
-        }
-        
-        return { layersView, layersContent };
-      }
-      
-      return { layersView: null, layersContent: null };
-    };
-
-    const handleLayersPanelToggle = () => {
-      const rightSidebarPanel = document.querySelector('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
-      const leftSidebarContainer = document.getElementById('left-sidebar-blocks-container');
-      
-      if (!rightSidebarPanel || !leftSidebarContainer) {
-        // Retry if elements not found
-        const retryTimer = setTimeout(() => handleLayersPanelToggle(), 300);
-        return () => clearTimeout(retryTimer);
-      }
-
-      if (showBlocksPanel) {
-        // Activate layers view by clicking the layers button
+        // Activate layers button if not active
         const layersBtn = document.querySelector('.gjs-pn-btn[data-pn-type="layers"]');
-        if (layersBtn) {
-          if (!layersBtn.classList.contains('gjs-pn-active')) {
-            layersBtn.click();
-          }
+        if (layersBtn && !layersBtn.classList.contains('gjs-pn-active')) {
+          layersBtn.click();
         }
+
+        // Find layers content
+        const layersContent = layersView.querySelector('.gjs-layers, .gjs-layer-wrapper, .gjs-pn-view-content') || layersView;
         
-        // Wait for layers to render, then find and move - with multiple retries
-        const tryMoveLayers = (attempt = 1, maxAttempts = 8) => {
-          const { layersView, layersContent } = findLayersContent(rightSidebarPanel);
+        if (layersContent && layersContent.parentNode !== layersTabContainer) {
+          // Clear container
+          layersTabContainer.innerHTML = '';
           
-          console.log(`Attempt ${attempt}:`, { 
-            hasLayersView: !!layersView, 
-            hasLayersContent: !!layersContent,
-            layersContentClass: layersContent?.className,
-            layersContentHTML: layersContent ? layersContent.innerHTML.substring(0, 100) : 'none'
-          });
+          // Move layers content to Layers tab
+          layersTabContainer.appendChild(layersContent);
           
-          if (layersContent && leftSidebarContainer) {
-            // Verify that layersContent actually has layer items
-            const hasLayerItems = layersContent.querySelector('.gjs-layer, .gjs-layer-item, [data-layer-item]');
-            
-            // Also check if the layersView itself has items (in case content is the view)
-            const viewHasItems = layersView ? layersView.querySelector('.gjs-layer, .gjs-layer-item, [data-layer-item]') : null;
-            
-            if ((hasLayerItems || viewHasItems) && layersContent.parentNode !== leftSidebarContainer) {
-              // Clear left sidebar
-              leftSidebarContainer.innerHTML = '';
-              
-              // Move the entire layers content
-              leftSidebarContainer.appendChild(layersContent);
-              movedLayersElement = layersContent;
-              movedLayersView = layersView;
-              
-              // Force display styles on both container and content
-              leftSidebarContainer.style.display = 'flex';
-              leftSidebarContainer.style.flexDirection = 'column';
-              leftSidebarContainer.style.overflow = 'auto';
-              
-              layersContent.style.display = 'block';
-              layersContent.style.visibility = 'visible';
-              layersContent.style.opacity = '1';
-              layersContent.style.width = '100%';
-              layersContent.style.height = '100%';
-              
-              // Ensure all child layers are visible
-              const allLayers = layersContent.querySelectorAll('.gjs-layer, .gjs-layer-item');
-              allLayers.forEach(layer => {
-                layer.style.display = 'flex';
-                layer.style.visibility = 'visible';
-                layer.style.opacity = '1';
-              });
-              
-              // Keep right sidebar visible (light mode requirement)
-              rightSidebarPanel.style.display = 'block';
-              rightSidebarPanel.style.visibility = 'visible';
-              rightSidebarPanel.style.opacity = '1';
-              
-              console.log('✅ Layers panel moved to left sidebar successfully', {
-                element: layersContent,
-                hasItems: !!hasLayerItems,
-                viewHasItems: !!viewHasItems,
-                itemCount: layersContent.querySelectorAll('.gjs-layer, .gjs-layer-item').length,
-                className: layersContent.className
-              });
-            } else if (!hasLayerItems && !viewHasItems && attempt < maxAttempts) {
-              console.log(`⚠️ Layers content found but no items (attempt ${attempt}/${maxAttempts}), retrying...`);
-              setTimeout(() => tryMoveLayers(attempt + 1, maxAttempts), 400);
-            } else if (layersContent.parentNode === leftSidebarContainer) {
-              console.log('✅ Layers panel already in left sidebar');
-            }
-          } else if (attempt < maxAttempts) {
-            console.log(`⚠️ Layers content not found (attempt ${attempt}/${maxAttempts}), retrying...`);
-            setTimeout(() => tryMoveLayers(attempt + 1, maxAttempts), 400);
-          } else {
-            console.error('❌ Failed to find layers content after multiple attempts');
-            // Show right sidebar if we failed
-            rightSidebarPanel.style.display = 'block';
-            rightSidebarPanel.style.visibility = 'visible';
-            rightSidebarPanel.style.opacity = '1';
-          }
-        };
-        
-        // Start trying after initial delay - give more time for layers to render
-        setTimeout(() => tryMoveLayers(), 800);
-      } else {
-        // Restore: move layers content back to right sidebar
-        const rightSidebarPanelRestore = document.querySelector('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
-        
-        if (leftSidebarContainer && movedLayersElement && leftSidebarContainer.contains(movedLayersElement) && rightSidebarPanelRestore) {
-          // Try to restore to the original location
-          if (movedLayersView && movedLayersView.parentNode === rightSidebarPanelRestore) {
-            movedLayersView.appendChild(movedLayersElement);
-          } else {
-            // Find or create layers view
-            const { layersView: restoreView } = findLayersContent(rightSidebarPanelRestore);
-            if (restoreView) {
-              restoreView.appendChild(movedLayersElement);
-            } else {
-              rightSidebarPanelRestore.appendChild(movedLayersElement);
-            }
-          }
+          // Apply styles
+          layersTabContainer.style.display = 'flex';
+          layersTabContainer.style.flexDirection = 'column';
+          layersTabContainer.style.overflow = 'auto';
+          layersTabContainer.style.height = '100%';
+          layersTabContainer.style.width = '100%';
           
-          movedLayersElement = null;
-          movedLayersView = null;
-          leftSidebarContainer.innerHTML = '';
-        }
-        
-        // Show right sidebar
-        if (rightSidebarPanelRestore) {
-          rightSidebarPanelRestore.style.display = 'block';
-          rightSidebarPanelRestore.style.visibility = 'visible';
-          rightSidebarPanelRestore.style.opacity = '1';
+          layersContent.style.display = 'block';
+          layersContent.style.visibility = 'visible';
+          layersContent.style.opacity = '1';
+          layersContent.style.width = '100%';
+          layersContent.style.height = 'auto';
+          
+          console.log('✅ Layers panel moved to Layers tab');
         }
       }
     };
 
-    const timer = setTimeout(() => {
-      handleLayersPanelToggle();
-    }, 800);
+    // Move layers when Layers tab is active
+    if (sidebarActiveTab === 'layers') {
+      const timer = setTimeout(() => {
+        moveLayersToLeftSidebar();
+      }, 500);
 
-    // Watch for DOM changes to catch when layers are rendered
-    const observer = new MutationObserver(() => {
-      if (showBlocksPanel && !movedLayersElement) {
-        const rightSidebarPanel = document.querySelector('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
-        const leftSidebarContainer = document.getElementById('left-sidebar-blocks-container');
-        
-        if (rightSidebarPanel && leftSidebarContainer) {
-          const { layersView, layersContent } = findLayersContent(rightSidebarPanel);
-          const hasLayerItems = layersContent ? layersContent.querySelector('.gjs-layer, .gjs-layer-item, [data-layer-item]') : null;
-          
-          // If layers are found and not yet moved, move them
-          if (layersContent && hasLayerItems && layersContent.parentNode !== leftSidebarContainer) {
-            leftSidebarContainer.innerHTML = '';
-            leftSidebarContainer.appendChild(layersContent);
-            movedLayersElement = layersContent;
-            movedLayersView = layersView;
-            
-            // Apply styles
-            leftSidebarContainer.style.display = 'flex';
-            layersContent.style.display = 'block';
-            layersContent.style.visibility = 'visible';
-            layersContent.style.opacity = '1';
-            
-            // Keep right sidebar visible (light mode requirement)
-            rightSidebarPanel.style.display = 'block';
-            rightSidebarPanel.style.visibility = 'visible';
-            rightSidebarPanel.style.opacity = '1';
-            
-            console.log('✅ Layers panel moved via observer');
-          }
+      // Monitor for layers panel changes
+      const observer = new MutationObserver(() => {
+        if (sidebarActiveTab === 'layers') {
+          moveLayersToLeftSidebar();
         }
-      }
-    });
-
-    const rightSidebarPanel = document.querySelector('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
-    if (rightSidebarPanel) {
-      observer.observe(rightSidebarPanel, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['class', 'style']
       });
-    }
 
-    return () => {
-      clearTimeout(timer);
-      observer.disconnect();
-    };
-  }, [showBlocksPanel, editorInstance]);
+      const rightSidebarPanel = document.querySelector('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
+      if (rightSidebarPanel) {
+        observer.observe(rightSidebarPanel, {
+          childList: true,
+          subtree: true,
+          attributes: true
+        });
+      }
+
+      return () => {
+        clearTimeout(timer);
+        observer.disconnect();
+      };
+    }
+  }, [editorInstance, sidebarActiveTab, hideRightSidebar]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
     window.addEventListener('resize', applyToolsPanelPlacement);
-    return () => window.removeEventListener('resize', applyToolsPanelPlacement);
-  }, [applyToolsPanelPlacement]);
+    
+    // CRITICAL: Continuous monitor to hide right sidebar - runs every 500ms
+    const rightSidebarMonitor = setInterval(() => {
+      hideRightSidebar();
+    }, 500);
+    
+    return () => {
+      window.removeEventListener('resize', applyToolsPanelPlacement);
+      clearInterval(rightSidebarMonitor);
+    };
+  }, [applyToolsPanelPlacement, hideRightSidebar]);
 
-  // Dark mode toggle handler - DISABLED (light mode only)
+  // Dark mode toggle handler
   const toggleDarkMode = () => {
-    // Dark mode disabled - always keep light mode
-    setIsDarkMode(false);
-    localStorage.setItem('portfolioEditorDarkMode', JSON.stringify(false));
-    document.body.classList.remove('dark-mode-active');
+    const newMode = !isDarkMode;
+    setIsDarkMode(newMode);
+    localStorage.setItem('portfolioEditorDarkMode', JSON.stringify(newMode));
+    if (newMode) {
+      document.body.classList.add('dark-mode-active');
+    } else {
+      document.body.classList.remove('dark-mode-active');
+    }
   };
 
   const toggleToolsPanel = () => {
@@ -2029,14 +1976,52 @@ const PortfolioEdit = () => {
     return <div className="preview-cell" />;
   };
 
-  // Initialize light mode on mount (dark mode disabled)
+  // Initialize dark mode on mount
   useEffect(() => {
-    // Always keep light mode - remove dark mode class
-    document.body.classList.remove('dark-mode-active');
-    localStorage.setItem('portfolioEditorDarkMode', JSON.stringify(false));
-    setIsDarkMode(false);
+    if (isDarkMode) {
+      document.body.classList.add('dark-mode-active');
+    } else {
+      document.body.classList.remove('dark-mode-active');
+    }
     return () => {
       document.body.classList.remove('dark-mode-active');
+    };
+  }, [isDarkMode]);
+
+  // CRITICAL: Inject style tag immediately to hide right sidebar before React renders
+  useEffect(() => {
+    // Remove any existing right sidebar hide style
+    const existingStyle = document.getElementById('hide-right-sidebar-style');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+    
+    // Create and inject style tag
+    const style = document.createElement('style');
+    style.id = 'hide-right-sidebar-style';
+    style.textContent = `
+      .gjs-pn-panel.gjs-pn-views-container,
+      .gjs-pn-panel[data-pn-type="views-container"],
+      .gjs-pn-panel[data-pn-position="right"],
+      .gjs-pn-panel.gjs-pn-right {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+        position: absolute !important;
+        left: -9999px !important;
+        pointer-events: none !important;
+        z-index: -9999 !important;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      const styleToRemove = document.getElementById('hide-right-sidebar-style');
+      if (styleToRemove) {
+        styleToRemove.remove();
+      }
     };
   }, []);
 
@@ -2773,6 +2758,24 @@ const PortfolioEdit = () => {
     
     window.editor = editor;
     setEditorInstance(editor);
+    
+    // Hide skeleton loader when editor is ready
+    setTimeout(() => {
+      setIsEditorLoading(false);
+    }, 500);
+    
+    // CRITICAL: Forcefully hide right sidebar immediately after editor initialization
+    setTimeout(() => {
+      hideRightSidebar();
+      // Also set up MutationObserver to catch any panels that appear later
+      const observer = new MutationObserver(() => {
+        hideRightSidebar();
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      
+      // Clear observer after 15 seconds (editor should be fully initialized by then)
+      setTimeout(() => observer.disconnect(), 15000);
+    }, 100);
 
     // Ensure block categories dropdown functionality works
     // This will be called after editor is ready
@@ -4482,10 +4485,10 @@ const PortfolioEdit = () => {
       // Store interval ID for cleanup
       window.cssCheckInterval = cssCheckInterval;
 
-      // FIXED: Periodic check to ensure GrapesJS sidebar stays visible
+      // CRITICAL: Continuous monitor to hide right sidebar - NO RIGHT SIDEBAR ALLOWED
       const rightSidebarCheckInterval = setInterval(() => {
-        applyToolsPanelPlacement();
-      }, 2000);
+        hideRightSidebar();
+      }, 1000);
       
       // Store interval ID for cleanup
       window.rightSidebarCheckInterval = rightSidebarCheckInterval;
@@ -4502,6 +4505,7 @@ const PortfolioEdit = () => {
 
     console.log('🚀 Initializing GrapesJS editor...');
     editorInitializedRef.current = true;
+    setIsEditorLoading(true); // Show skeleton loader
 
     // FIXED: Generate project data ONCE and cache it
     if (!projectDataRef.current || forceRefreshKey > 0) {
@@ -4710,6 +4714,11 @@ const PortfolioEdit = () => {
     }
 
     onEditorReady(editor);
+
+    // Hide skeleton loader after editor is fully initialized
+    setTimeout(() => {
+      setIsEditorLoading(false);
+    }, 800);
 
     // Add Copy, Duplicate, and Delete Functions - FIXED TO WORK PROPERLY!
     setTimeout(() => {
@@ -7552,219 +7561,122 @@ setTimeout(fillAppointmentForms, 5000);
 
   return (
     <div className={`portfolio-edit-container ${isDarkMode ? 'dark-mode' : ''}`}>
-      {/* Left Sidebar - Pages Navigation */}
+      {/* Left Sidebar - Tabbed Navigation */}
       <div className={`pages-sidebar ${showPagesSidebar ? 'show' : 'hide'}`}>
         <div className="pages-sidebar-header">
-          <div className="header-title">
-            {showBlocksPanel ? (
-              <>
-                <FaLayerGroup className="header-icon" />
-                <h3>Layers</h3>
-              </>
-            ) : (
-              <>
-                <FaFileAlt className="header-icon" />
-                <h3>Pages</h3>
-              </>
-            )}
+          <div className="sidebar-tabs">
+            <button
+              className={`sidebar-tab ${sidebarActiveTab === 'pages' ? 'active' : ''}`}
+              onClick={() => {
+                setSidebarActiveTab('pages');
+                setShowBlocksPanel(false);
+              }}
+              title="Pages"
+            >
+              <FaFileAlt />
+              <span>Pages</span>
+            </button>
+            <button
+              className={`sidebar-tab ${sidebarActiveTab === 'layers' ? 'active' : ''}`}
+              onClick={() => {
+                setSidebarActiveTab('layers');
+                setShowBlocksPanel(true);
+              }}
+              title="Layers"
+            >
+              <FaLayerGroup />
+              <span>Layers</span>
+            </button>
+            <button
+              className={`sidebar-tab ${sidebarActiveTab === 'tools' ? 'active' : ''}`}
+              onClick={() => {
+                setSidebarActiveTab('tools');
+                setIsToolsPanelOpen(true);
+              }}
+              title="Tools"
+            >
+              <FaThLarge />
+              <span>Tools</span>
+            </button>
           </div>
-          <div className="header-actions">
-            <button
-              className={`blocks-toggle-btn ${showBlocksPanel ? 'active' : ''}`}
-              onClick={() => setShowBlocksPanel(prev => !prev)}
-              title={showBlocksPanel ? 'Show Pages' : 'Show Layers'}
-            >
-              <FaLayerGroup />
-            </button>
-            {BUILDER_PANEL_ENABLED && (
-              <button
-                className={`builder-panel-btn ${showBuilderPanel ? 'active' : ''}`}
-                onClick={() => setShowBuilderPanel(prev => !prev)}
-                title={showBuilderPanel ? 'Close Page Builder' : 'Open Page Builder'}
-              >
-                <FaThLarge />
-              </button>
-            )}
-            <button
-              className={`tools-toggle-btn ${isToolsPanelOpen ? 'active' : ''}`}
-              onClick={toggleToolsPanel}
-              title={isToolsPanelOpen ? 'Hide Builder Tools' : 'Show Builder Tools'}
-            >
-              <FaLayerGroup />
-            </button>
-            <button
-              className="tools-position-btn"
-              onClick={toggleToolsPanelSide}
-              title={`Move builder tools to the ${toolsPanelSide === 'left' ? 'right' : 'left'} side`}
-            >
-              <FaExchangeAlt />
-            </button>
           <button
             className="sidebar-toggle-btn"
             onClick={() => setShowPagesSidebar(!showPagesSidebar)}
-            title="Toggle Sidebar"
+            title={showPagesSidebar ? 'Collapse Sidebar' : 'Expand Sidebar'}
           >
-            <FaArrowLeft />
+            {showPagesSidebar ? <FaArrowLeft /> : <FaGripVertical />}
           </button>
-          </div>
         </div>
 
-        {BUILDER_PANEL_ENABLED && showBuilderPanel && (
-          <div className="builder-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="builder-panel-header">
-              <div className="builder-panel-title">
-                <FaThLarge />
-                <div>
-                  <h4>Page Builder</h4>
-                  <p>Add sections, columns, and reusable elements</p>
-                </div>
-              </div>
-              <button
-                className="builder-panel-close-btn"
-                onClick={() => setShowBuilderPanel(false)}
-                title="Close builder panel"
-              >
-                <FaTimes />
-              </button>
-            </div>
-
-            <div className="builder-panel-search">
-              <input
-                type="text"
-                placeholder="Search elements..."
-                value={builderSearchTerm}
-                onChange={(e) => setBuilderSearchTerm(e.target.value)}
-              />
-            </div>
-
-            <div className="builder-panel-body">
-              <div className="builder-panel-nav">
-                {builderNavItems.map(category => (
-                  <button
-                    key={category.id}
-                    className={`builder-nav-item ${category.id === activeBuilderCategory ? 'active' : ''}`}
-                    onClick={() => setActiveBuilderCategory(category.id)}
-                  >
-                    <span>{category.label}</span>
-                    <span className="item-count">{category.count}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="builder-panel-content">
-                {builderItems.length === 0 && (
-                  <div className="builder-panel-empty">
-                    <p>No presets available for this category yet.</p>
-                  </div>
-                )}
-
-                {builderItems.length > 0 && filteredBuilderItems.length === 0 && (
-                  <div className="builder-panel-empty">
-                    <p>No elements match your search.</p>
-                  </div>
-                )}
-
-                {filteredBuilderItems.length > 0 && (
-                  <div className="builder-blocks-grid">
-                    <div className="builder-panel-instructions">
-                      Drag any card onto the canvas to insert it into the page.
-                    </div>
-                    {filteredBuilderItems.map(item => (
-                      <div
-                        key={item.id}
-                        className="builder-block-card"
-                        draggable
-                        onDragStart={(event) => handleBuilderDragStart(item, event)}
-                        onDragEnd={handleBuilderDragEnd}
-                        onDoubleClick={() => handleBuilderItemClick(item)}
-                      >
-                        <div className="block-card-header">
-                          <div className="block-card-label">
-                            <span className="block-title">{item.label}</span>
-                            {item.description && (
-                              <span className="block-description">{item.description}</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="block-preview">
-                          {renderBuilderPreview(item)}
-                        </div>
-                        <div className="block-card-actions">
-                          <button
-                            className="block-add-btn"
-                            onClick={() => handleBuilderItemClick(item)}
-                          >
-                            <FaPlus />
-                            <span>Add to Page</span>
-                          </button>
-                        </div>
+        {/* Sidebar Content - Tabbed Panels */}
+        <div className="sidebar-content">
+          {/* Pages Tab */}
+          {sidebarActiveTab === 'pages' && (
+            <>
+              <div className="pages-list">
+                {stages.map((stage, index) => {
+                  const isActive = selectedPageId === stage.id;
+                  const stageTypeIcons = {
+                    'welcome-page': '👋',
+                    'vsl-page': '🎬',
+                    'thankyou-page': '🎉',
+                    'whatsapp-page': '💬',
+                    'product-offer': '🛍️',
+                    'custom-page': '📄',
+                    'appointment-page': '📅',
+                    'payment-page': '💳',
+                  };
+                  
+                  return (
+                    <div
+                      key={stage.id}
+                      className={`page-item ${isActive ? 'active' : ''} ${!stage.isEnabled ? 'disabled' : ''}`}
+                      onClick={() => handlePageSwitch(stage.id)}
+                      title={stage.name}
+                    >
+                      <div className="page-item-icon">
+                        {stageTypeIcons[stage.type] || '📄'}
                       </div>
-                    ))}
+                      <div className="page-item-content">
+                        <div className="page-item-name">{stage.name}</div>
+                        <div className="page-item-type">{stage.type.replace('-', ' ')}</div>
+                      </div>
+                      <div className="page-item-order">#{index + 1}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <div className="pages-sidebar-footer">
+                <div className="sidebar-stats">
+                  <div className="stat-item">
+                    <span className="stat-value">{stages.length}</span>
+                    <span className="stat-label">Total Pages</span>
                   </div>
-                )}
+                  <div className="stat-item">
+                    <span className="stat-value">{stages.filter(s => s.isEnabled !== false).length}</span>
+                    <span className="stat-label">Active</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </>
+          )}
 
-        {/* Layers Panel - GrapesJS Layers/Component Tree */}
-        {showBlocksPanel && (
-          <div className="blocks-panel-container" id="left-sidebar-blocks-container">
-            {/* This container will hold the GrapesJS layers/component tree content */}
-          </div>
-        )}
-        
-        {/* Pages List - shown when blocks panel is hidden */}
-        {!showBlocksPanel && (
-          <>
-            <div className="pages-list">
-          {stages.map((stage, index) => {
-            const isActive = selectedPageId === stage.id;
-            const stageTypeIcons = {
-              'welcome-page': '👋',
-              'vsl-page': '🎬',
-              'thankyou-page': '🎉',
-              'whatsapp-page': '💬',
-              'product-offer': '🛍️',
-              'custom-page': '📄',
-              'appointment-page': '📅',
-              'payment-page': '💳',
-            };
-            
-            return (
-              <div
-                key={stage.id}
-                className={`page-item ${isActive ? 'active' : ''} ${!stage.isEnabled ? 'disabled' : ''}`}
-                onClick={() => handlePageSwitch(stage.id)}
-                title={stage.name}
-              >
-                <div className="page-item-icon">
-                  {stageTypeIcons[stage.type] || '📄'}
-                </div>
-                <div className="page-item-content">
-                  <div className="page-item-name">{stage.name}</div>
-                  <div className="page-item-type">{stage.type.replace('-', ' ')}</div>
-                </div>
-                <div className="page-item-order">#{index + 1}</div>
-              </div>
-            );
-          })}
-        </div>
-        
-        <div className="pages-sidebar-footer">
-          <div className="sidebar-stats">
-            <div className="stat-item">
-              <span className="stat-value">{stages.length}</span>
-              <span className="stat-label">Total Pages</span>
+          {/* Layers Tab */}
+          {sidebarActiveTab === 'layers' && (
+            <div className="layers-panel-container" id="left-sidebar-layers-container">
+              {/* Layers content will be moved here from right sidebar */}
             </div>
-            <div className="stat-item">
-              <span className="stat-value">{stages.filter(s => s.isEnabled !== false).length}</span>
-              <span className="stat-label">Active</span>
+          )}
+
+          {/* Tools Tab - GrapesJS Blocks Panel */}
+          {sidebarActiveTab === 'tools' && (
+            <div className="tools-tab-content" id="left-sidebar-blocks-container">
+              {/* This container will hold the GrapesJS blocks panel content */}
+              {/* Blocks will be moved here from right sidebar automatically */}
             </div>
-          </div>
+          )}
         </div>
-          </>
-        )}
       </div>
 
       {/* Sidebar Toggle Button (when sidebar is hidden) */}
@@ -7870,230 +7782,267 @@ setTimeout(fillAppointmentForms, 5000);
         />
       )}
 
-      {/* Modern Floating Action Bar */}
-      <div className="modern-action-bar">
-        <div className="action-bar-section left-section">
+      {/* Top Action Bar - All buttons grouped */}
+      <div className="top-action-bar">
+        {/* Left Group: Navigation & Page Info */}
+        <div className="action-group left-group">
           <button
             onClick={handleBack}
-            className="modern-btn back-btn"
+            className="action-btn back-btn"
             title="Back to Settings"
           >
             <FaArrowLeft />
           </button>
           
           <div className="page-info">
-              <span className="page-title">{currentStage?.name || 'Editor'}</span>
+            <span className="page-title">{currentStage?.name || 'Editor'}</span>
             <span className="page-subtitle">Visual Page Builder</span>
           </div>
+        </div>
 
-          <div className="btn-divider"></div>
+        {/* Center Group: Save & Device Controls */}
+        <div className="action-group center-group">
+          <div className="button-group">
+            <button
+              onClick={() => handleSave('single')}
+              className="action-btn primary-btn"
+              title="Save Current Page"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <div className="spinner"></div>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <FaSave />
+                  <span>Save Page</span>
+                </>
+              )}
+            </button>
 
-          {/* Device Preview Controls - moved next to Pages sidebar */}
-          <div className="device-preview-controls left-aligned-device-controls">
+            <button
+              onClick={() => handleSave('all')}
+              className="action-btn success-btn"
+              title="Save All Pages"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <div className="spinner"></div>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <FaFileExport />
+                  <span>Save All</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="button-group">
+            <span className="group-label">Device:</span>
             <button
               onClick={() => handlePresetWidth(null)}
-              className={`device-preview-btn desktop ${frameWidth === null ? 'active' : ''}`}
+              className={`action-btn device-btn ${frameWidth === null ? 'active' : ''}`}
               title="Desktop preview"
             >
               <FaLaptop />
             </button>
             <button
               onClick={() => handlePresetWidth(1024)}
-              className={`device-preview-btn tablet ${frameWidth === 1024 ? 'active' : ''}`}
+              className={`action-btn device-btn ${frameWidth === 1024 ? 'active' : ''}`}
               title="Tablet preview (1024px)"
             >
               <FaTabletAlt />
             </button>
             <button
               onClick={() => handlePresetWidth(414)}
-              className={`device-preview-btn mobile ${frameWidth === 414 ? 'active' : ''}`}
+              className={`action-btn device-btn ${frameWidth === 414 ? 'active' : ''}`}
               title="Mobile preview (414px)"
             >
               <FaMobileAlt />
             </button>
           </div>
-        </div>
 
-        <div className="action-bar-section center-section">
-          <button
-            onClick={() => handleSave('single')}
-            className="modern-btn primary-btn"
-            title="Save Current Page"
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <>
-                <div className="spinner"></div>
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <FaSave />
-                <span>Save Page</span>
-              </>
-            )}
-          </button>
-
-          <button
-            onClick={() => handleSave('all')}
-            className="modern-btn success-btn"
-            title="Save All Pages"
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <>
-                <div className="spinner"></div>
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <FaFileExport />
-                <span>Save All</span>
-              </>
-            )}
-          </button>
-
-          <div className="btn-divider"></div>
-
-          {/* Frame Width Controls */}
-          <div className="frame-width-controls">
-            <span className="width-label">Width:</span>
+          <div className="button-group">
+            <span className="group-label">Width:</span>
             <button
               onClick={() => handlePresetWidth(800)}
-              className={`modern-btn preset-width-btn ${frameWidth === 800 ? 'active' : ''}`}
+              className={`action-btn width-btn ${frameWidth === 800 ? 'active' : ''}`}
               title="Small (800px)"
             >
               <span>S</span>
             </button>
             <button
               onClick={() => handlePresetWidth(1200)}
-              className={`modern-btn preset-width-btn ${frameWidth === 1200 ? 'active' : ''}`}
+              className={`action-btn width-btn ${frameWidth === 1200 ? 'active' : ''}`}
               title="Medium (1200px)"
             >
               <span>M</span>
             </button>
             <button
               onClick={() => handlePresetWidth(1400)}
-              className={`modern-btn preset-width-btn ${frameWidth === 1400 ? 'active' : ''}`}
+              className={`action-btn width-btn ${frameWidth === 1400 ? 'active' : ''}`}
               title="Large (1400px)"
             >
               <span>L</span>
             </button>
             <button
               onClick={() => handlePresetWidth(null)}
-              className={`modern-btn preset-width-btn ${frameWidth === null ? 'active' : ''}`}
+              className={`action-btn width-btn ${frameWidth === null ? 'active' : ''}`}
               title="Auto (Default)"
             >
               <span>A</span>
             </button>
             {frameWidth !== null && (
-              <span className="current-width-display">{frameWidth}px</span>
+              <span className="width-display">{frameWidth}px</span>
             )}
           </div>
-
-          <div className="btn-divider"></div>
-
-          {hasDirectForms && (
-            <button
-              onClick={() => setShowRedirectPopup(true)}
-              className="modern-btn info-btn"
-              title="Set Form Redirect"
-            >
-              <FaFileAlt />
-              <span>Redirect</span>
-            </button>
-          )}
-
-          {hasDaySelectors && (
-          <button
-            onClick={() => {
-              console.log('📅 Day Selector button clicked');
-                const canvasDocument = getDaySelectorDocument();
-                const dayComponents1 = canvasDocument.querySelectorAll('.day-selector-display-widget');
-                const dayComponents2 = canvasDocument.querySelectorAll('.day-selector-widget-element');
-                const dayComponents3 = canvasDocument.querySelectorAll('[data-component-id*="day-selector"]');
-              
-              const allDayComponents = [...dayComponents1, ...dayComponents2, ...dayComponents3];
-              const uniqueComponents = [...new Set(allDayComponents)];
-              
-                let targetElement = null;
-
-                if (selectedComponentElement && canvasDocument.contains(selectedComponentElement)) {
-                  targetElement = selectedComponentElement;
-                } else if (selectedDaySelectorId) {
-                  targetElement = canvasDocument.querySelector(`[data-component-id="${selectedDaySelectorId}"]`);
-                }
-
-                if (!targetElement && uniqueComponents.length > 0) {
-                  targetElement = uniqueComponents[0];
-                  const compId = targetElement.getAttribute('data-component-id') || 
-                                 `day-selector-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-                  targetElement.setAttribute('data-component-id', compId);
-                setSelectedDaySelectorId(compId);
-                  setSelectedComponentElement(targetElement);
-                  targetElement.classList.add('selected');
-                }
-
-                if (targetElement) {
-                  openDaySelectorPopupForElement(targetElement);
-              } else {
-                alert('⚠️ No Day Selector found!\n\n1. Drag "Day Selector" from left panel\n2. Drop it on the page\n3. Click to select\n4. Then click this button');
-              }
-            }}
-            className="modern-btn purple-btn"
-            title="Day Selector Widget"
-          >
-            <FaCalendarDay />
-            <span>Day Selector</span>
-          </button>
-          )}
-
-          <button
-            onClick={() => setShowCustomCodePopup(true)}
-            className="modern-btn code-btn"
-            title="Add Custom Code"
-          >
-            <FaCode />
-            <span>Custom Code</span>
-          </button>
         </div>
 
-        <div className="action-bar-section right-section">
-          <button
-            onClick={() => setShowAIPopup(true)}
-            className="modern-btn ai-btn"
-            title="AI Content Generator"
-          >
-            <FaMagic />
-            <span>AI Content</span>
-          </button>
+        {/* Right Group: Tools & Actions */}
+        <div className="action-group right-group">
+          <div className="button-group">
+            {hasDirectForms && (
+              <button
+                onClick={() => setShowRedirectPopup(true)}
+                className="action-btn tool-btn"
+                title="Set Form Redirect"
+              >
+                <FaFileAlt />
+                <span>Redirect</span>
+              </button>
+            )}
 
-          <button
-            onClick={forceTemplateRefresh}
-            className="modern-btn warning-btn"
-            title="Refresh Editor"
-          >
-            <FaSync />
-          </button>
+            {hasDaySelectors && (
+              <button
+                onClick={() => {
+                  console.log('📅 Day Selector button clicked');
+                  const canvasDocument = getDaySelectorDocument();
+                  const dayComponents1 = canvasDocument.querySelectorAll('.day-selector-display-widget');
+                  const dayComponents2 = canvasDocument.querySelectorAll('.day-selector-widget-element');
+                  const dayComponents3 = canvasDocument.querySelectorAll('[data-component-id*="day-selector"]');
+                  
+                  const allDayComponents = [...dayComponents1, ...dayComponents2, ...dayComponents3];
+                  const uniqueComponents = [...new Set(allDayComponents)];
+                  
+                  let targetElement = null;
 
-          <button
-            onClick={handleDownloadProject}
-            className="modern-btn download-btn"
-            title="Download HTML"
-          >
-            <FaDownload />
-          </button>
+                  if (selectedComponentElement && canvasDocument.contains(selectedComponentElement)) {
+                    targetElement = selectedComponentElement;
+                  } else if (selectedDaySelectorId) {
+                    targetElement = canvasDocument.querySelector(`[data-component-id="${selectedDaySelectorId}"]`);
+                  }
+
+                  if (!targetElement && uniqueComponents.length > 0) {
+                    targetElement = uniqueComponents[0];
+                    const compId = targetElement.getAttribute('data-component-id') || 
+                                   `day-selector-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+                    targetElement.setAttribute('data-component-id', compId);
+                    setSelectedDaySelectorId(compId);
+                    setSelectedComponentElement(targetElement);
+                    targetElement.classList.add('selected');
+                  }
+
+                  if (targetElement) {
+                    openDaySelectorPopupForElement(targetElement);
+                  } else {
+                    alert('⚠️ No Day Selector found!\n\n1. Drag "Day Selector" from left panel\n2. Drop it on the page\n3. Click to select\n4. Then click this button');
+                  }
+                }}
+                className="action-btn tool-btn"
+                title="Day Selector Widget"
+              >
+                <FaCalendarDay />
+                <span>Day Selector</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setShowCustomCodePopup(true)}
+              className="action-btn tool-btn"
+              title="Add Custom Code"
+            >
+              <FaCode />
+              <span>Custom Code</span>
+            </button>
+
+            <button
+              onClick={() => setShowAIPopup(true)}
+              className="action-btn tool-btn"
+              title="AI Content Generator"
+            >
+              <FaMagic />
+              <span>AI Content</span>
+            </button>
+          </div>
+
+          <div className="button-group">
+            <button
+              onClick={forceTemplateRefresh}
+              className="action-btn icon-btn"
+              title="Refresh Editor"
+            >
+              <FaSync />
+            </button>
+
+            <button
+              onClick={handleDownloadProject}
+              className="action-btn icon-btn"
+              title="Download HTML"
+            >
+              <FaDownload />
+            </button>
+          </div>
         </div>
       </div>
 
 
-        <div className={`editor-main-area ${showPagesSidebar ? 'with-sidebar' : 'full-width'} ${isToolsPanelOpen ? 'tools-panel-open' : 'tools-panel-hidden'} ${toolsPanelSide === 'left' ? 'tools-left' : 'tools-right'} ${BUILDER_PANEL_ENABLED && isBuilderDragging ? 'builder-drag-active' : ''}`}>
-        <div 
-          id="gjs" 
-          key={`editor-${slug}-${forceRefreshKey}`}
-          ref={editorContainerRef}
-          style={{ height: '100%', width: '100%', overflow: 'hidden', position: 'relative' }}
-        ></div> {/* GrapesJS container */}
+        <div className={`editor-main-area ${showPagesSidebar ? 'with-sidebar' : 'full-width'}`}>
+          {/* Professional Skeleton Loader */}
+          {isEditorLoading && (
+            <div className="editor-skeleton-loader">
+              <div className="skeleton-header">
+                <div className="skeleton-shimmer skeleton-toolbar"></div>
+              </div>
+              <div className="skeleton-content">
+                <div className="skeleton-canvas-header-wrapper">
+                  <div className="skeleton-shimmer skeleton-canvas-header"></div>
+                  <div className="skeleton-loading-text">
+                    <div className="skeleton-spinner"></div>
+                    <span>Loading Editor...</span>
+                  </div>
+                </div>
+                <div className="skeleton-canvas">
+                  <div className="skeleton-shimmer skeleton-element skeleton-element-large"></div>
+                  <div className="skeleton-shimmer skeleton-element skeleton-element-medium"></div>
+                  <div className="skeleton-shimmer skeleton-element skeleton-element-small"></div>
+                  <div className="skeleton-shimmer skeleton-element skeleton-element-medium"></div>
+                  <div className="skeleton-shimmer skeleton-element skeleton-element-large"></div>
+                </div>
+              </div>
+              <div className="skeleton-footer">
+                <div className="skeleton-shimmer skeleton-status-bar"></div>
+              </div>
+            </div>
+          )}
+          
+          <div 
+            id="gjs" 
+            key={`editor-${slug}-${forceRefreshKey}`}
+            ref={editorContainerRef}
+            style={{ 
+              height: '100%', 
+              width: '100%', 
+              overflow: 'hidden', 
+              position: 'relative',
+              opacity: isEditorLoading ? 0 : 1,
+              transition: 'opacity 0.3s ease'
+            }}
+          ></div> {/* GrapesJS container */}
         
         {/* Resize Handle - positioned outside #gjs to avoid GrapesJS interference */}
         <div 
@@ -8167,9 +8116,9 @@ setTimeout(fillAppointmentForms, 5000);
         .pages-sidebar {
           position: fixed;
           left: 0;
-          top: 68px;
+          top: 56px;
           width: var(--nav-sidebar-width);
-          height: calc(100vh - 68px);
+          height: calc(100vh - 56px);
           background: #1e1e1e;
           border-right: 1px solid #2d2d2d;
           box-shadow: 4px 0 20px rgba(0, 0, 0, 0.45);
@@ -8196,13 +8145,86 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         .pages-sidebar-header {
-          padding: 16px 18px;
+          padding: 12px;
           background: #1e1e1e;
           border-bottom: 1px solid #2d2d2d;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+          gap: 8px;
+        }
+
+        .sidebar-tabs {
+          display: flex;
+          gap: 4px;
+          flex: 1;
+        }
+
+        .sidebar-tab {
+          flex: 1;
+          padding: 8px 12px;
+          background: transparent;
+          border: 1px solid transparent;
+          color: #9ca3af;
+          border-radius: 5px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          font-size: 13px;
+          font-weight: 500;
+        }
+
+        .sidebar-tab:hover {
+          background: #2d2d2d;
+          color: #e5e5e5;
+        }
+
+        .sidebar-tab.active {
+          background: #3a3a3a;
+          color: #ffffff;
+          border-color: #4a4a4a;
+        }
+
+        .sidebar-tab svg {
+          font-size: 14px;
+        }
+
+        .sidebar-content {
+          flex: 1;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .tools-tab-content,
+        .layers-panel-container {
+          flex: 1;
+          overflow-y: auto;
+          overflow-x: hidden;
+          width: 100%;
+          height: 100%;
+          padding: 12px;
+        }
+
+        /* Ensure GrapesJS blocks are visible in Tools tab */
+        .tools-tab-content .gjs-blocks,
+        .tools-tab-content .gjs-blocks-c,
+        .tools-tab-content .gjs-block-category {
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+
+        /* Ensure GrapesJS layers are visible in Layers tab */
+        .layers-panel-container .gjs-layers,
+        .layers-panel-container .gjs-layer-wrapper,
+        .layers-panel-container .gjs-layer-item {
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
         }
 
         .header-title {
@@ -8238,23 +8260,23 @@ setTimeout(fillAppointmentForms, 5000);
           gap: 8px;
         }
 
-        .blocks-toggle-btn,
-        .builder-panel-btn,
-        .tools-toggle-btn,
-        .tools-position-btn,
         .sidebar-toggle-btn {
-          background: #ffffff;
-          border: 1px solid #e5e7eb;
-          color: #1e293b;
+          background: #2d2d2d;
+          border: 1px solid #3a3a3a;
+          color: #e5e5e5;
           width: 32px;
           height: 32px;
-          border-radius: 6px;
+          border-radius: 5px;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: all 0.2s ease;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+          transition: all 0.15s ease;
+        }
+
+        .sidebar-toggle-btn:hover {
+          background: #3a3a3a;
+          border-color: #4a4a4a;
         }
 
         .dark-mode .blocks-toggle-btn,
@@ -8290,13 +8312,43 @@ setTimeout(fillAppointmentForms, 5000);
           transform: translateY(-1px);
         }
 
-        /* Right Sidebar (GrapesJS views) - Dark Theme */
+        /* Right Sidebar - COMPLETELY HIDDEN - No right sidebar allowed - ULTRA AGGRESSIVE */
         .gjs-pn-panel.gjs-pn-views-container,
-        .gjs-pn-panel[data-pn-type="views-container"] {
-          background: var(--header-bg) !important;
-          border-left: 1px solid var(--header-border-color) !important;
-          box-shadow: -4px 0 20px rgba(0, 0, 0, 0.45) !important;
-          color: #e5e5e5 !important;
+        .gjs-pn-panel[data-pn-type="views-container"],
+        .gjs-pn-panel.gjs-pn-views-container *,
+        .gjs-pn-panel[data-pn-type="views-container"] *,
+        .gjs-pn-panel[data-pn-position="right"],
+        .gjs-pn-panel.gjs-pn-right,
+        .gjs-pn-panel.gjs-pn-right *,
+        div[class*="gjs-pn"][class*="right"],
+        div[class*="views-container"],
+        .gjs-pn-panel:has(.gjs-pn-views),
+        [data-pn-position="right"],
+        /* Additional selectors to catch all right sidebar variations */
+        .gjs-pn-panel[class*="right"],
+        [class*="gjs-pn"][class*="right"],
+        [id*="views-container"],
+        [id*="blocks-panel"][style*="right"] {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          width: 0 !important;
+          height: 0 !important;
+          min-width: 0 !important;
+          max-width: 0 !important;
+          min-height: 0 !important;
+          max-height: 0 !important;
+          overflow: hidden !important;
+          position: fixed !important;
+          left: -99999px !important;
+          top: -99999px !important;
+          right: -99999px !important;
+          pointer-events: none !important;
+          z-index: -99999 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          border: none !important;
+          transform: translateX(99999px) !important;
         }
 
         /* Force all children of the right panel to inherit dark theme */
@@ -8831,15 +8883,16 @@ setTimeout(fillAppointmentForms, 5000);
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 14px 16px;
+          padding: 12px 14px;
           background: #252525;
           border: 1px solid #2d2d2d;
-          border-radius: 8px;
+          border-radius: 5px;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.15s ease;
           position: relative;
           overflow: hidden;
           color: #e5e5e5;
+          margin-bottom: 6px;
         }
 
         .dark-mode .page-item {
@@ -9083,76 +9136,97 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         /* Modern Action Bar - Top Header - Figma Style */
-        .modern-action-bar {
+        .top-action-bar {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 12px 24px;
+          padding: 10px 20px;
           background: var(--header-bg);
           border-bottom: 1px solid var(--header-border-color);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
           z-index: 1002;
-          gap: 20px;
+          gap: 16px;
           position: fixed;
           top: 0;
           left: 0;
           right: 0;
-          height: 68px;
-          min-height: 68px;
-          max-height: 68px;
+          height: 56px;
+          min-height: 56px;
+          max-height: 56px;
           box-sizing: border-box;
-          transition: background 0.3s ease, border-color 0.3s ease;
+          transition: background 0.2s ease, border-color 0.2s ease;
         }
 
-        .dark-mode .modern-action-bar {
-        background: var(--header-bg);
-        border-bottom-color: var(--header-border-color);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        .dark-mode .top-action-bar {
+          background: var(--header-bg);
+          border-bottom-color: var(--header-border-color);
         }
 
-        .action-bar-section {
+        .action-group {
           display: flex;
           align-items: center;
           gap: 12px;
         }
 
-        .action-bar-section.left-section {
-          min-width: 250px;
+        .action-group.left-group {
+          min-width: 200px;
           flex: 0 0 auto;
         }
 
-        .left-aligned-device-controls {
-          margin-left: 8px;
-          flex-shrink: 0;
-        }
-
-        .action-bar-section.center-section {
+        .action-group.center-group {
           flex: 1;
           justify-content: center;
-          max-width: 900px;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+
+        .action-group.right-group {
+          min-width: 180px;
+          justify-content: flex-end;
+          gap: 8px;
+        }
+
+        .button-group {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px;
           background: #252525;
-          padding: 6px;
-          border-radius: 8px;
+          border-radius: 5px;
           border: 1px solid #2d2d2d;
         }
 
-        .action-bar-section.right-section {
-          min-width: 200px;
-          justify-content: flex-end;
+        .group-label {
+          font-size: 12px;
+          color: #9ca3af;
+          padding: 0 8px;
+          font-weight: 500;
         }
 
         .page-info {
           display: flex;
           flex-direction: column;
-          margin-left: 16px;
+          margin-left: 12px;
         }
 
         .page-title {
           color: #e5e5e5;
-          font-size: 16px;
+          font-size: 15px;
           font-weight: 600;
-          letter-spacing: -0.3px;
+          letter-spacing: -0.2px;
           line-height: 1.2;
+        }
+
+        .page-subtitle {
+          color: #9ca3af;
+          font-size: 12px;
+          font-weight: 400;
+          margin-top: 2px;
+        }
+
+        .width-display {
+          font-size: 12px;
+          color: #9ca3af;
+          padding: 0 8px;
         }
 
         .page-subtitle {
@@ -9163,55 +9237,82 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         /* Modern Button Styles */
-        .modern-btn {
+        .action-btn {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
-          padding: 10px 20px;
-          border: none;
-          border-radius: 10px;
-          font-size: 14px;
-          font-weight: 600;
+          gap: 6px;
+          padding: 8px 14px;
+          border: 1px solid #3a3a3a;
+          border-radius: 5px;
+          font-size: 13px;
+          font-weight: 500;
           cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all 0.15s ease;
           outline: none;
           font-family: 'Inter', sans-serif;
           white-space: nowrap;
-          position: relative;
-          overflow: hidden;
-          letter-spacing: -0.2px;
+          background: #2d2d2d;
+          color: #e5e5e5;
         }
 
-        .modern-btn::before {
-          content: '';
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          width: 0;
-          height: 0;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.25);
-          transform: translate(-50%, -50%);
-          transition: width 0.6s, height 0.6s;
+        .action-btn:hover {
+          background: #3a3a3a;
+          border-color: #4a4a4a;
         }
 
-        .modern-btn:hover::before {
-          width: 300px;
-          height: 300px;
+        .action-btn:active {
+          transform: scale(0.98);
         }
 
-        .modern-btn:active {
-          transform: scale(0.96);
+        .action-btn svg {
+          font-size: 14px;
         }
 
-        .modern-btn svg {
-          font-size: 16px;
-          position: relative;
-          z-index: 1;
+        .action-btn.primary-btn {
+          background: #2563eb;
+          border-color: #2563eb;
+          color: #ffffff;
         }
 
-        .modern-btn span {
+        .action-btn.primary-btn:hover {
+          background: #1d4ed8;
+          border-color: #1d4ed8;
+        }
+
+        .action-btn.success-btn {
+          background: #059669;
+          border-color: #059669;
+          color: #ffffff;
+        }
+
+        .action-btn.success-btn:hover {
+          background: #047857;
+          border-color: #047857;
+        }
+
+        .action-btn.back-btn {
+          background: transparent;
+          border-color: #3a3a3a;
+        }
+
+        .action-btn.device-btn.active,
+        .action-btn.width-btn.active {
+          background: #2563eb;
+          border-color: #2563eb;
+          color: #ffffff;
+        }
+
+        .action-btn.icon-btn {
+          padding: 8px;
+          min-width: 32px;
+        }
+
+        .action-btn.tool-btn {
+          background: #2d2d2d;
+        }
+
+        .action-btn span {
           position: relative;
           z-index: 1;
         }
@@ -9490,13 +9591,169 @@ setTimeout(fillAppointmentForms, 5000);
         .editor-main-area {
           flex: 1;
           position: relative;
-          height: calc(100vh - 68px);
+          height: calc(100vh - 56px);
           width: 100%;
           overflow: hidden;
           background: #1a1a1a;
-          transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
+          transition: margin-left 0.2s ease, width 0.2s ease, background 0.2s ease;
           padding-top: 0;
-          margin-top: 68px;
+          margin-top: 56px;
+        }
+
+        /* Professional Skeleton Loader - Beautiful & Modern */
+        .editor-skeleton-loader {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(135deg, #1a1a1a 0%, #1e1e1e 100%);
+          z-index: 1000;
+          display: flex;
+          flex-direction: column;
+          padding: 20px;
+          gap: 16px;
+        }
+
+        .skeleton-header {
+          height: 48px;
+          display: flex;
+          align-items: center;
+          padding: 0 16px;
+        }
+
+        .skeleton-toolbar {
+          width: 100%;
+          height: 40px;
+          border-radius: 5px;
+        }
+
+        .skeleton-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          padding: 0 16px;
+        }
+
+        .skeleton-canvas-header-wrapper {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+        }
+
+        .skeleton-canvas-header {
+          width: 200px;
+          height: 24px;
+          border-radius: 5px;
+        }
+
+        .skeleton-loading-text {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          color: #9ca3af;
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+        .skeleton-spinner {
+          width: 20px;
+          height: 20px;
+          border: 3px solid #2d2d2d;
+          border-top-color: #18a0fb;
+          border-radius: 50%;
+          animation: skeleton-spin 0.8s linear infinite;
+        }
+
+        @keyframes skeleton-spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        .skeleton-canvas {
+          flex: 1;
+          background: #252525;
+          border-radius: 5px;
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          border: 1px solid #2d2d2d;
+        }
+
+        .skeleton-element {
+          border-radius: 5px;
+          background: linear-gradient(90deg, #2d2d2d 25%, #3a3a3a 50%, #2d2d2d 75%);
+          background-size: 200% 100%;
+          animation: skeleton-shimmer 1.5s infinite;
+        }
+
+        .skeleton-element-large {
+          height: 120px;
+        }
+
+        .skeleton-element-medium {
+          height: 80px;
+        }
+
+        .skeleton-element-small {
+          height: 40px;
+          width: 60%;
+        }
+
+        .skeleton-footer {
+          height: 32px;
+          padding: 0 16px;
+        }
+
+        .skeleton-status-bar {
+          width: 100%;
+          height: 24px;
+          border-radius: 5px;
+        }
+
+        @keyframes skeleton-shimmer {
+          0% {
+            background-position: -200% 0;
+          }
+          100% {
+            background-position: 200% 0;
+          }
+        }
+
+        .skeleton-shimmer {
+          background: linear-gradient(90deg, #2d2d2d 25%, #3a3a3a 50%, #2d2d2d 75%);
+          background-size: 200% 100%;
+          animation: skeleton-shimmer 1.5s infinite;
+          border-radius: 5px;
+        }
+
+        /* Dark mode skeleton adjustments */
+        .dark-mode .editor-skeleton-loader {
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+
+        .dark-mode .skeleton-canvas {
+          background: #1e293b;
+          border-color: #334155;
+        }
+
+        .dark-mode .skeleton-shimmer,
+        .dark-mode .skeleton-element {
+          background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+          background-size: 200% 100%;
+        }
+
+        .dark-mode .skeleton-loading-text {
+          color: #94a3b8;
+        }
+
+        .dark-mode .skeleton-spinner {
+          border-color: #334155;
+          border-top-color: #18a0fb;
         }
 
         .editor-main-area.builder-drag-active::after {
@@ -9862,7 +10119,7 @@ setTimeout(fillAppointmentForms, 5000);
         .gjs-sm-properties:not(.dark-mode *) *,
         .gjs-pn-views:not(.dark-mode *),
         .gjs-pn-views:not(.dark-mode *) * {
-          background-color: #1e1e1e !important;
+          background-color: var(--header-bg) !important;
           color: #e5e5e5 !important;
         }
 
@@ -15263,30 +15520,37 @@ color: gray !important;
           color: rgba(255, 255, 255, 0.7) !important;
         }
 
-        /* GrapesJS Panels Dark Mode - Figma Style */
-        .dark-mode .gjs-pn-panel,
-        .dark-mode .gjs-pn-panel *,
-        .dark-mode .gjs-pn-views-container,
-        .dark-mode .gjs-pn-views-container *,
-        .dark-mode .gjs-blocks-c,
-        .dark-mode .gjs-blocks-c *,
-        .dark-mode .gjs-layer-wrapper,
-        .dark-mode .gjs-layer-wrapper *,
-        .dark-mode .gjs-trt-traits,
-        .dark-mode .gjs-trt-traits *,
-        .dark-mode .gjs-sm-sectors,
-        .dark-mode .gjs-sm-sectors *,
-        .dark-mode .gjs-sm-sector,
-        .dark-mode .gjs-sm-sector *,
-        .dark-mode .gjs-sm-properties,
-        .dark-mode .gjs-sm-properties * {
+        /* GrapesJS Blocks in left sidebar Tools tab - Dark Mode */
+        .dark-mode .tools-tab-content .gjs-blocks,
+        .dark-mode .tools-tab-content .gjs-blocks-c,
+        .dark-mode .tools-tab-content .gjs-blocks-c * {
           background-color: #1e1e1e !important;
           color: #e5e5e5 !important;
         }
 
-        .dark-mode .gjs-pn-panel {
-          border-right-color: #2d2d2d !important;
-          border-left-color: #2d2d2d !important;
+        .dark-mode .tools-tab-content .gjs-block-category {
+          background: #252525 !important;
+          border-bottom: 1px solid #2d2d2d !important;
+          color: #e5e5e5 !important;
+        }
+
+        .dark-mode .tools-tab-content .gjs-block {
+          background: #252525 !important;
+          border: 1px solid #2d2d2d !important;
+          color: #e5e5e5 !important;
+        }
+
+        .dark-mode .tools-tab-content .gjs-block:hover {
+          background: #2d2d2d !important;
+          border-color: #18a0fb !important;
+        }
+
+        /* GrapesJS Layers in left sidebar Layers tab - Dark Mode */
+        .dark-mode .layers-panel-container .gjs-layers,
+        .dark-mode .layers-panel-container .gjs-layer-wrapper,
+        .dark-mode .layers-panel-container .gjs-layer-item {
+          background-color: #1e1e1e !important;
+          color: #e5e5e5 !important;
         }
 
         .dark-mode .gjs-pn-btn {
@@ -15986,61 +16250,44 @@ color: gray !important;
           opacity: 0.8 !important;
         }
 
-        /* Make dark-mode panels reuse light-mode styling (layout + colors) */
-        .portfolio-edit-container.dark-mode .gjs-pn-panel.gjs-pn-views-container,
-        body.dark-mode-active .gjs-pn-panel.gjs-pn-views-container,
-        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="views-container"],
-        body.dark-mode-active .gjs-pn-panel[data-pn-type="views-container"],
-        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="blocks"],
-        body.dark-mode-active .gjs-pn-panel[data-pn-type="blocks"],
-        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="layers"],
-        body.dark-mode-active .gjs-pn-panel[data-pn-type="layers"],
-        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="traits"],
-        body.dark-mode-active .gjs-pn-panel[data-pn-type="traits"],
-        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="style-manager"],
-        body.dark-mode-active .gjs-pn-panel[data-pn-type="style-manager"] {
-          background: #ffffff !important;
-          border-left: 1px solid #e5e7eb !important;
-          border-right: 1px solid #e5e7eb !important;
-          box-shadow: 2px 0 10px rgba(0, 0, 0, 0.03) !important;
-          color: #1e293b !important;
+        /* Blocks in left sidebar Tools tab - styled for dark mode */
+        .tools-tab-content .gjs-blocks,
+        .tools-tab-content .gjs-blocks-c {
+          background: #1e1e1e !important;
+          color: #e5e5e5 !important;
         }
 
-        .portfolio-edit-container.dark-mode .gjs-pn-buttons,
-        body.dark-mode-active .gjs-pn-buttons,
-        .portfolio-edit-container.dark-mode .gjs-pn-views,
-        body.dark-mode-active .gjs-pn-views {
-          background: transparent !important;
-          padding: 10px 8px !important;
+        .tools-tab-content .gjs-block-category {
+          background: #252525 !important;
+          border: 1px solid #2d2d2d !important;
+          border-radius: 5px !important;
+          color: #e5e5e5 !important;
         }
 
-        .portfolio-edit-container.dark-mode .gjs-pn-btn,
-        body.dark-mode-active .gjs-pn-btn {
-          background: #ffffff !important;
-          border: 1px solid #e5e7eb !important;
-          color: #1e293b !important;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        .tools-tab-content .gjs-block {
+          background: #2d2d2d !important;
+          border: 1px solid #3a3a3a !important;
+          border-radius: 5px !important;
+          color: #e5e5e5 !important;
         }
 
-        .portfolio-edit-container.dark-mode .gjs-pn-btn:hover,
-        body.dark-mode-active .gjs-pn-btn:hover {
-          background: #f1f5f9 !important;
-          border-color: #e5e7eb !important;
-          color: #3b82f6 !important;
+        .tools-tab-content .gjs-block:hover {
+          background: #3a3a3a !important;
+          border-color: #4a4a4a !important;
         }
 
-        .portfolio-edit-container.dark-mode .gjs-pn-btn.gjs-pn-active,
-        body.dark-mode-active .gjs-pn-btn.gjs-pn-active {
-          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-          border-color: #2563eb !important;
-          color: #ffffff !important;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+        /* Layers in left sidebar Layers tab - styled for dark mode */
+        .layers-panel-container .gjs-layers,
+        .layers-panel-container .gjs-layer-wrapper {
+          background: #1e1e1e !important;
+          color: #e5e5e5 !important;
         }
 
-        .portfolio-edit-container.dark-mode .gjs-pn-btn.gjs-pn-active *,
-        body.dark-mode-active .gjs-pn-btn.gjs-pn-active * {
-          color: #ffffff !important;
-          fill: #ffffff !important;
+        .layers-panel-container .gjs-layer-item {
+          background: #252525 !important;
+          border: 1px solid #2d2d2d !important;
+          border-radius: 5px !important;
+          color: #e5e5e5 !important;
         }
 
         /* Text colors to stay readable */
