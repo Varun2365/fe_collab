@@ -4607,8 +4607,24 @@ const PortfolioEdit = () => {
       // Handle Copy - Works for component level
       const handleCopy = () => {
         try {
+          // First check if text is selected (RTE mode)
+          const iframe = editor.Canvas.getFrameEl();
+          if (iframe && iframe.contentWindow) {
+            const iframeDoc = iframe.contentWindow.document;
+            const selection = iframeDoc.getSelection();
+            if (selection && selection.toString().trim()) {
+              window.copiedText = selection.toString();
+              console.log('✅ Text copied:', window.copiedText);
+              return;
+            }
+          }
+
+          // Otherwise copy component
           const selected = editor.getSelected();
-          if (!selected) return;
+          if (!selected) {
+            console.warn('No component selected');
+            return;
+          }
           
           const cloned = selected.clone();
           window.copiedComponent = cloned;
@@ -4621,62 +4637,83 @@ const PortfolioEdit = () => {
       // Handle Duplicate - FIXED: Proper parent access
       const handleDuplicate = () => {
         try {
-          const selected = editor.getSelected();
-          if (!selected) return;
-          
-          // Get parent using proper GrapesJS API
-          let parent = null;
-          if (selected.parent && typeof selected.parent === 'function') {
-            parent = selected.parent();
-          } else if (selected.getParent && typeof selected.getParent === 'function') {
-            parent = selected.getParent();
-          } else {
-            // Fallback: get parent from components collection
-            const allComponents = editor.DomComponents.getComponents();
-            const findParent = (comp) => {
-              if (!comp || !comp.components) return null;
-              const children = comp.components();
-              for (let i = 0; i < children.length; i++) {
-                if (children[i] === selected) return comp;
-                const found = findParent(children[i]);
-                if (found) return found;
-              }
-              return null;
-            };
-            parent = findParent(allComponents);
-          }
-          
-          if (!parent) {
-            // If no parent, add to wrapper
-            const wrapper = editor.DomComponents.getWrapper();
-            if (wrapper) {
-              const cloned = selected.clone();
-              wrapper.components().add(cloned);
-              editor.select(cloned);
-              editor.trigger('change:canvas');
-              console.log('✅ Component duplicated (to wrapper)');
+          // First check if text is selected (RTE mode)
+          const iframe = editor.Canvas.getFrameEl();
+          if (iframe && iframe.contentWindow) {
+            const iframeDoc = iframe.contentWindow.document;
+            const selection = iframeDoc.getSelection();
+            if (selection && selection.toString().trim()) {
+              const text = selection.toString();
+              const range = selection.getRangeAt(0);
+              const clonedText = iframeDoc.createTextNode(text);
+              range.insertNode(clonedText);
+              range.setStartAfter(clonedText);
+              range.collapse(true);
+              selection.removeAllRanges();
+              selection.addRange(range);
+              console.log('✅ Text duplicated');
               return;
             }
+          }
+
+          // Otherwise duplicate component
+          const selected = editor.getSelected();
+          if (!selected) {
+            console.warn('No component selected');
+            return;
+          }
+
+          // Get the direct parent component - this is where the duplicate will be added
+          const parent = selected.parent();
+          
+          if (!parent) {
+            console.warn('No parent found for component');
             return;
           }
           
-          // Get index and duplicate
-          const index = parent.indexOf ? parent.indexOf(selected) : -1;
-          const cloned = selected.clone();
+          // Get parent's components collection
+          const components = parent.components();
           
-          if (parent.components) {
-            if (index >= 0) {
-              parent.components().add(cloned, { at: index + 1 });
-            } else {
-              parent.components().add(cloned);
-            }
-          } else {
-            parent.append(cloned);
+          if (!components) {
+            console.warn('Parent has no components collection');
+            return;
           }
           
+          // Find the index of selected component in parent's children
+          let index = -1;
+          try {
+            index = components.indexOf(selected);
+          } catch (e) {
+            // Fallback: manually find index
+            const compsArray = [];
+            components.each((comp) => compsArray.push(comp));
+            index = compsArray.findIndex(c => c === selected);
+          }
+          
+          if (index === -1) {
+            console.warn('Could not find component index in parent, adding to end');
+            const cloned = selected.clone();
+            components.add(cloned);
+            editor.select(cloned);
+            editor.trigger('change:canvas');
+            return;
+          }
+          
+          // Clone the component - this creates a clean copy without nested structure
+          const cloned = selected.clone();
+          
+          // Add cloned component at index + 1 (right after original, same level)
+          // Using GrapesJS's add method with 'at' option ensures proper insertion at same level
+          components.add(cloned, { at: index + 1 });
+          
+          // Select the cloned component
           editor.select(cloned);
+          
+          // Trigger canvas update to refresh the view
           editor.trigger('change:canvas');
-          console.log('✅ Component duplicated');
+          editor.trigger('component:update', cloned);
+          
+          console.log('✅ Component duplicated at same level (parent:', parent.get('type') || 'unknown', ', index:', index, '->', index + 1, ')');
         } catch (error) {
           console.error('Duplicate error:', error);
         }
@@ -4685,11 +4722,38 @@ const PortfolioEdit = () => {
       // Handle Delete - Works for component level
       const handleDelete = () => {
         try {
+          // First check if text is selected (RTE mode)
+          const iframe = editor.Canvas.getFrameEl();
+          if (iframe && iframe.contentWindow) {
+            const iframeDoc = iframe.contentWindow.document;
+            const selection = iframeDoc.getSelection();
+            if (selection && selection.toString().trim()) {
+              selection.deleteFromDocument();
+              editor.trigger('change:canvas');
+              console.log('✅ Text deleted');
+              return;
+            }
+          }
+
+          // Otherwise delete component
           const selected = editor.getSelected();
-          if (!selected) return;
+          if (!selected) {
+            console.warn('No component selected');
+            return;
+          }
           
+          // Store parent before deletion
+          const parent = selected.parent();
+          
+          // Remove the component
           selected.remove();
+          
+          // Trigger updates
           editor.trigger('change:canvas');
+          if (parent) {
+            editor.trigger('component:update', parent);
+          }
+          
           console.log('✅ Component deleted');
         } catch (error) {
           console.error('Delete error:', error);
@@ -4716,34 +4780,34 @@ const PortfolioEdit = () => {
         copyBtn.className = 'gjs-cm-btn custom-copy-btn';
         copyBtn.title = 'Copy';
         copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
-        copyBtn.onclick = (e) => { 
+        copyBtn.addEventListener('click', (e) => { 
           e.preventDefault(); 
           e.stopPropagation(); 
           e.stopImmediatePropagation();
-          handleCopy(); 
-        };
+          setTimeout(() => handleCopy(), 0);
+        }, true);
 
         const duplicateBtn = document.createElement('button');
         duplicateBtn.className = 'gjs-cm-btn custom-duplicate-btn';
         duplicateBtn.title = 'Duplicate';
         duplicateBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path><path d="M9 9h6v6H9z"></path></svg>';
-        duplicateBtn.onclick = (e) => { 
+        duplicateBtn.addEventListener('click', (e) => { 
           e.preventDefault(); 
           e.stopPropagation(); 
           e.stopImmediatePropagation();
-          handleDuplicate(); 
-        };
+          setTimeout(() => handleDuplicate(), 0);
+        }, true);
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'gjs-cm-btn custom-delete-btn';
         deleteBtn.title = 'Delete';
         deleteBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
-        deleteBtn.onclick = (e) => { 
+        deleteBtn.addEventListener('click', (e) => { 
           e.preventDefault(); 
           e.stopPropagation(); 
           e.stopImmediatePropagation();
-          handleDelete(); 
-        };
+          setTimeout(() => handleDelete(), 0);
+        }, true);
 
         container.appendChild(copyBtn);
         container.appendChild(duplicateBtn);
@@ -4752,72 +4816,17 @@ const PortfolioEdit = () => {
       };
 
       // Handle text-level operations (when RTE toolbar is visible)
+      // These now just call the main handlers which handle both text and components
       const handleTextCopy = () => {
-        try {
-          const iframe = editor.Canvas.getFrameEl();
-          if (!iframe || !iframe.contentWindow) return;
-          
-          const iframeDoc = iframe.contentWindow.document;
-          const selection = iframeDoc.getSelection();
-          if (selection && selection.toString().trim()) {
-            window.copiedText = selection.toString();
-            console.log('✅ Text copied:', window.copiedText);
-          } else {
-            // Fallback to component copy
-            handleCopy();
-          }
-        } catch (error) {
-          console.error('Text copy error:', error);
-          handleCopy();
-        }
+        handleCopy();
       };
 
       const handleTextDuplicate = () => {
-        try {
-          const iframe = editor.Canvas.getFrameEl();
-          if (!iframe || !iframe.contentWindow) {
-            handleDuplicate();
-            return;
-          }
-          
-          const iframeDoc = iframe.contentWindow.document;
-          const selection = iframeDoc.getSelection();
-          if (selection && selection.toString().trim()) {
-            const text = selection.toString();
-            const range = selection.getRangeAt(0);
-            range.deleteContents();
-            range.insertNode(iframeDoc.createTextNode(text + text));
-            selection.removeAllRanges();
-            console.log('✅ Text duplicated');
-          } else {
-            handleDuplicate();
-          }
-        } catch (error) {
-          console.error('Text duplicate error:', error);
-          handleDuplicate();
-        }
+        handleDuplicate();
       };
 
       const handleTextDelete = () => {
-        try {
-          const iframe = editor.Canvas.getFrameEl();
-          if (!iframe || !iframe.contentWindow) {
-            handleDelete();
-            return;
-          }
-          
-          const iframeDoc = iframe.contentWindow.document;
-          const selection = iframeDoc.getSelection();
-          if (selection && selection.toString().trim()) {
-            selection.deleteFromDocument();
-            console.log('✅ Text deleted');
-          } else {
-            handleDelete();
-          }
-        } catch (error) {
-          console.error('Text delete error:', error);
-          handleDelete();
-        }
+        handleDelete();
       };
 
       // Add buttons to RTE toolbar (for text editing) - Header Theme
@@ -4833,34 +4842,34 @@ const PortfolioEdit = () => {
         copyBtn.className = 'gjs-rte-toolbar-item rte-copy-btn';
         copyBtn.title = 'Copy';
         copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
-        copyBtn.onclick = (e) => { 
+        copyBtn.addEventListener('click', (e) => { 
           e.preventDefault(); 
           e.stopPropagation(); 
           e.stopImmediatePropagation();
-          handleTextCopy(); 
-        };
+          setTimeout(() => handleTextCopy(), 0);
+        }, true);
 
         const duplicateBtn = document.createElement('button');
         duplicateBtn.className = 'gjs-rte-toolbar-item rte-duplicate-btn';
         duplicateBtn.title = 'Duplicate';
         duplicateBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path><path d="M9 9h6v6H9z"></path></svg>';
-        duplicateBtn.onclick = (e) => { 
+        duplicateBtn.addEventListener('click', (e) => { 
           e.preventDefault(); 
           e.stopPropagation(); 
           e.stopImmediatePropagation();
-          handleTextDuplicate(); 
-        };
+          setTimeout(() => handleTextDuplicate(), 0);
+        }, true);
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'gjs-rte-toolbar-item rte-delete-btn';
         deleteBtn.title = 'Delete';
         deleteBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
-        deleteBtn.onclick = (e) => { 
+        deleteBtn.addEventListener('click', (e) => { 
           e.preventDefault(); 
           e.stopPropagation(); 
           e.stopImmediatePropagation();
-          handleTextDelete(); 
-        };
+          setTimeout(() => handleTextDelete(), 0);
+        }, true);
 
         container.appendChild(copyBtn);
         container.appendChild(duplicateBtn);
@@ -4878,13 +4887,310 @@ const PortfolioEdit = () => {
       const canvasEl = document.querySelector('#gjs');
       if (canvasEl) observer.observe(canvasEl, { childList: true, subtree: true });
       
-      // Add buttons on component selection (for ALL components)
-      editor.on('component:selected', () => {
-        setTimeout(() => { addButtonsToCommandsPanel(); addButtonsToRTEToolbar(); }, 100);
-      });
+      // Floating Toolbar for Blocks, Sections, Images, Videos (separate from text toolbar)
+      let floatingToolbar = null;
+      let isRTEActive = false;
+
+      const createFloatingToolbar = () => {
+        // Remove existing toolbar if any
+        const existing = document.querySelector('.floating-element-toolbar');
+        if (existing) existing.remove();
+
+        // Create new floating toolbar
+        floatingToolbar = document.createElement('div');
+        floatingToolbar.className = 'floating-element-toolbar';
+        floatingToolbar.style.cssText = `
+          position: fixed;
+          background: #1e1e1e;
+          border: 1px solid #2d2d2d;
+          border-radius: 8px;
+          padding: 6px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          z-index: 10001;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.2s ease;
+        `;
+
+        // Copy button
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'floating-toolbar-btn floating-copy-btn';
+        copyBtn.title = 'Copy';
+        copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+        copyBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          setTimeout(() => handleCopy(), 0);
+        }, true);
+
+        // Duplicate button
+        const duplicateBtn = document.createElement('button');
+        duplicateBtn.className = 'floating-toolbar-btn floating-duplicate-btn';
+        duplicateBtn.title = 'Duplicate';
+        duplicateBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path><path d="M9 9h6v6H9z"></path></svg>';
+        duplicateBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          setTimeout(() => handleDuplicate(), 0);
+        }, true);
+
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'floating-toolbar-btn floating-delete-btn';
+        deleteBtn.title = 'Delete';
+        deleteBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+        deleteBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          setTimeout(() => handleDelete(), 0);
+        }, true);
+
+        floatingToolbar.appendChild(copyBtn);
+        floatingToolbar.appendChild(duplicateBtn);
+        floatingToolbar.appendChild(deleteBtn);
+        document.body.appendChild(floatingToolbar);
+      };
+
+      // Store last click position for toolbar positioning
+      let lastClickX = null;
+      let lastClickY = null;
+
+      const updateFloatingToolbarPosition = (clickX = null, clickY = null) => {
+        if (!floatingToolbar || isRTEActive || floatingToolbar.style.opacity === '0') {
+          return;
+        }
+
+        try {
+          const selected = editor.getSelected();
+          if (!selected) {
+            hideFloatingToolbar();
+            return;
+          }
+
+          const iframe = editor.Canvas.getFrameEl();
+          if (!iframe || !iframe.contentWindow) return;
+
+          // Get component view element
+          const compView = selected.getView?.();
+          if (!compView || !compView.el) {
+            hideFloatingToolbar();
+            return;
+          }
+
+          const el = compView.el;
+          const rect = el.getBoundingClientRect();
+          const iframeRect = iframe.getBoundingClientRect();
+
+          const toolbarHeight = 40;
+          const toolbarWidth = 100;
+          const spacing = 8;
+
+          let top, left;
+
+          // If click position is available, use it (with offset)
+          if (clickX !== null && clickY !== null) {
+            // Position toolbar near click position
+            left = clickX - (toolbarWidth / 2);
+            top = clickY - toolbarHeight - spacing;
+            
+            // If not enough space above, show below
+            if (top < 10) {
+              top = clickY + spacing;
+            }
+          } else if (lastClickX !== null && lastClickY !== null) {
+            // Use stored click position
+            left = lastClickX - (toolbarWidth / 2);
+            top = lastClickY - toolbarHeight - spacing;
+            
+            if (top < 10) {
+              top = lastClickY + spacing;
+            }
+          } else {
+            // Fallback: position relative to element
+            // Try to position near the element's center or visible area
+            const elementCenterX = iframeRect.left + rect.left + (rect.width / 2);
+            const elementCenterY = iframeRect.top + rect.top + (rect.height / 2);
+            
+            left = elementCenterX - (toolbarWidth / 2);
+            top = elementCenterY - toolbarHeight - spacing;
+            
+            // If not enough space above, show below
+            if (top < 10) {
+              top = iframeRect.top + rect.bottom + spacing;
+            }
+          }
+
+          // Ensure toolbar stays within viewport
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
+          
+          // Adjust horizontal position if needed
+          if (left < 10) {
+            left = 10;
+          } else if (left + toolbarWidth > viewportWidth - 10) {
+            left = viewportWidth - toolbarWidth - 10;
+          }
+          
+          // Adjust vertical position if needed
+          if (top < 10) {
+            top = 10;
+          } else if (top + toolbarHeight > viewportHeight - 10) {
+            top = viewportHeight - toolbarHeight - 10;
+          }
+
+          floatingToolbar.style.top = `${top}px`;
+          floatingToolbar.style.left = `${left}px`;
+        } catch (error) {
+          console.error('Error updating floating toolbar position:', error);
+        }
+      };
+
+      const showFloatingToolbar = (component, clickX = null, clickY = null) => {
+        if (!floatingToolbar || isRTEActive) {
+          if (floatingToolbar) floatingToolbar.style.opacity = '0';
+          return;
+        }
+
+        try {
+          const selected = editor.getSelected();
+          if (!selected) {
+            hideFloatingToolbar();
+            return;
+          }
+
+          // Update position with click coordinates if available
+          updateFloatingToolbarPosition(clickX, clickY);
+          floatingToolbar.style.opacity = '1';
+          floatingToolbar.style.pointerEvents = 'auto';
+        } catch (error) {
+          console.error('Error showing floating toolbar:', error);
+        }
+      };
+
+      const hideFloatingToolbar = () => {
+        if (floatingToolbar) {
+          floatingToolbar.style.opacity = '0';
+          floatingToolbar.style.pointerEvents = 'none';
+        }
+      };
+
+      // Initialize floating toolbar
+      createFloatingToolbar();
+
+      // Add scroll and resize listeners to update toolbar position
+      const updatePositionOnScroll = () => {
+        if (floatingToolbar && floatingToolbar.style.opacity === '1' && !isRTEActive) {
+          updateFloatingToolbarPosition();
+        }
+      };
+
+      window.addEventListener('scroll', updatePositionOnScroll, true);
+      window.addEventListener('resize', updatePositionOnScroll);
       
-      editor.on('rte:enable', () => setTimeout(addButtonsToRTEToolbar, 100));
-      editor.on('component:dblclick', () => setTimeout(() => { addButtonsToCommandsPanel(); addButtonsToRTEToolbar(); }, 150));
+      // Get iframe reference once
+      const iframe = editor.Canvas.getFrameEl();
+      
+      // Also listen to iframe scroll
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.addEventListener('scroll', updatePositionOnScroll, true);
+      }
+
+      // Track click position for toolbar positioning
+      const handleCanvasClick = (e) => {
+        try {
+          // For iframe events, coordinates are relative to iframe viewport
+          // We need to convert them to main window coordinates
+          if (iframe && iframe.getBoundingClientRect) {
+            const iframeRect = iframe.getBoundingClientRect();
+            // e.clientX/clientY are relative to iframe, add iframe position
+            const clickX = (e.clientX !== undefined ? e.clientX : e.pageX) || 0;
+            const clickY = (e.clientY !== undefined ? e.clientY : e.pageY) || 0;
+            lastClickX = iframeRect.left + clickX;
+            lastClickY = iframeRect.top + clickY;
+          } else {
+            // For main window clicks, use coordinates directly
+            lastClickX = e.clientX || e.pageX || 0;
+            lastClickY = e.clientY || e.pageY || 0;
+          }
+        } catch (error) {
+          console.warn('Error tracking click position:', error);
+        }
+      };
+
+      // Add click listener to iframe canvas
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.addEventListener('click', handleCanvasClick, true);
+        iframe.contentWindow.addEventListener('mousedown', handleCanvasClick, true);
+      }
+
+      // Also listen on main window for clicks in canvas area
+      window.addEventListener('click', (e) => {
+        const canvasEl = document.querySelector('#gjs');
+        if (canvasEl && (canvasEl.contains(e.target) || e.target.closest('#gjs'))) {
+          lastClickX = e.clientX;
+          lastClickY = e.clientY;
+        }
+      }, true);
+      
+      window.addEventListener('mousedown', (e) => {
+        const canvasEl = document.querySelector('#gjs');
+        if (canvasEl && (canvasEl.contains(e.target) || e.target.closest('#gjs'))) {
+          lastClickX = e.clientX;
+          lastClickY = e.clientY;
+        }
+      }, true);
+
+      // Show/hide toolbar on component selection
+      editor.on('component:selected', (component) => {
+        setTimeout(() => { 
+          addButtonsToCommandsPanel(); 
+          addButtonsToRTEToolbar(); 
+          if (!isRTEActive) {
+            // Use stored click position or current mouse position
+            showFloatingToolbar(component, lastClickX, lastClickY);
+          }
+        }, 100);
+      });
+
+      editor.on('component:deselected', () => {
+        hideFloatingToolbar();
+      });
+
+      // Update position when canvas changes
+      editor.on('change:canvas', () => {
+        if (floatingToolbar && floatingToolbar.style.opacity === '1' && !isRTEActive) {
+          setTimeout(updateFloatingToolbarPosition, 50);
+        }
+      });
+
+      // Hide floating toolbar when RTE is enabled (text editing mode)
+      editor.on('rte:enable', () => {
+        isRTEActive = true;
+        hideFloatingToolbar();
+        setTimeout(addButtonsToRTEToolbar, 100);
+      });
+
+      // Show floating toolbar when RTE is disabled
+      editor.on('rte:disable', () => {
+        isRTEActive = false;
+        const selected = editor.getSelected();
+        if (selected) {
+          setTimeout(() => showFloatingToolbar(selected, lastClickX, lastClickY), 100);
+        }
+      });
+
+      editor.on('component:dblclick', () => {
+        setTimeout(() => { 
+          addButtonsToCommandsPanel(); 
+          addButtonsToRTEToolbar(); 
+        }, 150);
+      });
       
       // Initial attempts
       setTimeout(() => { addButtonsToCommandsPanel(); addButtonsToRTEToolbar(); }, 300);
@@ -12429,6 +12735,70 @@ color: gray !important;
         .custom-copy-btn svg,
         .custom-duplicate-btn svg,
         .custom-delete-btn svg {
+          width: 14px !important;
+          height: 14px !important;
+          stroke: currentColor !important;
+          fill: none !important;
+          stroke-width: 2.5 !important;
+        }
+
+        /* Floating Toolbar for Blocks, Sections, Images, Videos - Separate from Text Toolbar */
+        .floating-element-toolbar {
+          position: fixed !important;
+          background: #1e1e1e !important;
+          border: 1px solid #2d2d2d !important;
+          border-radius: 8px !important;
+          padding: 6px !important;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 4px !important;
+          z-index: 10001 !important;
+          backdrop-filter: blur(10px) !important;
+        }
+
+        .floating-toolbar-btn {
+          color: #e5e5e5 !important;
+          background: transparent !important;
+          border: none !important;
+          cursor: pointer !important;
+          padding: 6px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          border-radius: 4px !important;
+          transition: all 0.2s ease !important;
+          min-width: 28px !important;
+          height: 28px !important;
+        }
+
+        .floating-toolbar-btn:hover {
+          background: #2d2d2d !important;
+          color: #ffffff !important;
+          transform: scale(1.1) !important;
+        }
+
+        .floating-toolbar-btn:active {
+          background: #252525 !important;
+          transform: scale(0.95) !important;
+        }
+
+        .floating-delete-btn:hover {
+          background: #dc2626 !important;
+          color: #ffffff !important;
+        }
+
+        .floating-copy-btn:hover {
+          background: #2563eb !important;
+          color: #ffffff !important;
+        }
+
+        .floating-duplicate-btn:hover {
+          background: #16a34a !important;
+          color: #ffffff !important;
+        }
+
+        .floating-toolbar-btn svg {
           width: 14px !important;
           height: 14px !important;
           stroke: currentColor !important;
