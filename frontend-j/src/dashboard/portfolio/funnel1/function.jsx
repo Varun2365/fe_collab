@@ -1217,15 +1217,19 @@ editor.BlockManager.add('bss-popup-form', {
       }
       
       .bss-popup-modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
+        display: none !important;
+        position: fixed !important;
+        z-index: 99999 !important;
         left: 0;
         top: 0;
         width: 100%;
         height: 100%;
         background-color: rgba(0,0,0,0.7);
         animation: fadeIn 0.3s;
+      }
+      
+      .bss-popup-modal.active {
+        display: block !important;
       }
       
       @keyframes fadeIn {
@@ -1242,6 +1246,7 @@ editor.BlockManager.add('bss-popup-form', {
         max-width: 400px;
         box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         position: relative;
+        z-index: 100000;
       }
       
       .bss-close-btn {
@@ -1345,95 +1350,7 @@ editor.BlockManager.add('bss-popup-form', {
     </style>
 
     <script>
-      (function() {
-        // Get elements
-        const triggerBtn = document.getElementById('bss-trigger');
-        const popupModal = document.getElementById('bss-popup');
-        const closeBtn = document.querySelector('.bss-close-btn');
-        const signupForm = document.getElementById('bss-form');
-        const messageEl = document.querySelector('.form-message');
-        
-        // Show popup when trigger button is clicked
-        if (triggerBtn && popupModal) {
-          triggerBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            popupModal.style.display = 'block';
-          });
-        }
-        
-        // Close popup when X is clicked
-        if (closeBtn && popupModal) {
-          closeBtn.addEventListener('click', function() {
-            popupModal.style.display = 'none';
-            if (messageEl) messageEl.style.display = 'none';
-          });
-        }
-        
-        // Close popup when clicking outside
-        window.addEventListener('click', function(e) {
-          if (e.target === popupModal) {
-            popupModal.style.display = 'none';
-            if (messageEl) messageEl.style.display = 'none';
-          }
-        });
-        
-        // Form submission
-        if (signupForm) {
-          signupForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            
-            // Show loading state
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-            submitBtn.disabled = true;
-            
-            // Get form data
-            const formData = {
-              name: this.querySelector('input[name="name"]').value,
-              email: this.querySelector('input[name="email"]').value,
-              phone: this.querySelector('input[name="phone"]').value,
-              timestamp: new Date().toISOString(),
-              source: 'Popup Form'
-            };
-            
-            // Log the form data to console with clear formatting
-            console.log('%c📝 POPUP FORM SUBMISSION DATA', 'color: #4CAF50; font-size: 16px; font-weight: bold;');
-            console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #4CAF50');
-            console.log('%c📋 Form Values:', 'color: #2196F3; font-weight: bold;');
-            console.log('   🔹 Name:', formData.name);
-            console.log('   🔹 Email:', formData.email);
-            console.log('   🔹 Phone:', formData.phone || '(Not provided)');
-            console.log('%c⏱️ Submission Details:', 'color: #2196F3; font-weight: bold;');
-            console.log('   🔹 Time:', new Date().toLocaleString());
-            console.log('   🔹 Source:', formData.source);
-            console.log('%c✅ FORM DATA CAPTURED SUCCESSFULLY', 'color: #4CAF50; font-weight: bold;');
-            console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #4CAF50');
-            
-            // Simulate processing delay for better UX
-            setTimeout(() => {
-              // Show success message
-              if (messageEl) {
-                messageEl.textContent = 'Thank you for subscribing!';
-                messageEl.className = 'form-message success';
-                messageEl.style.display = 'block';
-              }
-              
-              // Reset form and button state
-              signupForm.reset();
-              submitBtn.innerHTML = originalText;
-              submitBtn.disabled = false;
-              
-              // Close popup after delay
-              setTimeout(() => {
-                popupModal.style.display = 'none';
-                if (messageEl) messageEl.style.display = 'none';
-              }, 3000);
-            }, 1000);
-          });
-        }
-      })();
+      (function(){function init(){const t=document.getElementById('bss-trigger'),p=document.getElementById('bss-popup'),c=document.querySelector('.bss-close-btn'),f=document.getElementById('bss-form'),m=document.querySelector('.form-message');if(!t||!p){setTimeout(init,100);return}const openPopup=function(e){if(e){e.preventDefault();e.stopPropagation()}if(p){p.style.display='block';p.style.zIndex='99999';p.classList.add('active');if(document.body)document.body.style.overflow='hidden'}console.log('Popup opened')};const closePopup=function(e){if(e){e.preventDefault();e.stopPropagation()}if(p){p.style.display='none';p.classList.remove('active');if(document.body)document.body.style.overflow=''}if(m)m.style.display='none'};if(t&&!t.dataset.listenerAttached){t.style.cursor='pointer';t.addEventListener('click',openPopup,true);t.addEventListener('mousedown',function(e){e.stopPropagation()},true);t.dataset.listenerAttached='true';console.log('Button listener attached')}if(c&&!c.dataset.listenerAttached){c.style.cursor='pointer';c.addEventListener('click',closePopup,true);c.dataset.listenerAttached='true'}if(p&&!p.dataset.listenerAttached){p.addEventListener('click',function(e){if(e.target===p||e.target.classList.contains('bss-popup-modal'))closePopup(e)},true);p.dataset.listenerAttached='true'}if(!window.bssPopupEscapeListener){window.addEventListener('keydown',function(e){if(e.key==='Escape'&&p&&p.style.display==='block')closePopup()});window.bssPopupEscapeListener=true}if(f&&!f.dataset.listenerAttached){f.addEventListener('submit',function(e){e.preventDefault();e.stopPropagation();const s=this.querySelector('button[type="submit"]'),o=s?s.innerHTML:'';if(s){s.innerHTML='<i class="fas fa-spinner fa-spin"></i> Processing...';s.disabled=true}const d={name:this.querySelector('input[name="name"]')?.value||'',email:this.querySelector('input[name="email"]')?.value||'',phone:this.querySelector('input[name="phone"]')?.value||'',timestamp:new Date().toISOString(),source:'Popup Form'};console.log('%c📝 POPUP FORM SUBMISSION DATA','color: #4CAF50; font-size: 16px; font-weight: bold;');console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━','color: #4CAF50');console.log('%c📋 Form Values:','color: #2196F3; font-weight: bold;');console.log('   🔹 Name:',d.name);console.log('   🔹 Email:',d.email);console.log('   🔹 Phone:',d.phone||'(Not provided)');console.log('%c⏱️ Submission Details:','color: #2196F3; font-weight: bold;');console.log('   🔹 Time:',new Date().toLocaleString());console.log('   🔹 Source:',d.source);console.log('%c✅ FORM DATA CAPTURED SUCCESSFULLY','color: #4CAF50; font-weight: bold;');console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━','color: #4CAF50');setTimeout(()=>{if(m){m.textContent='Thank you for subscribing!';m.className='form-message success';m.style.display='block'}f.reset();if(s){s.innerHTML=o;s.disabled=false}setTimeout(()=>{closePopup()},3000)},1000)});f.dataset.listenerAttached='true'}}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init)}else{setTimeout(init,200)}})();
     </script>
   `,
   attributes: { class: 'bss-popup-element' },
@@ -1505,9 +1422,9 @@ domc.addType('popup-form-component', {
         .popup-system { font-family: Arial, sans-serif; }
         .popup-trigger-btn { padding: 12px 25px; background: #ff6b6b; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px; transition: all 0.3s ease; }
         .popup-trigger-btn:hover { background: #ff5252; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .popup-modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); animation: fadeIn 0.3s; }
+        .popup-modal { display: none; position: fixed !important; z-index: 10000 !important; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .popup-content { background-color: white; margin: 10% auto; padding: 30px; border-radius: 10px; width: 90%; max-width: 500px; position: relative; box-shadow: 0 5px 30px rgba(0,0,0,0.3); animation: slideIn 0.4s ease-out; }
+        .popup-content { background-color: white; margin: 10% auto; padding: 30px; border-radius: 10px; width: 90%; max-width: 500px; position: relative; z-index: 10001; box-shadow: 0 5px 30px rgba(0,0,0,0.3); animation: slideIn 0.4s ease-out; }
         @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .popup-close { position: absolute; top: 15px; right: 25px; font-size: 28px; font-weight: bold; color: #aaa; cursor: pointer; transition: color 0.2s; }
         .popup-close:hover { color: #333; }
@@ -1578,147 +1495,7 @@ domc.addType('popup-form-component', {
   },
   view: {
     onRender() {
-      const model = this.model;
-      const rootEl = this.el;
-
-      const triggerBtn = rootEl.querySelector('.popup-trigger-btn');
-      const popupModal = rootEl.querySelector('.popup-modal');
-      const closeBtn = rootEl.querySelector('.popup-close');
-      const leadForm = rootEl.querySelector('.lead-form');
-      const messageEl = rootEl.querySelector('.form-message');
-      const titleEl = rootEl.querySelector('h3');
-      const descEl = rootEl.querySelector('.popup-content > p');
-
-      const updateContent = () => {
-        if (triggerBtn) triggerBtn.innerText = model.get('button_text') || 'Click for Special Offer';
-        if (titleEl) titleEl.innerText = model.get('popup_title') || 'Special Offer!';
-        if (descEl) descEl.innerText = model.get('popup_description') || 'Enter your details...';
-      };
-
-      this.listenTo(model, 'change:button_text change:popup_title change:popup_description', updateContent);
-      updateContent();
-
-      const showMessage = (message, type) => {
-        if (messageEl) {
-          messageEl.style.display = 'block';
-          messageEl.className = `form-message ${type}`;
-          messageEl.textContent = message;
-        }
-      };
-
-      const hideMessage = () => {
-        if (messageEl) {
-          messageEl.style.display = 'none';
-          messageEl.textContent = '';
-        }
-      };
-
-      const closeModal = () => {
-        if (popupModal) popupModal.style.display = 'none';
-        document.body.style.overflow = '';
-        hideMessage();
-      };
-
-      const openModal = (e) => {
-        if (e) e.preventDefault();
-        if (popupModal) popupModal.style.display = 'block';
-        document.body.style.overflow = 'hidden';
-        hideMessage();
-      };
-
-      if (triggerBtn && !triggerBtn.dataset.listenerAttached) {
-        triggerBtn.addEventListener('click', openModal);
-        triggerBtn.dataset.listenerAttached = 'true';
-      }
-      
-      if (closeBtn && !closeBtn.dataset.listenerAttached) {
-        closeBtn.addEventListener('click', closeModal);
-        closeBtn.dataset.listenerAttached = 'true';
-      }
-
-      if (popupModal && !popupModal.dataset.listenerAttached) {
-        popupModal.addEventListener('click', function(e) {
-          if (e.target === popupModal) {
-            closeModal();
-          }
-        });
-        popupModal.dataset.listenerAttached = 'true';
-      }
-
-      if (leadForm && !leadForm.dataset.listenerAttached) {
-        leadForm.addEventListener('submit', async function(e) {
-          e.preventDefault();
-          const currentApiEndpoint = model.get('api_endpoint');
-          const redirectPage = model.get('redirect_page');
-          const openNewTab = model.get('open_new_tab');
-
-          console.log('Attempting to send data to API Endpoint:', currentApiEndpoint);
-          console.log('Redirect settings:', { redirectPage, openNewTab });
-
-          if (!currentApiEndpoint || currentApiEndpoint === 'https://api.funnelseye.com/api/leads') {
-            showMessage('API Endpoint is not set. Please configure it in the component settings.', 'error');
-            console.error('API Endpoint Error: API endpoint is not configured or is still the default placeholder.');
-            return;
-          }
-
-          const formData = {
-            name: this.querySelector('.name-input').value,
-            email: this.querySelector('.email-input').value,
-            phone: this.querySelector('.phone-input').value,
-            source: 'Website Popup',
-            campaign: 'Special Offer'
-          };
-
-          const submitBtn = this.querySelector('.submit-btn');
-          try {
-            if (submitBtn) {
-              submitBtn.disabled = true;
-              submitBtn.textContent = 'Processing...';
-            }
-            hideMessage();
-
-            const response = await fetch(currentApiEndpoint, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(formData)
-            });
-            
-            const result = await response.json();
-
-            if (response.ok) {
-              showMessage(result.message || 'Thank you! Your information has been submitted.', 'success');
-              leadForm.reset();
-              
-              // Handle redirect if configured
-              if (redirectPage) {
-                setTimeout(() => {
-                  if (openNewTab) {
-                    window.open(redirectPage, '_blank');
-                  } else {
-                    window.location.href = redirectPage;
-                  }
-                }, 2000);
-              } else {
-                setTimeout(() => {
-                  closeModal();
-                }, 3000);
-              }
-            } else {
-              const errorMessage = result.message || `Failed to submit form. Status: ${response.status}`;
-              throw new Error(errorMessage);
-            }
-          } catch (error) {
-            console.error('Form Submission Error:', error);
-            showMessage(error.message || 'An error occurred. Please try again.', 'error');
-          } finally {
-            if (submitBtn) {
-              submitBtn.disabled = false;
-              submitBtn.textContent = 'Claim Offer';
-            }
-          }
-        });
-        leadForm.dataset.listenerAttached = 'true';
-      }
+      const m=this.model,e=this.el;const init=()=>{const t=e.querySelector('.popup-trigger-btn'),p=e.querySelector('.popup-modal'),c=e.querySelector('.popup-close'),f=e.querySelector('.lead-form'),msgEl=e.querySelector('.form-message'),h3El=e.querySelector('h3'),dEl=e.querySelector('.popup-content > p');if(!t||!p){setTimeout(init,100);return}const u=()=>{if(t)t.innerText=m.get('button_text')||'Click for Special Offer';if(h3El)h3El.innerText=m.get('popup_title')||'Special Offer!';if(dEl)dEl.innerText=m.get('popup_description')||'Enter your details...'};this.listenTo(m,'change:button_text change:popup_title change:popup_description',u);u();const s=(msg,type)=>{if(msgEl){msgEl.style.display='block';msgEl.className=`form-message ${type}`;msgEl.textContent=msg}};const hide=()=>{if(msgEl){msgEl.style.display='none';msgEl.textContent=''}};const cl=(ev)=>{if(ev){ev.preventDefault();ev.stopPropagation()}if(p){p.style.display='none';p.style.zIndex='1000'}if(document.body)document.body.style.overflow='';hide()};const op=(ev)=>{if(ev){ev.preventDefault();ev.stopPropagation()}if(p){p.style.display='block';p.style.zIndex='10000';p.style.position='fixed';p.style.top='0';p.style.left='0';p.style.width='100%';p.style.height='100%'}if(document.body)document.body.style.overflow='hidden';hide();console.log('Popup opened')};if(t&&!t.dataset.listenerAttached){t.style.cursor='pointer';t.addEventListener('click',op,true);t.addEventListener('mousedown',function(ev){ev.stopPropagation()},true);t.dataset.listenerAttached='true';console.log('Trigger button listener attached')}if(c&&!c.dataset.listenerAttached){c.addEventListener('click',cl,true);c.style.cursor='pointer';c.dataset.listenerAttached='true'}if(p&&!p.dataset.listenerAttached){p.addEventListener('click',function(ev){if(ev.target===p||ev.target.classList.contains('popup-modal'))cl(ev)},true);p.dataset.listenerAttached='true'}if(f&&!f.dataset.listenerAttached){f.addEventListener('submit',async function(ev){ev.preventDefault();ev.stopPropagation();const api=m.get('api_endpoint'),rd=m.get('redirect_page'),nt=m.get('open_new_tab');console.log('Attempting to send data to API Endpoint:',api);console.log('Redirect settings:',{redirectPage:rd,openNewTab:nt});if(!api||api==='https://api.funnelseye.com/api/leads'||api==='https://your-api.com/submit-lead'){s('API Endpoint is not set. Please configure it in the component settings.','error');console.error('API Endpoint Error: API endpoint is not configured or is still the default placeholder.');return}const fd={name:this.querySelector('.name-input')?.value||'',email:this.querySelector('.email-input')?.value||'',phone:this.querySelector('.phone-input')?.value||'',source:'Website Popup',campaign:'Special Offer'};const sb=this.querySelector('.submit-btn');try{if(sb){sb.disabled=true;sb.textContent='Processing...'}hide();const r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(fd)});const res=await r.json();if(r.ok){s(res.message||'Thank you! Your information has been submitted.','success');f.reset();if(rd){setTimeout(()=>{if(nt)window.open(rd,'_blank');else window.location.href=rd},2000)}else{setTimeout(()=>cl(),3000)}}else{const em=res.message||`Failed to submit form. Status: ${r.status}`;throw new Error(em)}}catch(err){console.error('Form Submission Error:',err);s(err.message||'An error occurred. Please try again.','error')}finally{if(sb){sb.disabled=false;sb.textContent='Claim Offer'}}});f.dataset.listenerAttached='true'}};setTimeout(init,200)
     },
   }
 });
@@ -3269,43 +3046,116 @@ const showCompletionMessage = () => {
         media: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg>`,
       });
 
-      // ==================== FORMS ====================
+      // ==================== DIRECT FORM WITH CTA ====================
       
-      bm.add('contact-form', {
-        label: 'Contact Form',
+      bm.add('direct-form-with-cta', {
+        label: 'Direct Form with CTA',
         category: 'Forms',
         content: `
-          <form style="max-width: 500px; margin: 30px auto; padding: 30px; background: #f9f9f9; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <h3 style="margin-top: 0; color: #333;">Contact Us</h3>
-            <div style="margin-bottom: 20px;">
-              <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 600;">Name</label>
-              <input type="text" placeholder="Your name" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box;"/>
+          <div class="direct-form-cta-wrapper" style="margin: 40px 0;">
+            <!-- CTA Button Section -->
+            <div class="cta-button-section" style="text-align: center; margin-bottom: 50px;">
+              <button 
+                class="scroll-to-form-cta" 
+                onclick="var f=document.querySelector('[id^=direct-form-target]')||document.querySelector('.bss-direct-form-container');if(f){f.scrollIntoView({behavior:'smooth',block:'start'});}"
+                style="
+                  background: linear-gradient(135deg, #FFAE00 0%, #F54200 100%);
+                  color: white;
+                  border: none;
+                  padding: 20px 50px;
+                  font-size: 1.3em;
+                  font-weight: 700;
+                  border-radius: 50px;
+                  cursor: pointer;
+                  box-shadow: 0 10px 30px rgba(255, 174, 0, 0.4);
+                  transition: all 0.3s ease;
+                  text-transform: uppercase;
+                  letter-spacing: 1px;
+                "
+                onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 15px 40px rgba(255, 174, 0, 0.6)';"
+                onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 10px 30px rgba(255, 174, 0, 0.4)';"
+              >
+                Get Free Access Now →
+              </button>
             </div>
-            <div style="margin-bottom: 20px;">
-              <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 600;">Email</label>
-              <input type="email" placeholder="Your email" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box;"/>
-            </div>
-            <div style="margin-bottom: 20px;">
-              <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 600;">Message</label>
-              <textarea rows="5" placeholder="Your message" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; resize: vertical;"></textarea>
-            </div>
-            <button type="submit" style="width: 100%; padding: 15px; background: #4CAF50; color: white; border: none; border-radius: 5px; font-weight: 600; cursor: pointer; font-size: 1em;">Send Message</button>
-          </form>
-        `,
-        media: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M20,8L12,13L4,8V6L12,11L20,6M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4Z"/></svg>`,
-      });
 
-      bm.add('newsletter-form', {
-        label: 'Newsletter',
-        category: 'Forms',
-        content: `
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 50px 30px; border-radius: 10px; text-align: center; color: white;">
-            <h3 style="margin: 0 0 10px 0; font-size: 2em;">Subscribe to Our Newsletter</h3>
-            <p style="margin: 0 0 25px 0; opacity: 0.9;">Get the latest updates and offers</p>
-            <form style="max-width: 500px; margin: 0 auto; display: flex; gap: 10px; flex-wrap: wrap;">
-              <input type="email" placeholder="Enter your email" style="flex: 1; min-width: 250px; padding: 15px; border: none; border-radius: 5px; font-size: 1em;"/>
-              <button type="submit" style="padding: 15px 30px; background: white; color: #667eea; border: none; border-radius: 5px; font-weight: 600; cursor: pointer; font-size: 1em;">Subscribe</button>
-            </form>
+            <!-- Direct Form Section -->
+            <div class="bss-direct-form-container" id="direct-form-target" data-redirect-page="" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 20px auto; padding: 0;">
+              <div class="bss-form-content" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 40px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.1); border: 1px solid rgba(255,174,0,0.2); position: relative; overflow: hidden;">
+                <div style="position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, #FFAE00 0%, #F54200 100%);"></div>
+                
+                <div class="bss-form-header" style="text-align: center; margin-bottom: 30px;">
+                  <h4 style="color: #FFAE00; font-size: 1em; font-weight: 600; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 2px;">Get Free Access</h4>
+                  <h2 style="color: #333; font-size: 2em; font-weight: 700; margin: 0 0 10px 0;">Claim Your FREE Training Access</h2>
+                  <p style="color: #666; font-size: 0.95em; margin: 0;">⚠️ Limited to Serious Professionals Only</p>
+                </div>
+                
+                <form class="bss-direct-form" data-redirect-page="" data-redirect-set="true" onsubmit="return false;" style="margin: 0;">
+                  <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div class="form-group">
+                      <label for="name" style="display: block; margin-bottom: 8px; color: #333; font-weight: 600; font-size: 0.9em;">Full Name*</label>
+                      <input type="text" id="name" name="name" placeholder="Enter your full name" required style="width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em; box-sizing: border-box; transition: border-color 0.3s;" onfocus="this.style.borderColor='#FFAE00';" onblur="this.style.borderColor='#e0e0e0';">
+                    </div>
+                    <div class="form-group">
+                      <label for="email" style="display: block; margin-bottom: 8px; color: #333; font-weight: 600; font-size: 0.9em;">Email Address*</label>
+                      <input type="email" id="email" name="email" placeholder="your@email.com" required style="width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em; box-sizing: border-box; transition: border-color 0.3s;" onfocus="this.style.borderColor='#FFAE00';" onblur="this.style.borderColor='#e0e0e0';">
+                    </div>
+                  </div>
+                  
+                  <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div class="form-group">
+                      <label for="phone" style="display: block; margin-bottom: 8px; color: #333; font-weight: 600; font-size: 0.9em;">Phone Number*</label>
+                      <div class="phone-input-group" style="display: flex; gap: 10px;">
+                        <select name="countryCode" class="country-code-select" required style="padding: 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em; background: white; cursor: pointer; min-width: 100px;">
+                          <option value="+91">+91</option>
+                          <option value="+1">+1</option>
+                          <option value="+44">+44</option>
+                          <option value="+61">+61</option>
+                          <option value="+49">+49</option>
+                          <option value="+33">+33</option>
+                          <option value="+81">+81</option>
+                          <option value="+86">+86</option>
+                        </select>
+                        <input type="tel" id="phone" name="phone" placeholder="98765 43210" required style="flex: 1; padding: 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em; box-sizing: border-box; transition: border-color 0.3s;" onfocus="this.style.borderColor='#FFAE00';" onblur="this.style.borderColor='#e0e0e0';">
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label for="city" style="display: block; margin-bottom: 8px; color: #333; font-weight: 600; font-size: 0.9em;">City</label>
+                      <input type="text" id="city" name="city" placeholder="Your city" style="width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em; box-sizing: border-box; transition: border-color 0.3s;" onfocus="this.style.borderColor='#FFAE00';" onblur="this.style.borderColor='#e0e0e0';">
+                    </div>
+                  </div>
+                  
+                  <div class="form-group" style="margin-bottom: 20px;">
+                    <label for="country" style="display: block; margin-bottom: 8px; color: #333; font-weight: 600; font-size: 0.9em;">Country</label>
+                    <input type="text" id="country" name="country" placeholder="Your country" required readonly style="width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em; box-sizing: border-box; background: #f5f5f5;">
+                    <small class="form-helper-text" style="display: block; margin-top: 5px; color: #666; font-size: 0.85em;">Country will be automatically filled based on your phone country code selection</small>
+                  </div>
+                  
+                  <button type="submit" class="bss-submit-btn" style="width: 100%; padding: 18px; background: linear-gradient(135deg, #FFAE00 0%, #F54200 100%); color: white; border: none; border-radius: 10px; font-size: 1.1em; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 5px 20px rgba(255, 174, 0, 0.3); transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(255, 174, 0, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 5px 20px rgba(255, 174, 0, 0.3)';">
+                    GET FREE ACCESS NOW →
+                  </button>
+                </form>
+                
+                <div class="form-message" style="display:none; margin-top:15px; padding: 12px; border-radius: 8px; text-align: center; font-weight: 600;"></div>
+                
+                <div class="bss-form-footer" style="margin-top: 30px; padding-top: 30px; border-top: 1px solid #e0e0e0;">
+                  <div class="form-features" style="display: flex; flex-direction: column; gap: 15px;">
+                    <div class="form-feature" style="display: flex; align-items: center; gap: 12px;">
+                      <span style="color: #4CAF50; font-size: 1.2em;">✓</span>
+                      <span style="color: #666; font-size: 0.95em;">Instant access to complete training series</span>
+                    </div>
+                    <div class="form-feature" style="display: flex; align-items: center; gap: 12px;">
+                      <span style="color: #4CAF50; font-size: 1.2em;">✓</span>
+                      <span style="color: #666; font-size: 0.95em;">Your information is secure and private</span>
+                    </div>
+                    <div class="form-feature" style="display: flex; align-items: center; gap: 12px;">
+                      <span style="color: #4CAF50; font-size: 1.2em;">✓</span>
+                      <span style="color: #666; font-size: 0.95em;">Limited time offer</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         `,
         media: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M20,8L12,13L4,8V6L12,11L20,6M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4Z"/></svg>`,
@@ -4544,75 +4394,6 @@ const showCompletionMessage = () => {
         media: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/></svg>`,
       });
 
-      // ==================== LOGIN/SIGNUP FORMS ====================
-      
-      bm.add('login-form', {
-        label: 'Login Form',
-        category: 'Forms',
-        content: `
-          <div style="max-width: 450px; margin: 50px auto; background: white; padding: 40px; border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.1);">
-            <h2 style="text-align: center; margin-bottom: 10px; color: #333; font-size: 2em;">Welcome Back</h2>
-            <p style="text-align: center; color: #666; margin-bottom: 30px;">Sign in to your account</p>
-            <form>
-              <div style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 600; font-size: 0.9em;">Email Address</label>
-                <input type="email" placeholder="Enter your email" style="width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 1em; box-sizing: border-box; transition: all 0.3s;"/>
-              </div>
-              <div style="margin-bottom: 10px;">
-                <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 600; font-size: 0.9em;">Password</label>
-                <input type="password" placeholder="Enter your password" style="width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 1em; box-sizing: border-box; transition: all 0.3s;"/>
-              </div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9em; color: #666;">
-                  <input type="checkbox"/> Remember me
-                </label>
-                <a href="#" style="color: #4CAF50; text-decoration: none; font-size: 0.9em; font-weight: 600;">Forgot Password?</a>
-              </div>
-              <button type="submit" style="width: 100%; padding: 15px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 8px; font-size: 1.1em; font-weight: 600; cursor: pointer; margin-bottom: 20px;">Sign In</button>
-              <p style="text-align: center; color: #666; font-size: 0.9em;">Don't have an account? <a href="#" style="color: #4CAF50; text-decoration: none; font-weight: 600;">Sign Up</a></p>
-            </form>
-          </div>
-        `,
-        media: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>`,
-      });
-
-      bm.add('signup-form', {
-        label: 'Signup Form',
-        category: 'Forms',
-        content: `
-          <div style="max-width: 500px; margin: 50px auto; background: white; padding: 40px; border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.1);">
-            <h2 style="text-align: center; margin-bottom: 10px; color: #333; font-size: 2em;">Create Account</h2>
-            <p style="text-align: center; color: #666; margin-bottom: 30px;">Join us today</p>
-            <form>
-              <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-                <div style="flex: 1;">
-                  <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 600; font-size: 0.9em;">First Name</label>
-                  <input type="text" placeholder="John" style="width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 1em; box-sizing: border-box;"/>
-                </div>
-                <div style="flex: 1;">
-                  <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 600; font-size: 0.9em;">Last Name</label>
-                  <input type="text" placeholder="Doe" style="width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 1em; box-sizing: border-box;"/>
-                </div>
-              </div>
-              <div style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 600; font-size: 0.9em;">Email Address</label>
-                <input type="email" placeholder="john@example.com" style="width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 1em; box-sizing: border-box;"/>
-              </div>
-              <div style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 600; font-size: 0.9em;">Password</label>
-                <input type="password" placeholder="Minimum 8 characters" style="width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 1em; box-sizing: border-box;"/>
-              </div>
-              <label style="display: flex; align-items: start; gap: 10px; margin-bottom: 25px; cursor: pointer; font-size: 0.9em; color: #666;">
-                <input type="checkbox" style="margin-top: 3px;"/> I agree to the <a href="#" style="color: #4CAF50; text-decoration: none;">Terms & Conditions</a>
-              </label>
-              <button type="submit" style="width: 100%; padding: 15px; background: linear-gradient(135deg, #4CAF50, #45a049); color: white; border: none; border-radius: 8px; font-size: 1.1em; font-weight: 600; cursor: pointer; margin-bottom: 20px;">Create Account</button>
-              <p style="text-align: center; color: #666; font-size: 0.9em;">Already have an account? <a href="#" style="color: #4CAF50; text-decoration: none; font-weight: 600;">Sign In</a></p>
-            </form>
-          </div>
-        `,
-        media: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M15,14C12.33,14 7,15.33 7,18V20H23V18C23,15.33 17.67,14 15,14M6,10V7H4V10H1V12H4V15H6V12H9V10M15,12A4,4 0 0,0 19,8A4,4 0 0,0 15,4A4,4 0 0,0 11,8A4,4 0 0,0 15,12Z"/></svg>`,
-      });
-
       // ==================== SERVICES/FEATURES ====================
       
       bm.add('service-box', {
@@ -4742,6 +4523,180 @@ const showCompletionMessage = () => {
         media: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M20,8L12,13L4,8V6L12,11L20,6M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4Z"/></svg>`,
       });
 
+  // Initialize scroll to form functionality for CTA buttons
+  // This will work in both editor and live page
+  if (typeof window !== 'undefined') {
+    // Global function for scrolling to form
+    window.scrollToDirectFormFromCTA = function(button) {
+      try {
+        // Find wrapper containing both button and form
+        const wrapper = button.closest('.direct-form-cta-wrapper');
+        if (!wrapper) {
+          console.warn('Could not find wrapper');
+          return false;
+        }
+        
+        // Find form within the same wrapper
+        const formElement = wrapper.querySelector('.bss-direct-form-container');
+        if (!formElement) {
+          console.warn('Could not find form element');
+          return false;
+        }
+        
+        // Scroll to form
+        formElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+        
+        // Add highlight effect
+        formElement.style.transition = 'box-shadow 0.3s ease';
+        formElement.style.boxShadow = '0 0 30px rgba(255, 174, 0, 0.6)';
+        
+        setTimeout(() => {
+          formElement.style.boxShadow = '';
+        }, 2000);
+        
+        return true;
+      } catch (error) {
+        console.error('Error scrolling to form:', error);
+        return false;
+      }
+    };
+    
+    // Event delegation for CTA buttons (works even if buttons are added dynamically)
+    const initScrollToFormListeners = function() {
+      // Remove existing listeners to avoid duplicates
+      document.removeEventListener('click', handleCTAClick);
+      // Add new listener
+      document.addEventListener('click', handleCTAClick, true);
+    };
+    
+    const handleCTAClick = function(e) {
+      const button = e.target.closest('.scroll-to-form-cta') || e.target.closest('[data-scroll-to-form]');
+      if (button) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Find form - try multiple methods
+        let formElement = null;
+        
+        // Method 1: Find wrapper and form within it
+        const wrapper = button.closest('.direct-form-cta-wrapper');
+        if (wrapper) {
+          formElement = wrapper.querySelector('.bss-direct-form-container');
+        }
+        
+        // Method 2: Find by ID pattern (handles dynamic IDs like direct-form-target-3)
+        if (!formElement) {
+          formElement = document.querySelector('[id^="direct-form-target"]') || 
+                       document.querySelector('.bss-direct-form-container');
+        }
+        
+        // Method 3: Find any form container on page
+        if (!formElement) {
+          formElement = document.querySelector('.bss-direct-form-container');
+        }
+        
+        if (formElement) {
+          formElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+          
+          // Add highlight effect
+          formElement.style.transition = 'box-shadow 0.3s ease';
+          formElement.style.boxShadow = '0 0 30px rgba(255, 174, 0, 0.6)';
+          
+          setTimeout(() => {
+            formElement.style.boxShadow = '';
+          }, 2000);
+        } else {
+          console.warn('Form not found for scroll');
+        }
+      }
+    };
+    
+    // Initialize on DOM ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initScrollToFormListeners);
+    } else {
+      initScrollToFormListeners();
+    }
+    
+    // Also initialize in editor iframe when available
+    const initIframeListeners = function() {
+      try {
+        const iframes = document.querySelectorAll('iframe');
+        iframes.forEach(iframe => {
+          try {
+            if (iframe.contentWindow && iframe.contentWindow.document) {
+              const iframeDoc = iframe.contentWindow.document;
+              const iframeHandleClick = function(e) {
+                const button = e.target.closest('.scroll-to-form-cta') || e.target.closest('[data-scroll-to-form]');
+                if (button) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  
+                  // Find form - try multiple methods
+                  let formElement = null;
+                  
+                  // Method 1: Find wrapper and form within it
+                  const wrapper = button.closest('.direct-form-cta-wrapper');
+                  if (wrapper) {
+                    formElement = wrapper.querySelector('.bss-direct-form-container');
+                  }
+                  
+                  // Method 2: Find by ID pattern
+                  if (!formElement) {
+                    formElement = iframeDoc.querySelector('[id^="direct-form-target"]') || 
+                                 iframeDoc.querySelector('.bss-direct-form-container');
+                  }
+                  
+                  // Method 3: Find any form container
+                  if (!formElement) {
+                    formElement = iframeDoc.querySelector('.bss-direct-form-container');
+                  }
+                  
+                  if (formElement) {
+                    formElement.scrollIntoView({ 
+                      behavior: 'smooth', 
+                      block: 'center' 
+                    });
+                    
+                    formElement.style.transition = 'box-shadow 0.3s ease';
+                    formElement.style.boxShadow = '0 0 30px rgba(255, 174, 0, 0.6)';
+                    
+                    setTimeout(() => {
+                      formElement.style.boxShadow = '';
+                    }, 2000);
+                  }
+                }
+              };
+              
+              if (iframeDoc.readyState === 'loading') {
+                iframeDoc.addEventListener('DOMContentLoaded', () => {
+                  iframeDoc.removeEventListener('click', iframeHandleClick);
+                  iframeDoc.addEventListener('click', iframeHandleClick, true);
+                });
+              } else {
+                iframeDoc.removeEventListener('click', iframeHandleClick);
+                iframeDoc.addEventListener('click', iframeHandleClick, true);
+              }
+            }
+          } catch (e) {
+            // Cross-origin or other iframe access issues - ignore
+          }
+        });
+      } catch (e) {
+        // Ignore errors
+      }
+    };
+    
+    // Try to initialize iframe listeners after a delay
+    setTimeout(initIframeListeners, 1000);
+    setTimeout(initIframeListeners, 3000);
+  }
 
   }
 export default addLandingPageComponents;

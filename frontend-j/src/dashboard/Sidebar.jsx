@@ -531,9 +531,9 @@ const Sidebar = () => {
       left={0}
       top={0}
       h="100vh"
-      w={isCollapsed ? "80px" : "320px"}
-      maxW={isCollapsed ? "80px" : "320px"}
-      minW={isCollapsed ? "80px" : "320px"}
+      w={isCollapsed ? "80px" : { base: "280px", sm: "300px", md: "320px" }}
+      maxW={isCollapsed ? "80px" : { base: "280px", sm: "300px", md: "320px" }}
+      minW={isCollapsed ? "80px" : { base: "280px", sm: "300px", md: "320px" }}
       bg={sidebarPalette.background}
       borderRight={`1px solid ${sidebarPalette.border}`}
       boxShadow={sidebarPalette.glow}
@@ -545,6 +545,38 @@ const Sidebar = () => {
       transform="translateZ(0)"
       willChange="width"
       backdropFilter="blur(12px)"
+      sx={{
+        '@media (max-width: 575px)': {
+          width: isCollapsed ? '80px' : '100%',
+          maxWidth: isCollapsed ? '80px' : '100%',
+          minWidth: isCollapsed ? '80px' : '100%',
+        },
+        '@media (min-width: 576px) and (max-width: 767px)': {
+          width: isCollapsed ? '80px' : '280px',
+          maxWidth: isCollapsed ? '80px' : '280px',
+          minWidth: isCollapsed ? '80px' : '280px',
+        },
+        '@media (min-width: 768px) and (max-width: 991px)': {
+          width: isCollapsed ? '80px' : '280px',
+          maxWidth: isCollapsed ? '80px' : '280px',
+          minWidth: isCollapsed ? '80px' : '280px',
+        },
+        '@media (min-width: 992px) and (max-width: 1199px)': {
+          width: isCollapsed ? '80px' : '280px',
+          maxWidth: isCollapsed ? '80px' : '280px',
+          minWidth: isCollapsed ? '80px' : '280px',
+        },
+        '@media (min-width: 1200px) and (max-width: 1399px)': {
+          width: isCollapsed ? '80px' : '300px',
+          maxWidth: isCollapsed ? '80px' : '300px',
+          minWidth: isCollapsed ? '80px' : '300px',
+        },
+        '@media (min-width: 1400px)': {
+          width: isCollapsed ? '80px' : '320px',
+          maxWidth: isCollapsed ? '80px' : '320px',
+          minWidth: isCollapsed ? '80px' : '320px',
+        },
+      }}
     >
       {/* Header */}
       <Box 

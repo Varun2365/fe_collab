@@ -33,6 +33,8 @@ const FiCalendar = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" heig
 const FiCreditCard = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>;
 const FiArrowLeft = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>;
 const FiGripVertical = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>;
+const FiMenu = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
+const FiX = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
 
 // Professional Skeleton Loader Styles
 const additionalStyles = `
@@ -1949,6 +1951,36 @@ const FunnelEditorIndex = () => {
   const tabRefs = useRef({});
   const [draggedStageId, setDraggedStageId] = useState(null);
   const [dragOverStageId, setDragOverStageId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 767);
+
+  // Handle window resize for responsive behavior
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 767;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Initial check
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Disable body scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (isMobile && sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobile, sidebarOpen]);
 
   useEffect(() => {
     if (slug) {
@@ -2695,14 +2727,50 @@ const FunnelEditorIndex = () => {
 
     return (
       <>
-        <div className="content-area-header animate-fadeIn" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px', flexWrap: 'wrap' }}>
-          <h2 className="content-title" style={{ margin: 0 }}>
+        <div className="content-area-header animate-fadeIn" style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'flex-start', 
+          marginBottom: isMobile ? '16px' : '20px', 
+          gap: isMobile ? '12px' : '15px', 
+          flexWrap: 'wrap',
+          flexDirection: isMobile ? 'column' : 'row'
+        }}>
+          <h2 className="content-title" style={{ 
+            margin: 0,
+            fontSize: isMobile ? '18px' : '24px',
+            lineHeight: '1.3'
+          }}>
             {stageConfig?.name || activeStage.name}
           </h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: isMobile ? '8px' : '10px', 
+            flexWrap: 'wrap',
+            width: isMobile ? '100%' : 'auto'
+          }}>
             {pageUrl && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: '#f7fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: '12px', color: '#4a5568', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                padding: isMobile ? '6px 10px' : '8px 12px', 
+                backgroundColor: '#f7fafc', 
+                borderRadius: '6px', 
+                border: '1px solid #e2e8f0',
+                width: isMobile ? '100%' : 'auto',
+                maxWidth: isMobile ? '100%' : '300px',
+                overflow: 'hidden'
+              }}>
+                <span style={{ 
+                  fontSize: isMobile ? '11px' : '12px', 
+                  color: '#4a5568', 
+                  maxWidth: isMobile ? 'calc(100% - 30px)' : '300px', 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  whiteSpace: 'nowrap' 
+                }}>
                   {pageUrl}
                 </span>
                 <button
@@ -2728,13 +2796,15 @@ const FunnelEditorIndex = () => {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                padding: '10px 20px',
-                fontSize: '14px',
-                fontWeight: '500'
+                gap: isMobile ? '6px' : '8px',
+                padding: isMobile ? '8px 16px' : '10px 20px',
+                fontSize: isMobile ? '12px' : '14px',
+                fontWeight: '500',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}
             >
-              <FiEye /> View this page
+              <FiEye /> {isMobile ? 'View' : 'View this page'}
             </button>
           </div>
         </div>
@@ -3142,22 +3212,49 @@ const FunnelEditorIndex = () => {
   return (
     <div className="editor-container">
       <style>{additionalStyles}</style>
-      <header className="editor-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      {/* Mobile Sidebar Toggle */}
+      {isMobile && (
+        <button
+          className="sidebar-toggle-mobile"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1001
+          }}
+        >
+          <FiMenu style={{ width: '20px', height: '20px' }} />
+        </button>
+      )}
+      {/* Sidebar Overlay for Mobile */}
+      {isMobile && (
+        <div
+          className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <header className="editor-header" style={{
+        padding: isMobile ? '12px 16px' : window.innerWidth <= 991 ? '14px 20px' : '16px 32px',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           <button
             onClick={() => navigate('/funnels')}
             style={{
               background: '#f7fafc',
               border: '1px solid #e2e8f0',
               cursor: 'pointer',
-              padding: '10px 12px',
+              padding: isMobile ? '8px 10px' : '10px 12px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: '8px',
               color: '#4a5568',
               transition: 'all 0.2s',
-              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+              flexShrink: 0
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = '#edf2f7';
@@ -3177,18 +3274,65 @@ const FunnelEditorIndex = () => {
           >
             <FiArrowLeft style={{ width: '20px', height: '20px' }} />
           </button>
-        <div>
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span>Funnel: {contentData.name || 'Untitled Funnel'}</span>
-            <span className="editor-mode-pill">GrapesJS Builder</span>
+        <div style={{ flex: 1, minWidth: isMobile ? '100%' : '200px' }}>
+          <h1 style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            flexWrap: 'wrap',
+            fontSize: isMobile ? '18px' : window.innerWidth <= 991 ? '20px' : '23px',
+            lineHeight: '1.3',
+            margin: 0
+          }}>
+            <span style={{ 
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis', 
+              whiteSpace: isMobile ? 'normal' : 'nowrap',
+              maxWidth: isMobile ? '100%' : '400px'
+            }}>
+              Funnel: {contentData.name || 'Untitled Funnel'}
+            </span>
+            {!isMobile && <span className="editor-mode-pill">GrapesJS Builder</span>}
           </h1>
-            <p>Editing Stage: {activeStage?.name || 'N/A'}</p>
+            <p style={{ 
+              fontSize: isMobile ? '12px' : '14px',
+              margin: '4px 0 0',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              Editing Stage: {activeStage?.name || 'N/A'}
+            </p>
           </div>
         </div>
-        <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div className="header-actions" style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: isMobile ? '8px' : '10px', 
+          flexWrap: 'wrap',
+          width: isMobile ? '100%' : 'auto'
+        }}>
           {funnelUrl && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: '#f7fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-              <span style={{ fontSize: '12px', color: '#4a5568', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              padding: isMobile ? '6px 10px' : '8px 12px', 
+              backgroundColor: '#f7fafc', 
+              borderRadius: '6px', 
+              border: '1px solid #e2e8f0',
+              width: isMobile ? '100%' : 'auto',
+              maxWidth: isMobile ? '100%' : '300px',
+              overflow: 'hidden'
+            }}>
+              <span style={{ 
+                fontSize: isMobile ? '11px' : '12px', 
+                color: '#4a5568', 
+                maxWidth: isMobile ? 'calc(100% - 30px)' : '300px', 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis', 
+                whiteSpace: 'nowrap' 
+              }}>
                 {funnelUrl}
               </span>
               <button
@@ -3211,6 +3355,12 @@ const FunnelEditorIndex = () => {
           <button 
             className="button-primary"
             onClick={() => handlePreviewFunnel()}
+            style={{
+              padding: isMobile ? '8px 12px' : '10px 16px',
+              fontSize: isMobile ? '12px' : '14px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}
           >
             <FiExternalLink /> Preview
           </button>
@@ -3218,8 +3368,36 @@ const FunnelEditorIndex = () => {
       </header>
       
       <div className="editor-layout">
-        <aside className="editor-sidebar">
-          <h3 style={{fontSize:'19px'}} className="sidebar-title">Funnel Stages</h3>
+        <aside className={`editor-sidebar ${sidebarOpen ? 'open' : ''}`}>
+          {isMobile && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px',
+              paddingBottom: '16px',
+              borderBottom: '1px solid #e2e8f0'
+            }}>
+              <h3 style={{fontSize:'18px', margin: 0}} className="sidebar-title">Funnel Stages</h3>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: '#4a5568'
+                }}
+              >
+                <FiX style={{ width: '20px', height: '20px' }} />
+              </button>
+            </div>
+          )}
+          {!isMobile && (
+            <h3 style={{fontSize:'19px'}} className="sidebar-title">Funnel Stages</h3>
+          )}
           <ul className="stages-list">
             {stages.map((stage, index) => {
               const isIndexPage = index === 0; // First stage is always the index page
@@ -3244,7 +3422,11 @@ const FunnelEditorIndex = () => {
                     setActiveTab('Template'); 
                   } else { 
                     setActiveTab('Template'); 
-                  } 
+                  }
+                  // Close sidebar on mobile after selection
+                  if (isMobile) {
+                    setSidebarOpen(false);
+                  }
                 }}
                 style={{
                   cursor: draggedStageId === stage.id ? 'grabbing' : 'grab',
