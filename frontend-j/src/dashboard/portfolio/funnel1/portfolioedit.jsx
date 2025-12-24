@@ -1,18 +1,20 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaSync, FaDownload, FaArrowLeft, FaMagic, FaFileAlt, FaSave, FaFileExport, FaArrowDown, FaCalendarDay, FaGripVertical, FaCode, FaMoon, FaSun } from 'react-icons/fa';
+import { FaSync, FaDownload, FaArrowLeft, FaMagic, FaFileAlt, FaSave, FaFileExport, FaArrowDown, FaCalendarDay, FaGripVertical, FaCode, FaMoon, FaSun, FaLaptop, FaTabletAlt, FaMobileAlt, FaLayerGroup, FaExchangeAlt, FaThLarge, FaTimes, FaPlus, FaCube, FaCopy, FaClone, FaTrash } from 'react-icons/fa';
 import axios from "axios";
 import { updateProjectData, setSelectedTemplateForStage, updateStageBasicInfo,
    saveFunnelToBackend, fetchFunnelBySlug, resetState } from '../../../redux/funnel.jsx';
 import { templates } from './df_temp.jsx';
 import addLandingPageComponents from './function.jsx';
 import { getCoachId, getToken, debugAuthState } from '../../../utils/authUtils';
-// GrapesJS Core and Plugins (Free version)
+// GrapesJS Core and Plugins (100% FREE - Open Source MIT License - No payment/keys required for live server)
+// ✅ Completely free to use in production, commercial projects, and live servers
+// ✅ No API keys, no subscriptions, no payments needed
+// ✅ MIT License allows commercial use without restrictions
 import grapesjs from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
 import gjsPresetWebpage from "grapesjs-preset-webpage";
-import gjsForms from "grapesjs-plugin-forms";
 import gjsCountdown from "grapesjs-component-countdown";
 import gjsTabs from "grapesjs-tabs";
 import gjsCustomCode from "grapesjs-custom-code";
@@ -21,9 +23,214 @@ import gjsTyped from "grapesjs-typed";
 import gjsNavbar from "grapesjs-navbar";
 import gjsBlocksBasic from "grapesjs-blocks-basic";
 
-// 🆕 NEW FREE PLUGINS (100% FREE - NO TOKEN REQUIRED)
 import gjsStyleGradient from 'grapesjs-style-gradient';
 import gjsPluginExport from 'grapesjs-plugin-export';
+
+const BUILDER_PANEL_ENABLED = false;
+
+const SECTION_LAYOUTS = [
+  { id: 'section-full', label: 'Full Width', description: 'Edge-to-edge hero section', actionType: 'section', payload: { maxWidth: '100%', columns: 1, background: '#0f172a', textColor: '#ffffff' } },
+  { id: 'section-wide', label: 'Wide', description: 'Great for hero + media combos', actionType: 'section', payload: { maxWidth: '1280px', columns: 1, background: '#ffffff', textColor: '#0f172a' } },
+  { id: 'section-medium', label: 'Medium', description: 'Content focused layout', actionType: 'section', payload: { maxWidth: '960px', columns: 1, background: '#ffffff', textColor: '#0f172a' } },
+  { id: 'section-small', label: 'Small', description: 'Compact spotlight or CTA', actionType: 'section', payload: { maxWidth: '720px', columns: 1, background: '#ffffff', textColor: '#0f172a' } },
+];
+
+const COLUMN_LAYOUTS = [
+  { id: 'columns-one', label: '1 Column', description: 'Single column content block', actionType: 'columns', payload: { columns: 1 } },
+  { id: 'columns-two', label: '2 Columns', description: 'Balanced two column layout', actionType: 'columns', payload: { columns: 2 } },
+  { id: 'columns-two-wide-left', label: '2 Columns 3/7', description: 'Sidebar + content layout', actionType: 'columns', payload: { columns: 2, template: '3fr 7fr' } },
+  { id: 'columns-three', label: '3 Columns', description: 'Feature highlights', actionType: 'columns', payload: { columns: 3 } },
+  { id: 'columns-four', label: '4 Columns', description: 'Icon or stat grid', actionType: 'columns', payload: { columns: 4 } },
+];
+
+const ELEMENT_BLOCKS = [
+  { id: 'element-heading', label: 'Hero Heading', description: 'Large center aligned heading', actionType: 'element', payload: { type: 'heading' } },
+  { id: 'element-text', label: 'Paragraph', description: 'Readable multiline text block', actionType: 'element', payload: { type: 'paragraph' } },
+  { id: 'element-button', label: 'CTA Button', description: 'Primary gradient button', actionType: 'element', payload: { type: 'button' } },
+  { id: 'element-image', label: 'Image', description: 'Responsive image placeholder', actionType: 'element', payload: { type: 'image' } },
+  { id: 'element-video', label: 'Video Embed', description: '16:9 responsive frame', actionType: 'element', payload: { type: 'video' } },
+];
+
+const PREBUILT_SECTIONS = [
+  { id: 'prebuilt-hero', label: 'Hero + CTA', description: 'Hero copy with CTA button and supporting text', actionType: 'prebuilt', payload: { template: 'hero' } },
+  { id: 'prebuilt-feature', label: 'Feature Grid', description: 'Three column feature showcase', actionType: 'prebuilt', payload: { template: 'features' } },
+  { id: 'prebuilt-testimonial', label: 'Testimonial', description: 'Quote with avatar and rating', actionType: 'prebuilt', payload: { template: 'testimonial' } },
+];
+
+const CTA_BLOCKS = [
+  { id: 'cta-banner', label: 'CTA Banner', description: 'High-impact CTA bar with button', actionType: 'prebuilt', payload: { template: 'cta' } },
+  { id: 'cta-split', label: 'Two-Column CTA', description: 'Copy + checklist + CTA', actionType: 'prebuilt', payload: { template: 'cta-split' } },
+];
+
+const FORM_LAYOUTS = [
+  { id: 'form-simple', label: 'Simple Form', description: 'Name, email, phone stacked inputs', actionType: 'prebuilt', payload: { template: 'form-simple' } },
+  { id: 'form-dual', label: 'Two Column Form', description: 'Compact form for bookings', actionType: 'prebuilt', payload: { template: 'form-dual' } },
+];
+
+const FAQ_SECTIONS = [
+  { id: 'faq-list', label: 'FAQ List', description: 'Stacked accordion style questions', actionType: 'prebuilt', payload: { template: 'faq' } },
+];
+
+const STATS_SECTIONS = [
+  { id: 'stats-grid', label: 'Stats Grid', description: 'KPIs with icons', actionType: 'prebuilt', payload: { template: 'stats' } },
+  { id: 'timeline', label: 'Timeline', description: 'Milestones/roadmap cards', actionType: 'prebuilt', payload: { template: 'timeline' } },
+];
+
+const GLOBAL_SECTIONS = [
+  { id: 'global-banner', label: 'Announcement Banner', description: 'Reusable top banner for promotions', actionType: 'global', payload: { title: 'Announcement', body: 'Add your global announcement here.' } },
+  { id: 'global-footer', label: 'Footer Links', description: 'Footer navigation links section', actionType: 'global', payload: { title: 'Footer Links', body: 'Add your site-wide footer links here.' } },
+];
+
+const CUSTOM_VALUE_ITEMS = [
+  { id: 'custom-name', label: '{{user_name}}', description: 'Personalize with the visitor name', actionType: 'customValue', payload: { token: '{{user_name}}' } },
+  { id: 'custom-date', label: '{{current_date}}', description: 'Show current date dynamically', actionType: 'customValue', payload: { token: '{{current_date}}' } },
+  { id: 'custom-city', label: '{{city}}', description: 'Location-aware placeholder', actionType: 'customValue', payload: { token: '{{city}}' } },
+];
+
+const BUILDER_ITEM_MAP = {
+  sections: SECTION_LAYOUTS,
+  columns: COLUMN_LAYOUTS,
+  elements: ELEMENT_BLOCKS,
+  'pre-built': PREBUILT_SECTIONS,
+  cta: CTA_BLOCKS,
+  forms: FORM_LAYOUTS,
+  faq: FAQ_SECTIONS,
+  stats: STATS_SECTIONS,
+  'global-section': GLOBAL_SECTIONS,
+  'custom-value': CUSTOM_VALUE_ITEMS,
+};
+
+const STATIC_BUILDER_GROUPS = [
+  { id: 'sections', label: 'Section' },
+  { id: 'columns', label: 'Column' },
+  { id: 'elements', label: 'Elements' },
+  { id: 'pre-built', label: 'Pre-Built' },
+  { id: 'cta', label: 'Call To Action' },
+  { id: 'forms', label: 'Forms' },
+  { id: 'stats', label: 'Metrics' },
+  { id: 'faq', label: 'FAQ' },
+  { id: 'global-section', label: 'Global Section' },
+  { id: 'custom-value', label: 'Custom Value' },
+];
+
+const DAY_NAME_TO_INDEX = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6
+};
+
+const DAY_DATE_LOCALE = 'en-IN';
+const DAY_DATE_TIMEZONE = 'Asia/Kolkata';
+
+const getLocalizedNow = () => {
+  const now = new Date();
+  return new Date(
+    now.toLocaleString('en-US', { timeZone: DAY_DATE_TIMEZONE })
+  );
+};
+
+const formatRecentDateDisplay = (date) =>
+  new Intl.DateTimeFormat(DAY_DATE_LOCALE, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: DAY_DATE_TIMEZONE
+  }).format(date);
+
+const getUpcomingDateForDay = (dayName) => {
+  if (!dayName || typeof DAY_NAME_TO_INDEX[dayName] === 'undefined') {
+    return '';
+  }
+
+  const today = getLocalizedNow();
+  const targetDay = DAY_NAME_TO_INDEX[dayName];
+  const currentDay = today.getDay();
+
+  const daysToAdd = (targetDay - currentDay + 7) % 7;
+  const upcomingDate = new Date(today);
+  upcomingDate.setDate(today.getDate() + daysToAdd);
+
+  return formatRecentDateDisplay(upcomingDate);
+};
+
+const normalizeDaySelection = (selectionInput, fallbackDate) => {
+  if (!selectionInput) return [];
+
+  if (Array.isArray(selectionInput)) {
+    return selectionInput
+      .map(item => {
+        if (!item) return null;
+        if (typeof item === 'string') {
+          return { day: item, date: getUpcomingDateForDay(item) };
+        }
+        if (typeof item === 'object') {
+          const normalizedDay = item.day || item.value;
+          if (!normalizedDay) return null;
+          return {
+            day: normalizedDay,
+            date: item.date || getUpcomingDateForDay(normalizedDay)
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+  }
+
+  if (typeof selectionInput === 'string') {
+    return [{
+      day: selectionInput,
+      date: fallbackDate || getUpcomingDateForDay(selectionInput)
+    }];
+  }
+
+  if (typeof selectionInput === 'object') {
+    const normalizedDay = selectionInput.day || selectionInput.value;
+    if (!normalizedDay) return [];
+    return [{
+      day: normalizedDay,
+      date: selectionInput.date || fallbackDate || getUpcomingDateForDay(normalizedDay)
+    }];
+  }
+
+  return [];
+};
+
+const formatDaySummary = (entries) => (
+  entries.length ? entries.map(entry => entry.day).join(', ') : 'Click Day Selector to choose'
+);
+
+const formatDateSummary = (entries) => (
+  entries.length ? entries.map(entry => entry.date || getUpcomingDateForDay(entry.day)).join(', ') : 'No day selected'
+);
+
+const parseDaySelectionFromElement = (element) => {
+  if (!element) return [];
+
+  const multiAttr = element.getAttribute('data-selected-days');
+  if (multiAttr) {
+    try {
+      const parsed = JSON.parse(multiAttr);
+      const normalized = normalizeDaySelection(parsed);
+      if (normalized.length) {
+        return normalized;
+      }
+    } catch (error) {
+      console.warn('Failed to parse data-selected-days', error);
+    }
+  }
+
+  const singleDay = element.getAttribute('data-selected-day');
+  if (singleDay) {
+    const singleDate = element.getAttribute('data-recent-date');
+    return normalizeDaySelection(singleDay, singleDate);
+  }
+
+  return [];
+};
 
 //** Floating Form Button Component **//
 const FloatingFormButton = ({ forms, onScrollToForm }) => {
@@ -49,38 +256,95 @@ const FloatingFormButton = ({ forms, onScrollToForm }) => {
 //** Redirect Page Selector Popup **//
 const RedirectPageSelector = ({ stages, currentStageId, onSelect, onClose }) => {
   const [selectedPage, setSelectedPage] = useState('');
+  const [redirectMode, setRedirectMode] = useState('page');
+  const [customLink, setCustomLink] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!selectedPage) {
-      alert('Please select a redirect page');
+
+    if (redirectMode === 'page') {
+      if (!selectedPage) {
+        alert('Please select a redirect page');
+        return;
+      }
+      onSelect(selectedPage);
+      onClose();
       return;
     }
-    onSelect(selectedPage);
+
+    const trimmedLink = customLink.trim();
+    if (!trimmedLink) {
+      alert('Please enter a redirect link');
+      return;
+    }
+    if (!/^https?:\/\//i.test(trimmedLink)) {
+      alert('Please enter a full URL starting with http:// or https://');
+      return;
+    }
+
+    onSelect(trimmedLink);
     onClose();
   };
 
   return (
     <div className="redirect-popup-content">
-      <h3>Select Redirect Page</h3>
-      <p>Choose where users should be redirected after form submission:</p>
+      <h3>Select Redirect Destination</h3>
+      <p>Choose a funnel page or enter a custom link for post-submit redirect.</p>
+
+      <div className="redirect-mode-toggle">
+        <button
+          type="button"
+          className={`redirect-mode-btn ${redirectMode === 'page' ? 'active' : ''}`}
+          onClick={() => setRedirectMode('page')}
+        >
+          Funnel Pages
+        </button>
+        <button
+          type="button"
+          className={`redirect-mode-btn ${redirectMode === 'link' ? 'active' : ''}`}
+          onClick={() => setRedirectMode('link')}
+        >
+          Custom Link
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <select
-            value={selectedPage}
-            onChange={(e) => setSelectedPage(e.target.value)}
-            required
-          >
-            <option value="">-- Select a page --</option>
-            {stages
-              .filter(stage => stage.id !== currentStageId)
-              .map(stage => (
-                <option key={stage.id} value={stage.slug || stage.id}>
-                  {stage.name} ({stage.type})
-                </option>
-              ))}
-          </select>
-        </div>
+        {redirectMode === 'page' && (
+          <div className="form-group">
+            <label className="input-label">Choose a funnel page</label>
+            <select
+              value={selectedPage}
+              onChange={(e) => setSelectedPage(e.target.value)}
+              required
+            >
+              <option value="">-- Select a page --</option>
+              {stages
+                .filter(stage => stage.id !== currentStageId)
+                .map(stage => (
+                  <option key={stage.id} value={stage.slug || stage.id}>
+                    {stage.name} ({stage.type})
+                  </option>
+                ))}
+            </select>
+          </div>
+        )}
+
+        {redirectMode === 'link' && (
+          <div className="form-group">
+            <label className="input-label">Custom redirect URL</label>
+            <input
+              type="url"
+              placeholder="https://example.com/thank-you"
+              value={customLink}
+              onChange={(e) => setCustomLink(e.target.value)}
+              required
+            />
+            <small className="helper-text">
+              Include the full URL (https://...) to redirect outside the funnel.
+            </small>
+          </div>
+        )}
+
         <div className="popup-buttons">
           <button type="button" onClick={onClose} className="cancel-btn">
             Cancel
@@ -269,95 +533,153 @@ const SuccessPopup = ({ message, onClose }) => {
 };
 
 //** Day Selector Popup Component **//
-const DaySelectorPopup = ({ onSelect, onClose }) => {
-  const [selectedDay, setSelectedDay] = useState('');
-  const [recentDate, setRecentDate] = useState('');
+const DaySelectorPopup = ({ onSelect, onClose, initialSelection = [] }) => {
+  const normalizedInitialSelection = useMemo(
+    () => normalizeDaySelection(initialSelection),
+    [initialSelection]
+  );
+  const [selectedDays, setSelectedDays] = useState(normalizedInitialSelection);
+
+  useEffect(() => {
+    setSelectedDays(normalizedInitialSelection);
+  }, [normalizedInitialSelection]);
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  // Function to find most recent date for a day
-  const findMostRecentDateForDay = (dayName) => {
-    const today = new Date();
-    const dayMap = {
-      'Monday': 1,
-      'Tuesday': 2,
-      'Wednesday': 3,
-      'Thursday': 4,
-      'Friday': 5,
-      'Saturday': 6,
-      'Sunday': 0
-    };
-
-    const targetDay = dayMap[dayName];
-    const currentDay = today.getDay();
-    
-    let daysToSubtract = (currentDay - targetDay + 7) % 7;
-    if (daysToSubtract === 0) {
-      daysToSubtract = 0;
-    }
-    
-    const recentDate = new Date(today);
-    recentDate.setDate(today.getDate() - daysToSubtract);
-    
-    return recentDate.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+  const toggleDaySelection = (day) => {
+    setSelectedDays((prev) => {
+      const exists = prev.find((item) => item.day === day);
+      if (exists) {
+        return prev.filter((item) => item.day !== day);
+      }
+      return [
+        ...prev,
+        {
+          day,
+          date: getUpcomingDateForDay(day)
+        }
+      ];
     });
   };
 
-  const handleDaySelect = (day) => {
-    setSelectedDay(day);
-    const recent = findMostRecentDateForDay(day);
-    setRecentDate(recent);
+  const applyPresetDays = (presetDays) => {
+    const uniqueDays = Array.from(new Set(presetDays));
+    setSelectedDays(uniqueDays.map((day) => ({
+      day,
+      date: getUpcomingDateForDay(day)
+    })));
+  };
+
+  const handleQuickSelect = (type) => {
+    switch (type) {
+      case 'weekdays':
+        applyPresetDays(daysOfWeek.slice(0, 5));
+        break;
+      case 'weekend':
+        applyPresetDays(daysOfWeek.slice(5));
+        break;
+      case 'all':
+        applyPresetDays(daysOfWeek);
+        break;
+      case 'clear':
+        setSelectedDays([]);
+        break;
+      default:
+        break;
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!selectedDay) {
-      alert('Please select a day');
+    if (selectedDays.length === 0) {
+      alert('Please select at least one day');
       return;
     }
-    console.log('📤 Submitting from popup:', selectedDay, recentDate);
-    onSelect(selectedDay, recentDate);
+    const normalized = normalizeDaySelection(selectedDays);
+    console.log('📤 Submitting from popup:', normalized);
+    onSelect(normalized);
     onClose();
   };
 
   return (
     <div className="day-selector-popup-content">
-      <h3>Select Day & View Recent Date</h3>
-      <p>Choose a day to see its most recent date:</p>
+      <div className="day-popup-header">
+        <div className="day-popup-icon">📅</div>
+        <div className="day-popup-copy">
+          <h3>Schedule Days</h3>
+          <p>Select any combination of days to keep the widget dated automatically.</p>
+        </div>
+        <div className="selected-count">
+          <span>{selectedDays.length}</span>
+          <small>Selected</small>
+        </div>
+      </div>
+
+      <div className="quick-select-row">
+        <button type="button" className="quick-select-btn" onClick={() => handleQuickSelect('weekdays')}>
+          Weekdays
+        </button>
+        <button type="button" className="quick-select-btn" onClick={() => handleQuickSelect('weekend')}>
+          Weekend
+        </button>
+        <button type="button" className="quick-select-btn" onClick={() => handleQuickSelect('all')}>
+          All Days
+        </button>
+        <button type="button" className="quick-select-btn ghost" onClick={() => handleQuickSelect('clear')}>
+          Clear
+        </button>
+      </div>
       
       <form onSubmit={handleSubmit}>
         <div className="day-grid-popup">
           {daysOfWeek.map((day) => (
             <div
               key={day}
-              className={`day-card-popup ${selectedDay === day ? 'selected' : ''}`}
-              onClick={() => handleDaySelect(day)}
+              className={`day-card-popup ${selectedDays.some((item) => item.day === day) ? 'selected' : ''}`}
+              onClick={() => toggleDaySelection(day)}
             >
               <span className="day-name">{day}</span>
+              <span className="day-date">{getUpcomingDateForDay(day)}</span>
             </div>
           ))}
         </div>
 
-        {selectedDay && (
-          <div className="selected-day-info">
-            <div className="selected-day-display">
-              <strong>Selected Day:</strong> {selectedDay}
+        {selectedDays.length > 0 && (
+          <div className="day-summary-panel">
+            <div className="summary-header">
+              <div>
+                <p className="summary-label">Selected Snapshot</p>
+                <h4>{selectedDays.length} day{selectedDays.length > 1 ? 's' : ''} scheduled</h4>
             </div>
-            <div className="recent-date-display">
-              <strong>Most Recent Date:</strong> {recentDate}
+              <button type="button" className="ghost-btn small" onClick={() => setSelectedDays([])}>
+                Clear Selection
+              </button>
+            </div>
+
+            <div className="summary-chip-list">
+              {selectedDays.map((item) => (
+                <div key={item.day} className="summary-chip">
+                  <strong>{item.day}</strong>
+                  <span>{item.date}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
         <div className="popup-buttons">
+          <button
+            type="button"
+            onClick={() => setSelectedDays(normalizedInitialSelection)}
+            className="ghost-btn"
+          >
+            Reset
+          </button>
           <button type="button" onClick={onClose} className="cancel-btn">
             Cancel
           </button>
-          <button type="submit" className="submit-btn" disabled={!selectedDay}>
-            Add to Page
+          <button type="submit" className="submit-btn" disabled={selectedDays.length === 0}>
+            Apply Selection
           </button>
         </div>
       </form>
@@ -633,14 +955,36 @@ const PortfolioEdit = () => {
   const [selectedRedirectPage, setSelectedRedirectPage] = useState('');
   const [availableForms, setAvailableForms] = useState([]);
   const [showPagesSidebar, setShowPagesSidebar] = useState(true);
+  const [showBlocksPanel, setShowBlocksPanel] = useState(false);
+  const [isToolsPanelOpen, setIsToolsPanelOpen] = useState(() => {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+    const savedPreference = localStorage.getItem('portfolioEditorToolsPanelOpen');
+    return savedPreference ? JSON.parse(savedPreference) : true;
+  });
+  const [toolsPanelSide, setToolsPanelSide] = useState(() => {
+    if (typeof window === 'undefined') {
+      return 'right';
+    }
+    return localStorage.getItem('portfolioEditorToolsPanelSide') || 'right';
+  });
+  const [showBuilderPanel, setShowBuilderPanel] = useState(false);
+  const [activeBuilderCategory, setActiveBuilderCategory] = useState('sections');
+  const [builderSearchTerm, setBuilderSearchTerm] = useState('');
+  const [blockCategories, setBlockCategories] = useState([]);
+  const [isBuilderDragging, setIsBuilderDragging] = useState(false);
   const [selectedPageId, setSelectedPageId] = useState(stageId);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+
+  const hasDirectForms = availableForms.some(
+    (form) => form.type === 'direct-form' || form.type === 'direct-form-v2'
+  );
   const [successMessage, setSuccessMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check localStorage for saved preference
     const saved = localStorage.getItem('portfolioEditorDarkMode');
-    return saved ? JSON.parse(saved) : false;
+    return saved ? JSON.parse(saved) : true;
   });
   
   // Ref to prevent multiple editor initializations
@@ -652,6 +996,8 @@ const PortfolioEdit = () => {
   const [daySelectedComponents, setDaySelectedComponents] = useState(new Set());
   const [selectedDaySelectorId, setSelectedDaySelectorId] = useState(null);
   const [selectedComponentElement, setSelectedComponentElement] = useState(null);
+  const [daySelectorInitialSelection, setDaySelectorInitialSelection] = useState([]);
+  const [hasDaySelectors, setHasDaySelectors] = useState(false);
   
   // Frame width resize state
   const [frameWidth, setFrameWidth] = useState(null); // null means use default max-width
@@ -659,17 +1005,1033 @@ const PortfolioEdit = () => {
   const resizeStartXRef = React.useRef(0);
   const resizeStartWidthRef = React.useRef(0);
 
+  const refreshBlockCategories = useCallback(() => {
+    try {
+      if (!editorInstance || !editorInstance.BlockManager || typeof editorInstance.BlockManager.getAll !== 'function') {
+        setBlockCategories([]);
+        return;
+      }
+
+      const blockManager = editorInstance.BlockManager;
+      const allBlocksCollection = blockManager.getAll();
+      if (!allBlocksCollection) {
+        setBlockCategories([]);
+        return;
+      }
+
+      let blocksList = [];
+      if (Array.isArray(allBlocksCollection)) {
+        blocksList = allBlocksCollection;
+      } else if (typeof allBlocksCollection.toArray === 'function') {
+        blocksList = allBlocksCollection.toArray();
+      } else if (Array.isArray(allBlocksCollection.models)) {
+        blocksList = allBlocksCollection.models;
+      }
+
+      const categoriesMap = {};
+
+      blocksList.forEach(block => {
+        if (!block || typeof block.get !== 'function') return;
+        const rawCategory = block.get('category');
+        let categoryLabel = 'Blocks';
+        let categoryId = 'blocks';
+        if (typeof rawCategory === 'string') {
+          categoryLabel = rawCategory;
+          categoryId = rawCategory.toLowerCase().replace(/\s+/g, '-');
+        } else if (rawCategory && typeof rawCategory === 'object') {
+          const label = typeof rawCategory.get === 'function' ? rawCategory.get('label') : rawCategory.label;
+          const id = rawCategory.id || label;
+          categoryLabel = label || id || 'Blocks';
+          categoryId = (id || categoryLabel).toLowerCase().replace(/\s+/g, '-');
+        }
+
+        if (!categoriesMap[categoryId]) {
+          categoriesMap[categoryId] = {
+            id: categoryId,
+            label: categoryLabel,
+            blocks: []
+          };
+        }
+
+        const blockId = (typeof block.getId === 'function' && block.getId()) || block.id || block.get('id') || `${categoryId}-${categoriesMap[categoryId].blocks.length}`;
+
+        categoriesMap[categoryId].blocks.push({
+          id: `grapes-${blockId}`,
+          label: block.get('label') || 'Untitled Block',
+          description: (block.get('attributes') && block.get('attributes').title) || block.get('categoryLabel') || '',
+          actionType: 'grapesBlock',
+          blockId
+        });
+      });
+
+      setBlockCategories(Object.values(categoriesMap));
+    } catch (error) {
+      console.error('Failed to load GrapesJS blocks for builder:', error);
+      setBlockCategories([]);
+    }
+  }, [editorInstance]);
+
+  useEffect(() => {
+    refreshBlockCategories();
+    if (!editorInstance || !editorInstance.BlockManager) return undefined;
+    const blockManager = editorInstance.BlockManager;
+
+    const handler = () => refreshBlockCategories();
+    if (typeof blockManager.on === 'function') {
+      blockManager.on('add', handler);
+      blockManager.on('remove', handler);
+      return () => {
+        blockManager.off('add', handler);
+        blockManager.off('remove', handler);
+      };
+    }
+    return undefined;
+  }, [editorInstance, refreshBlockCategories]);
+
+  const builderNavItems = useMemo(() => {
+    if (!BUILDER_PANEL_ENABLED) return [];
+    const staticItems = STATIC_BUILDER_GROUPS.map(item => ({
+      id: item.id,
+      label: item.label,
+      type: 'static',
+      count: BUILDER_ITEM_MAP[item.id]?.length || 0
+    }));
+
+    const dynamicItems = blockCategories.map(category => ({
+      id: `blocks-${category.id}`,
+      label: category.label || 'Blocks',
+      type: 'grapes',
+      count: category.blocks.length
+    }));
+
+    return [...staticItems, ...dynamicItems];
+  }, [blockCategories]);
+
+  useEffect(() => {
+    if (!builderNavItems.length) return;
+    if (!builderNavItems.some(item => item.id === activeBuilderCategory)) {
+      setActiveBuilderCategory(builderNavItems[0].id);
+    }
+  }, [builderNavItems, activeBuilderCategory]);
+
+  const builderItems = useMemo(() => {
+    if (!BUILDER_PANEL_ENABLED) return [];
+    const staticItems = BUILDER_ITEM_MAP[activeBuilderCategory];
+    if (staticItems) {
+      return staticItems;
+    }
+
+    if (activeBuilderCategory.startsWith('blocks-')) {
+      const categoryId = activeBuilderCategory.replace('blocks-', '');
+      const category = blockCategories.find(cat => cat.id === categoryId);
+      return category ? category.blocks : [];
+    }
+
+    return [];
+  }, [activeBuilderCategory, blockCategories]);
+
+  const filteredBuilderItems = useMemo(() => {
+    if (!BUILDER_PANEL_ENABLED) return [];
+    const searchTerm = builderSearchTerm.trim().toLowerCase();
+    if (!searchTerm) return builderItems;
+    return builderItems.filter(item =>
+      item.label.toLowerCase().includes(searchTerm) ||
+      (item.description && item.description.toLowerCase().includes(searchTerm))
+    );
+  }, [builderItems, builderSearchTerm]);
+
+  const toolsPanelVisibilityRef = React.useRef(isToolsPanelOpen);
+  const toolsPanelSideRef = React.useRef(toolsPanelSide);
+  const pagesSidebarVisibilityRef = React.useRef(showPagesSidebar);
+
+  const applyToolsPanelPlacement = useCallback(() => {
+    const rightPanels = document.querySelectorAll('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
+    if (!rightPanels.length) return;
+
+    const pagesSidebarElement = document.querySelector('.pages-sidebar');
+    const editorAreaElement = document.querySelector('.editor-main-area');
+    const editorRect = editorAreaElement ? editorAreaElement.getBoundingClientRect() : null;
+    const containerElement = document.querySelector('.portfolio-edit-container');
+    const containerStyles = containerElement ? window.getComputedStyle(containerElement) : null;
+    const toolsPanelWidth = containerStyles ? parseInt(containerStyles.getPropertyValue('--tools-panel-width'), 10) || 280 : 280;
+    const navSidebarWidth = pagesSidebarVisibilityRef.current && pagesSidebarElement
+      ? pagesSidebarElement.getBoundingClientRect().width || 300
+      : 0;
+
+    rightPanels.forEach(panel => {
+      panel.style.display = 'block';
+      panel.style.visibility = 'visible';
+      panel.style.opacity = '1';
+      panel.style.position = 'fixed';
+      panel.style.top = '68px';
+      panel.style.height = 'calc(100vh - 68px)';
+      panel.style.maxHeight = 'calc(100vh - 68px)';
+      panel.style.zIndex = '1001';
+      panel.style.marginTop = '0';
+      panel.style.paddingTop = '0';
+      panel.style.overflowY = 'auto';
+      panel.style.overflowX = 'hidden';
+      if (toolsPanelSideRef.current === 'left') {
+        const editorLeft = editorRect ? editorRect.left : navSidebarWidth;
+        const targetLeft = Math.max((editorLeft || 0) - toolsPanelWidth, 0);
+        panel.style.left = `${targetLeft}px`;
+        panel.style.right = 'auto';
+        panel.style.borderRight = '1px solid #2d2d2d';
+        panel.style.borderLeft = 'none';
+        panel.style.transform = toolsPanelVisibilityRef.current ? 'translateX(0)' : `translateX(-${toolsPanelWidth + 40}px)`;
+      } else {
+        panel.style.left = 'auto';
+        panel.style.right = '0';
+        panel.style.borderLeft = '1px solid #2d2d2d';
+        panel.style.borderRight = 'none';
+        panel.style.transform = toolsPanelVisibilityRef.current ? 'translateX(0)' : `translateX(${toolsPanelWidth + 40}px)`;
+      }
+      panel.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+      panel.style.width = `${toolsPanelWidth}px`;
+      panel.style.maxWidth = `${toolsPanelWidth}px`;
+      panel.style.minWidth = `${toolsPanelWidth}px`;
+      panel.style.pointerEvents = toolsPanelVisibilityRef.current ? 'auto' : 'none';
+      panel.style.opacity = toolsPanelVisibilityRef.current ? '1' : '0';
+    });
+  }, []);
+
+  useEffect(() => {
+    toolsPanelVisibilityRef.current = isToolsPanelOpen;
+    localStorage.setItem('portfolioEditorToolsPanelOpen', JSON.stringify(isToolsPanelOpen));
+    const timer = setTimeout(() => applyToolsPanelPlacement(), 50);
+    return () => clearTimeout(timer);
+  }, [isToolsPanelOpen, applyToolsPanelPlacement]);
+
+  useEffect(() => {
+    toolsPanelSideRef.current = toolsPanelSide;
+    localStorage.setItem('portfolioEditorToolsPanelSide', toolsPanelSide);
+    const timer = setTimeout(() => applyToolsPanelPlacement(), 50);
+    return () => clearTimeout(timer);
+  }, [toolsPanelSide, applyToolsPanelPlacement]);
+
+  useEffect(() => {
+    pagesSidebarVisibilityRef.current = showPagesSidebar;
+    applyToolsPanelPlacement();
+    if (!showPagesSidebar) {
+      setShowBuilderPanel(false);
+    }
+  }, [showPagesSidebar, applyToolsPanelPlacement]);
+
+  // Handle Layers panel toggle - properly move layers to left sidebar
+  useEffect(() => {
+    if (!editorInstance) return;
+
+    let movedLayersElement = null;
+    let movedLayersView = null;
+
+    const findLayersContent = (container) => {
+      if (!container) return { layersView: null, layersContent: null };
+      
+      // First, try to find the layers view by data attribute
+      let layersView = container.querySelector('.gjs-pn-view[data-pn-type="layers"]');
+      
+      // If not found, try active view
+      if (!layersView) {
+        const activeView = container.querySelector('.gjs-pn-view.gjs-pn-active');
+        // Check if active view has layers content
+        if (activeView) {
+          const hasLayers = activeView.querySelector('.gjs-layer, .gjs-layer-item, .gjs-layer-wrapper');
+          if (hasLayers) {
+            layersView = activeView;
+          }
+        }
+      }
+      
+      // If still not found, search all views for layers
+      if (!layersView) {
+        const allViews = container.querySelectorAll('.gjs-pn-view');
+        for (let view of allViews) {
+          const hasLayers = view.querySelector('.gjs-layer, .gjs-layer-item, .gjs-layer-wrapper, .gjs-layers');
+          if (hasLayers) {
+            layersView = view;
+            break;
+          }
+        }
+      }
+      
+      if (layersView) {
+        // Find the actual content container - prioritize the one with actual layer items
+        let layersContent = null;
+        
+        // First, try to find wrapper that contains actual layer items
+        const wrappers = layersView.querySelectorAll('.gjs-layer-wrapper, .gjs-layers, .gjs-pn-view-content');
+        for (let wrapper of wrappers) {
+          const hasItems = wrapper.querySelector('.gjs-layer, .gjs-layer-item');
+          if (hasItems) {
+            layersContent = wrapper;
+            break;
+          }
+        }
+        
+        // If no wrapper with items found, use first wrapper
+        if (!layersContent && wrappers.length > 0) {
+          layersContent = wrappers[0];
+        }
+        
+        // If still no content, check if view itself has layer items
+        if (!layersContent) {
+          const hasLayerItems = layersView.querySelector('.gjs-layer, .gjs-layer-item');
+          if (hasLayerItems) {
+            // Use the view but try to get its content div
+            const contentDiv = layersView.querySelector('div') || layersView;
+            layersContent = contentDiv;
+          }
+        }
+        
+        // Last resort: use the entire view
+        if (!layersContent) {
+          layersContent = layersView;
+        }
+        
+        return { layersView, layersContent };
+      }
+      
+      return { layersView: null, layersContent: null };
+    };
+
+    const handleLayersPanelToggle = () => {
+      const rightSidebarPanel = document.querySelector('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
+      const leftSidebarContainer = document.getElementById('left-sidebar-blocks-container');
+      
+      if (!rightSidebarPanel || !leftSidebarContainer) {
+        // Retry if elements not found
+        const retryTimer = setTimeout(() => handleLayersPanelToggle(), 300);
+        return () => clearTimeout(retryTimer);
+      }
+
+      if (showBlocksPanel) {
+        // Activate layers view by clicking the layers button
+        const layersBtn = document.querySelector('.gjs-pn-btn[data-pn-type="layers"]');
+        if (layersBtn) {
+          if (!layersBtn.classList.contains('gjs-pn-active')) {
+            layersBtn.click();
+          }
+        }
+        
+        // Wait for layers to render, then find and move - with multiple retries
+        const tryMoveLayers = (attempt = 1, maxAttempts = 8) => {
+          const { layersView, layersContent } = findLayersContent(rightSidebarPanel);
+          
+          console.log(`Attempt ${attempt}:`, { 
+            hasLayersView: !!layersView, 
+            hasLayersContent: !!layersContent,
+            layersContentClass: layersContent?.className,
+            layersContentHTML: layersContent ? layersContent.innerHTML.substring(0, 100) : 'none'
+          });
+          
+          if (layersContent && leftSidebarContainer) {
+            // Verify that layersContent actually has layer items
+            const hasLayerItems = layersContent.querySelector('.gjs-layer, .gjs-layer-item, [data-layer-item]');
+            
+            // Also check if the layersView itself has items (in case content is the view)
+            const viewHasItems = layersView ? layersView.querySelector('.gjs-layer, .gjs-layer-item, [data-layer-item]') : null;
+            
+            if ((hasLayerItems || viewHasItems) && layersContent.parentNode !== leftSidebarContainer) {
+              // Clear left sidebar
+              leftSidebarContainer.innerHTML = '';
+              
+              // Move the entire layers content
+              leftSidebarContainer.appendChild(layersContent);
+              movedLayersElement = layersContent;
+              movedLayersView = layersView;
+              
+              // Force display styles on both container and content
+              leftSidebarContainer.style.display = 'flex';
+              leftSidebarContainer.style.flexDirection = 'column';
+              leftSidebarContainer.style.overflow = 'auto';
+              
+              layersContent.style.display = 'block';
+              layersContent.style.visibility = 'visible';
+              layersContent.style.opacity = '1';
+              layersContent.style.width = '100%';
+              layersContent.style.height = '100%';
+              
+              // Ensure all child layers are visible
+              const allLayers = layersContent.querySelectorAll('.gjs-layer, .gjs-layer-item');
+              allLayers.forEach(layer => {
+                layer.style.display = 'flex';
+                layer.style.visibility = 'visible';
+                layer.style.opacity = '1';
+              });
+              
+              // Hide right sidebar
+              rightSidebarPanel.style.display = 'none';
+              rightSidebarPanel.style.visibility = 'hidden';
+              rightSidebarPanel.style.opacity = '0';
+              
+              console.log('✅ Layers panel moved to left sidebar successfully', {
+                element: layersContent,
+                hasItems: !!hasLayerItems,
+                viewHasItems: !!viewHasItems,
+                itemCount: layersContent.querySelectorAll('.gjs-layer, .gjs-layer-item').length,
+                className: layersContent.className
+              });
+            } else if (!hasLayerItems && !viewHasItems && attempt < maxAttempts) {
+              console.log(`⚠️ Layers content found but no items (attempt ${attempt}/${maxAttempts}), retrying...`);
+              setTimeout(() => tryMoveLayers(attempt + 1, maxAttempts), 400);
+            } else if (layersContent.parentNode === leftSidebarContainer) {
+              console.log('✅ Layers panel already in left sidebar');
+            }
+          } else if (attempt < maxAttempts) {
+            console.log(`⚠️ Layers content not found (attempt ${attempt}/${maxAttempts}), retrying...`);
+            setTimeout(() => tryMoveLayers(attempt + 1, maxAttempts), 400);
+          } else {
+            console.error('❌ Failed to find layers content after multiple attempts');
+            // Show right sidebar if we failed
+            rightSidebarPanel.style.display = 'block';
+            rightSidebarPanel.style.visibility = 'visible';
+            rightSidebarPanel.style.opacity = '1';
+          }
+        };
+        
+        // Start trying after initial delay - give more time for layers to render
+        setTimeout(() => tryMoveLayers(), 800);
+      } else {
+        // Restore: move layers content back to right sidebar
+        const rightSidebarPanelRestore = document.querySelector('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
+        
+        if (leftSidebarContainer && movedLayersElement && leftSidebarContainer.contains(movedLayersElement) && rightSidebarPanelRestore) {
+          // Try to restore to the original location
+          if (movedLayersView && movedLayersView.parentNode === rightSidebarPanelRestore) {
+            movedLayersView.appendChild(movedLayersElement);
+          } else {
+            // Find or create layers view
+            const { layersView: restoreView } = findLayersContent(rightSidebarPanelRestore);
+            if (restoreView) {
+              restoreView.appendChild(movedLayersElement);
+            } else {
+              rightSidebarPanelRestore.appendChild(movedLayersElement);
+            }
+          }
+          
+          movedLayersElement = null;
+          movedLayersView = null;
+          leftSidebarContainer.innerHTML = '';
+        }
+        
+        // Show right sidebar
+        if (rightSidebarPanelRestore) {
+          rightSidebarPanelRestore.style.display = 'block';
+          rightSidebarPanelRestore.style.visibility = 'visible';
+          rightSidebarPanelRestore.style.opacity = '1';
+        }
+      }
+    };
+
+    const timer = setTimeout(() => {
+      handleLayersPanelToggle();
+    }, 800);
+
+    // Watch for DOM changes to catch when layers are rendered
+    const observer = new MutationObserver(() => {
+      if (showBlocksPanel && !movedLayersElement) {
+        const rightSidebarPanel = document.querySelector('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
+        const leftSidebarContainer = document.getElementById('left-sidebar-blocks-container');
+        
+        if (rightSidebarPanel && leftSidebarContainer) {
+          const { layersView, layersContent } = findLayersContent(rightSidebarPanel);
+          const hasLayerItems = layersContent ? layersContent.querySelector('.gjs-layer, .gjs-layer-item, [data-layer-item]') : null;
+          
+          // If layers are found and not yet moved, move them
+          if (layersContent && hasLayerItems && layersContent.parentNode !== leftSidebarContainer) {
+            leftSidebarContainer.innerHTML = '';
+            leftSidebarContainer.appendChild(layersContent);
+            movedLayersElement = layersContent;
+            movedLayersView = layersView;
+            
+            // Apply styles
+            leftSidebarContainer.style.display = 'flex';
+            layersContent.style.display = 'block';
+            layersContent.style.visibility = 'visible';
+            layersContent.style.opacity = '1';
+            
+            rightSidebarPanel.style.display = 'none';
+            rightSidebarPanel.style.visibility = 'hidden';
+            rightSidebarPanel.style.opacity = '0';
+            
+            console.log('✅ Layers panel moved via observer');
+          }
+        }
+      }
+    });
+
+    const rightSidebarPanel = document.querySelector('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
+    if (rightSidebarPanel) {
+      observer.observe(rightSidebarPanel, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'style']
+      });
+    }
+
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [showBlocksPanel, editorInstance]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    window.addEventListener('resize', applyToolsPanelPlacement);
+    return () => window.removeEventListener('resize', applyToolsPanelPlacement);
+  }, [applyToolsPanelPlacement]);
+
   // Dark mode toggle handler
   const toggleDarkMode = () => {
     const newMode = !isDarkMode;
     setIsDarkMode(newMode);
     localStorage.setItem('portfolioEditorDarkMode', JSON.stringify(newMode));
-    // Apply dark mode class to body for global effect
     if (newMode) {
       document.body.classList.add('dark-mode-active');
     } else {
       document.body.classList.remove('dark-mode-active');
     }
+  };
+
+  const toggleToolsPanel = () => {
+    setIsToolsPanelOpen(prev => !prev);
+  };
+
+  const toggleToolsPanelSide = () => {
+    setIsToolsPanelOpen(true);
+    setToolsPanelSide(prev => (prev === 'left' ? 'right' : 'left'));
+  };
+
+  const insertHtmlIntoEditor = useCallback((html) => {
+    if (!editorInstance) {
+      alert('Editor is still loading. Please wait a moment and try again.');
+      return null;
+    }
+
+    try {
+      const inserted = editorInstance.addComponents(html);
+      const component = Array.isArray(inserted) ? inserted[inserted.length - 1] : inserted;
+      if (component) {
+        editorInstance.select(component);
+        editorInstance.trigger('change:canvas');
+      }
+      return component;
+    } catch (error) {
+      console.error('Failed to insert builder content:', error);
+      alert('Unable to add this block. Please try again.');
+      return null;
+    }
+  }, [editorInstance]);
+
+  const insertSectionLayout = useCallback((config) => {
+    const { maxWidth, columns, background, textColor } = config;
+    const safeColumns = Math.max(1, columns || 1);
+    const componentsHtml = Array.from({ length: safeColumns }).map((_, index) => `
+      <div style="background:rgba(255,255,255,0.92);border-radius:18px;padding:32px;border:1px solid rgba(148,163,184,0.2);min-height:180px;">
+        <h3 style="margin:0 0 12px;font-size:20px;color:#0f172a;">Column ${index + 1}</h3>
+        <p style="margin:0;color:#475569;font-size:14px;">Add your content here.</p>
+      </div>
+    `).join('');
+
+    const html = `
+      <section style="width:100%;padding:80px 24px;background:${background};color:${textColor};">
+        <div style="max-width:${maxWidth};margin:0 auto;display:flex;flex-direction:column;gap:32px;">
+          <div style="text-align:center;">
+            <p style="margin:0 0 12px;letter-spacing:4px;text-transform:uppercase;font-size:12px;opacity:0.7;">Section Label</p>
+            <h2 style="margin:0;font-size:36px;">Add a powerful headline</h2>
+            <p style="margin:12px auto 0;max-width:640px;color:rgba(255,255,255,0.8);font-size:16px;">Describe the value of this section to your visitors.</p>
+          </div>
+          <div style="display:grid;gap:24px;grid-template-columns:repeat(${safeColumns}, minmax(0,1fr));">
+            ${componentsHtml}
+          </div>
+        </div>
+      </section>
+    `;
+
+    insertHtmlIntoEditor(html);
+  }, [insertHtmlIntoEditor]);
+
+  const insertColumnLayout = useCallback((config) => {
+    const columns = Math.max(1, config.columns || 1);
+    const template = config.template || `repeat(${columns}, minmax(0, 1fr))`;
+    const cells = Array.from({ length: columns }).map(() => `
+      <div style="border-radius:14px;border:1px dashed #cbd5f5;background:#f8fafc;min-height:160px;"></div>
+    `).join('');
+
+    const html = `
+      <section style="width:100%;padding:50px 20px;">
+        <div style="max-width:1200px;margin:0 auto;">
+          <div style="display:grid;gap:20px;grid-template-columns:${template};">
+            ${cells}
+          </div>
+        </div>
+      </section>
+    `;
+
+    insertHtmlIntoEditor(html);
+  }, [insertHtmlIntoEditor]);
+
+  const insertElementBlock = useCallback((config) => {
+    let html = '';
+    switch (config.type) {
+      case 'heading':
+        html = `
+          <section style="width:100%;padding:40px 20px;text-align:center;">
+            <div style="max-width:960px;margin:0 auto;">
+              <p style="text-transform:uppercase;letter-spacing:4px;margin:0 0 12px;color:#6366f1;">Label</p>
+              <h2 style="margin:0;font-size:42px;color:#0f172a;">Write a magnetic headline</h2>
+              <p style="margin:16px 0 0;color:#475569;font-size:18px;">Add a concise supporting sentence that explains the value.</p>
+            </div>
+          </section>
+        `;
+        break;
+      case 'paragraph':
+        html = `
+          <section style="width:100%;padding:20px;">
+            <div style="max-width:760px;margin:0 auto;color:#475569;font-size:18px;line-height:1.7;">
+              <p>Use this paragraph block to tell a short story or describe a feature in more detail.</p>
+            </div>
+          </section>
+        `;
+        break;
+      case 'button':
+        html = `
+          <div style="display:flex;justify-content:center;">
+            <a href="#" style="display:inline-flex;align-items:center;gap:8px;padding:14px 28px;border-radius:999px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-weight:700;text-decoration:none;">Call To Action</a>
+          </div>
+        `;
+        break;
+      case 'image':
+        html = `
+          <div style="width:100%;padding:20px 0;display:flex;justify-content:center;">
+            <div style="width:100%;max-width:720px;height:320px;background:linear-gradient(135deg,#e2e8f0,#cbd5f5);border-radius:24px;border:2px dashed #94a3b8;display:flex;align-items:center;justify-content:center;color:#475569;font-weight:600;">Image Placeholder</div>
+          </div>
+        `;
+        break;
+      case 'video':
+        html = `
+          <div style="width:100%;padding:20px 0;display:flex;justify-content:center;">
+            <div style="width:100%;max-width:860px;aspect-ratio:16/9;background:#0f172a;border-radius:20px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;">▶</div>
+          </div>
+        `;
+        break;
+      default:
+        break;
+    }
+
+    if (html) {
+      insertHtmlIntoEditor(html);
+    }
+  }, [insertHtmlIntoEditor]);
+
+  const insertPrebuiltSection = useCallback((config) => {
+    let html = '';
+    if (config.template === 'hero') {
+      html = `
+        <section style="padding:100px 20px;background:linear-gradient(135deg,#0f172a,#111936);color:#fff;">
+          <div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:40px;align-items:center;">
+            <div>
+              <p style="text-transform:uppercase;letter-spacing:4px;margin:0 0 12px;color:#60a5fa;">Featured</p>
+              <h1 style="margin:0 0 16px;font-size:48px;">Launch faster with our funnel builder</h1>
+              <p style="margin:0 0 30px;color:rgba(255,255,255,0.8);font-size:18px;">Craft landing pages, sections and components visually without touching code.</p>
+              <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <a href="#" style="padding:14px 28px;border-radius:999px;background:#3b82f6;color:#fff;font-weight:700;text-decoration:none;">Get Started</a>
+                <a href="#" style="padding:14px 28px;border-radius:999px;border:1px solid rgba(255,255,255,0.3);color:#fff;font-weight:700;text-decoration:none;background:transparent;">Watch Demo</a>
+              </div>
+            </div>
+            <div style="border-radius:24px;background:rgba(15,23,42,0.6);padding:24px;border:1px solid rgba(255,255,255,0.15);">
+              <div style="height:220px;background:linear-gradient(135deg,#38bdf8,#6366f1);border-radius:18px;"></div>
+              <p style="margin:16px 0 0;color:rgba(255,255,255,0.75);font-size:14px;">Mockup area for product shot or illustration.</p>
+            </div>
+          </div>
+        </section>
+      `;
+    } else if (config.template === 'features') {
+      html = `
+        <section style="padding:80px 20px;background:#ffffff;">
+          <div style="max-width:1100px;margin:0 auto;text-align:center;">
+            <h2 style="margin-bottom:12px;font-size:36px;color:#0f172a;">Highlight your best features</h2>
+            <p style="margin:0 auto 40px;max-width:640px;color:#475569;">Quickly describe the benefits or steps in your process.</p>
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;">
+              ${[1,2,3].map(idx => `
+                <div style="padding:28px;border-radius:20px;border:1px solid #e2e8f0;background:#f8fafc;">
+                  <div style="width:48px;height:48px;border-radius:12px;background:#e0f2fe;margin:0 auto 16px;"></div>
+                  <h3 style="margin:0 0 10px;">Feature ${idx}</h3>
+                  <p style="margin:0;color:#475569;font-size:15px;">Explain how this benefit helps your visitor succeed.</p>
+                </div>`).join('')}
+            </div>
+          </div>
+        </section>
+      `;
+    } else if (config.template === 'testimonial') {
+      html = `
+        <section style="padding:80px 20px;background:#f8fafc;">
+          <div style="max-width:840px;margin:0 auto;background:#ffffff;border-radius:30px;padding:40px;border:1px solid #e2e8f0;box-shadow:0 20px 50px rgba(15,23,42,0.08);">
+            <div style="display:flex;gap:18px;align-items:center;margin-bottom:24px;">
+              <div style="width:56px;height:56px;border-radius:50%;background:#c7d2fe;"></div>
+              <div>
+                <strong style="display:block;color:#0f172a;">Alex Customer</strong>
+                <span style="color:#64748b;font-size:14px;">CEO, Growth Labs</span>
+              </div>
+            </div>
+            <p style="margin:0;color:#0f172a;font-size:20px;line-height:1.6;">“This builder helped us launch new pages in hours instead of weeks. The predefined sections saved so much time.”</p>
+          </div>
+        </section>
+      `;
+    } else if (config.template === 'pricing') {
+      html = `
+        <section style="padding:90px 20px;background:#0f172a;color:#fff;">
+          <div style="max-width:1100px;margin:0 auto;text-align:center;">
+            <h2 style="margin:0 0 12px;font-size:38px;">Choose your plan</h2>
+            <p style="margin:0 auto 40px;max-width:640px;color:rgba(255,255,255,0.75);">Flexible options for every business stage.</p>
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;">
+              ${['Starter','Growth','Scale'].map((tier, idx) => `
+                <div style="border-radius:24px;padding:32px;background:${idx === 1 ? '#1d4ed8' : 'rgba(255,255,255,0.08)'};border:${idx === 1 ? '3px solid rgba(255,255,255,0.5)' : '1px solid rgba(255,255,255,0.12)'};">
+                  <h3 style="margin:0 0 6px;">${tier}</h3>
+                  <p style="margin:0 0 20px;color:rgba(255,255,255,0.75);">Perfect for ${tier === 'Starter' ? 'new projects' : tier === 'Growth' ? 'scaling teams' : 'large launches'}.</p>
+                  <div style="font-size:42px;font-weight:700;margin-bottom:24px;">${idx === 0 ? '$49' : idx === 1 ? '$149' : '$299'}</div>
+                  <ul style="list-style:none;padding:0;margin:0 0 24px;text-align:left;color:rgba(255,255,255,0.85);line-height:1.6;">
+                    <li>✔ Unlimited pages</li>
+                    <li>✔ Premium components</li>
+                    <li>✔ Priority support</li>
+                  </ul>
+                  <a href="#" style="display:block;padding:14px;border-radius:999px;background:#fff;color:#0f172a;font-weight:700;text-decoration:none;">Select Plan</a>
+                </div>`).join('')}
+            </div>
+          </div>
+        </section>
+      `;
+    } else if (config.template === 'cta') {
+      html = `
+        <section style="padding:50px 24px;">
+          <div style="max-width:960px;margin:0 auto;padding:34px;border-radius:24px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;display:flex;flex-direction:column;gap:18px;text-align:center;">
+            <p style="margin:0;text-transform:uppercase;letter-spacing:4px;font-size:12px;opacity:0.8;">Ready to launch?</p>
+            <h2 style="margin:0;font-size:32px;">Ship beautiful funnels in minutes, not days.</h2>
+            <p style="margin:0;color:rgba(255,255,255,0.8);">Kickstart your launch with battle-tested sections and smart automation.</p>
+            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+              <a href="#" style="padding:14px 28px;border-radius:999px;background:#fff;color:#2563eb;font-weight:700;text-decoration:none;">Book a Demo</a>
+              <a href="#" style="padding:14px 28px;border-radius:999px;border:1px solid rgba(255,255,255,0.4);color:#fff;font-weight:700;text-decoration:none;">Chat with us</a>
+            </div>
+          </div>
+        </section>
+      `;
+    } else if (config.template === 'cta-split') {
+      html = `
+        <section style="padding:80px 20px;background:#ffffff;">
+          <div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:34px;align-items:center;">
+            <div>
+              <p style="margin:0 0 10px;color:#10b981;font-weight:600;">Growth Toolkit</p>
+              <h2 style="margin:0 0 14px;font-size:38px;color:#0f172a;">Everything you need to launch and scale.</h2>
+              <ul style="margin:0 0 20px;padding:0;list-style:none;color:#475569;line-height:1.8;">
+                <li>✔ Drag & drop sections</li>
+                <li>✔ 1-click funnel templates</li>
+                <li>✔ Automation-ready forms</li>
+              </ul>
+              <a href="#" style="display:inline-flex;align-items:center;padding:14px 28px;border-radius:999px;background:#0f172a;color:#fff;font-weight:700;text-decoration:none;">Start free trial</a>
+            </div>
+            <div style="border-radius:26px;padding:26px;background:#f8fafc;border:1px solid #e2e8f0;">
+              <p style="margin:0 0 10px;font-weight:600;color:#0f172a;">What’s inside?</p>
+              <ol style="margin:0;padding-left:20px;color:#475569;line-height:1.8;">
+                <li>30+ designer sections</li>
+                <li>AI-powered copy prompts</li>
+                <li>One-click publishing</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+      `;
+    } else if (config.template === 'form-simple') {
+      html = `
+        <section style="padding:70px 20px;background:#f8fafc;">
+          <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:30px;padding:36px;border:1px solid #e2e8f0;box-shadow:0 30px 60px rgba(15,23,42,0.08);">
+            <h3 style="margin:0 0 8px;color:#0f172a;">Request a Consultation</h3>
+            <p style="margin:0 0 24px;color:#475569;">Tell us about your project and we'll get in touch.</p>
+            <form style="display:flex;flex-direction:column;gap:16px;">
+              <input placeholder="Full Name" style="padding:14px;border-radius:14px;border:1px solid #cbd5f5;" />
+              <input placeholder="Email Address" style="padding:14px;border-radius:14px;border:1px solid #cbd5f5;" />
+              <input placeholder="Phone Number" style="padding:14px;border-radius:14px;border:1px solid #cbd5f5;" />
+              <textarea placeholder="Tell us about your goals" rows="4" style="padding:14px;border-radius:14px;border:1px solid #cbd5f5;resize:none;"></textarea>
+              <button type="button" style="padding:14px;border:none;border-radius:14px;background:#2563eb;color:#fff;font-weight:700;">Submit Request</button>
+            </form>
+          </div>
+        </section>
+      `;
+    } else if (config.template === 'form-dual') {
+      html = `
+        <section style="padding:80px 20px;background:#ffffff;">
+          <div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px;align-items:center;">
+            <div>
+              <p style="margin:0 0 10px;color:#6366f1;font-weight:600;">Free Strategy Session</p>
+              <h2 style="margin:0 0 14px;font-size:36px;color:#0f172a;">Book your funnel roadmap call</h2>
+              <p style="margin:0;color:#475569;">We’ll audit your current funnel, map the opportunity and share the launch plan.</p>
+            </div>
+            <form style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;">
+              <input placeholder="First Name" style="padding:14px;border-radius:14px;border:1px solid #e2e8f0;" />
+              <input placeholder="Last Name" style="padding:14px;border-radius:14px;border:1px solid #e2e8f0;" />
+              <input placeholder="Email" style="padding:14px;border-radius:14px;border:1px solid #e2e8f0;" />
+              <input placeholder="Website" style="padding:14px;border-radius:14px;border:1px solid #e2e8f0;" />
+              <textarea placeholder="What do you want to build?" rows="3" style="grid-column:span 2;padding:14px;border-radius:14px;border:1px solid #e2e8f0;"></textarea>
+              <button type="button" style="grid-column:span 2;padding:14px;border:none;border-radius:14px;background:#0f172a;color:#fff;font-weight:700;">Schedule Call</button>
+            </form>
+          </div>
+        </section>
+      `;
+    } else if (config.template === 'stats') {
+      html = `
+        <section style="padding:70px 20px;background:#0f172a;color:#fff;">
+          <div style="max-width:1100px;margin:0 auto;">
+            <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;">
+              ${['3.2x', '245+', '92%', '12k'].map((stat, idx) => `
+                <div style="padding:28px;border-radius:20px;background:rgba(255,255,255,0.05);text-align:center;">
+                  <div style="font-size:40px;font-weight:700;margin-bottom:4px;">${stat}</div>
+                  <p style="margin:0;color:rgba(255,255,255,0.75);">${['Avg. ROI', 'Funnels Shipped', 'Client Retention', 'Subscribers'][idx]}</p>
+                </div>`).join('')}
+            </div>
+          </div>
+        </section>
+      `;
+    } else if (config.template === 'faq') {
+      html = `
+        <section style="padding:80px 20px;background:#ffffff;">
+          <div style="max-width:900px;margin:0 auto;">
+            <h2 style="margin:0 0 24px;font-size:34px;color:#0f172a;">Frequently asked questions</h2>
+            ${[1,2,3,4].map(idx => `
+              <details style="border-radius:16px;border:1px solid #e2e8f0;margin-bottom:14px;padding:18px;background:#f8fafc;">
+                <summary style="cursor:pointer;font-weight:600;color:#0f172a;">Question ${idx} headline goes here?</summary>
+                <p style="margin:12px 0 0;color:#475569;">Add your helpful answer. Keep it short, honest, and useful.</p>
+              </details>`).join('')}
+          </div>
+        </section>
+      `;
+    } else if (config.template === 'timeline') {
+      html = `
+        <section style="padding:80px 20px;background:#f8fafc;">
+          <div style="max-width:960px;margin:0 auto;">
+            <h2 style="margin:0 0 32px;font-size:34px;color:#0f172a;text-align:center;">Launch roadmap</h2>
+            <div style="display:grid;gap:20px;">
+              ${['Research','Wireframe','Build','Launch'].map((phase, idx) => `
+                <div style="display:flex;gap:18px;align-items:flex-start;">
+                  <div style="width:14px;height:14px;border-radius:50%;background:#2563eb;margin-top:6px;"></div>
+                  <div>
+                    <p style="margin:0;font-weight:600;color:#0f172a;">Phase ${idx + 1}: ${phase}</p>
+                    <p style="margin:4px 0 0;color:#475569;">Describe what happens during this step.</p>
+                  </div>
+                </div>`).join('')}
+            </div>
+          </div>
+        </section>
+      `;
+    }
+
+    if (html) {
+      insertHtmlIntoEditor(html);
+    }
+  }, [insertHtmlIntoEditor]);
+
+  const insertGlobalSection = useCallback((config) => {
+    const html = `
+      <section data-global-section="${config.title}" style="padding:30px 20px;border:1px dashed #94a3b8;border-radius:16px;background:#fffbe6;">
+        <strong style="display:block;margin-bottom:8px;color:#92400e;">${config.title}</strong>
+        <p style="margin:0;color:#7c2d12;">${config.body}</p>
+      </section>
+    `;
+    insertHtmlIntoEditor(html);
+  }, [insertHtmlIntoEditor]);
+
+  const insertCustomValueToken = useCallback((config) => {
+    const html = `
+      <span style="padding:6px 12px;border-radius:999px;background:#e0f2fe;color:#0f172a;font-weight:600;">${config.token}</span>
+    `;
+    insertHtmlIntoEditor(html);
+  }, [insertHtmlIntoEditor]);
+
+  const insertGrapesBlock = useCallback((blockId) => {
+    if (!editorInstance || !editorInstance.BlockManager || typeof editorInstance.BlockManager.get !== 'function') {
+      alert('Editor is still loading blocks. Please wait a moment.');
+      return;
+    }
+
+    const block = editorInstance.BlockManager.get(blockId);
+    if (!block) {
+      alert('Could not find this block. Please reload and try again.');
+      return;
+    }
+
+    const content = block.get('content');
+    if (!content) {
+      alert('This block has no content to insert.');
+      return;
+    }
+
+    const insertedComponents = editorInstance.addComponents(content);
+    if (Array.isArray(insertedComponents) && insertedComponents.length) {
+      const lastComponent = insertedComponents[insertedComponents.length - 1];
+      if (lastComponent) {
+        editorInstance.select(lastComponent);
+      }
+    }
+
+    editorInstance.trigger('change:canvas');
+  }, [editorInstance]);
+
+  const handleBuilderItemClick = useCallback((item) => {
+    switch (item.actionType) {
+      case 'section':
+        insertSectionLayout(item.payload);
+        break;
+      case 'columns':
+        insertColumnLayout(item.payload);
+        break;
+      case 'element':
+        insertElementBlock(item.payload);
+        break;
+      case 'prebuilt':
+        insertPrebuiltSection(item.payload);
+        break;
+      case 'global':
+        insertGlobalSection(item.payload);
+        break;
+      case 'customValue':
+        insertCustomValueToken(item.payload);
+        break;
+      case 'grapesBlock':
+        insertGrapesBlock(item.blockId);
+        break;
+      default:
+        console.warn('Unknown builder action:', item);
+    }
+  }, [insertSectionLayout, insertColumnLayout, insertElementBlock, insertPrebuiltSection, insertGlobalSection, insertCustomValueToken, insertGrapesBlock]);
+
+  const builderDragPayloadRef = React.useRef(null);
+
+  const handleBuilderDragStart = useCallback((item, event) => {
+    if (!BUILDER_PANEL_ENABLED) return;
+    builderDragPayloadRef.current = item;
+    setIsBuilderDragging(true);
+    if (event?.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'copy';
+      const payload = item.actionType === 'grapesBlock'
+        ? JSON.stringify({ type: 'grapesBlock', id: item.blockId })
+        : JSON.stringify({ type: 'builder', item });
+      event.dataTransfer.setData('application/json', payload);
+      event.dataTransfer.setData('text/plain', item.id);
+    }
+  }, []);
+
+  const handleBuilderDragEnd = useCallback(() => {
+    if (!BUILDER_PANEL_ENABLED) return;
+    builderDragPayloadRef.current = null;
+    setIsBuilderDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (!BUILDER_PANEL_ENABLED) return undefined;
+    const editorArea = document.querySelector('.editor-main-area');
+    if (!editorArea) return undefined;
+
+    const handleDragOver = (event) => {
+      if (!builderDragPayloadRef.current) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+    };
+
+    const handleDrop = (event) => {
+      if (!builderDragPayloadRef.current) return;
+      event.preventDefault();
+      const payload = event.dataTransfer.getData('application/json');
+      if (payload) {
+        try {
+          const parsed = JSON.parse(payload);
+          if (parsed.type === 'grapesBlock') {
+            insertGrapesBlock(parsed.id);
+          } else if (parsed.type === 'builder') {
+            handleBuilderItemClick(parsed.item);
+          }
+        } catch (err) {
+          console.warn('Failed to parse drag payload, falling back:', err);
+          handleBuilderItemClick(builderDragPayloadRef.current);
+        }
+      } else {
+        handleBuilderItemClick(builderDragPayloadRef.current);
+      }
+      builderDragPayloadRef.current = null;
+      setIsBuilderDragging(false);
+    };
+
+    editorArea.addEventListener('dragover', handleDragOver);
+    editorArea.addEventListener('drop', handleDrop);
+
+    return () => {
+      editorArea.removeEventListener('dragover', handleDragOver);
+      editorArea.removeEventListener('drop', handleDrop);
+    };
+  }, [handleBuilderItemClick, insertGrapesBlock, showBuilderPanel]);
+
+  const renderBuilderPreview = (item) => {
+    if (item.actionType === 'section' || item.actionType === 'columns') {
+      const columns = item.payload.template
+        ? item.payload.template.split(' ').length
+        : Math.max(1, item.payload.columns || 1);
+      return (
+        <div
+          className="preview-grid"
+          style={{ gridTemplateColumns: item.payload.template || `repeat(${columns}, 1fr)` }}
+        >
+          {Array.from({ length: columns }).map((_, idx) => (
+            <div key={`${item.id}-col-${idx}`} className="preview-cell" />
+          ))}
+        </div>
+      );
+    }
+
+    if (item.actionType === 'element') {
+      if (item.payload.type === 'button') {
+        return <div className="preview-button">Button</div>;
+      }
+      if (item.payload.type === 'image') {
+        return <div className="preview-media image" />;
+      }
+      if (item.payload.type === 'video') {
+        return <div className="preview-media video">▶</div>;
+      }
+      return (
+        <div className="preview-text">
+          <span />
+          <span />
+          <span />
+        </div>
+      );
+    }
+
+    if (item.actionType === 'prebuilt') {
+      return (
+        <div className="preview-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          <div className="preview-cell" />
+          <div className="preview-cell" />
+          <div className="preview-cell" />
+        </div>
+      );
+    }
+
+    if (item.actionType === 'global') {
+      return (
+        <div className="preview-banner">
+          <span />
+          <span />
+        </div>
+      );
+    }
+
+    if (item.actionType === 'customValue') {
+      return (
+        <div className="preview-token">
+          {item.payload.token}
+        </div>
+      );
+    }
+
+    return <div className="preview-cell" />;
   };
 
   // Initialize dark mode on mount
@@ -744,7 +2106,38 @@ const PortfolioEdit = () => {
     });
 
     setAvailableForms(forms);
-  }, []); // Empty dependencies to prevent re-creation
+
+    const daySelectorTargets = [
+      '.day-selector-display-widget',
+      '.day-selector-widget-element',
+      '[data-component-id*="day-selector"]'
+    ];
+
+    const hasDaySelectorComponents = daySelectorTargets.some(selector => wrapper.find(selector).length > 0);
+    setHasDaySelectors(hasDaySelectorComponents);
+  }, [editorInstance]);
+
+  useEffect(() => {
+    if (!editorInstance) return;
+
+    const refreshForms = () => {
+      detectFormsOnPage();
+    };
+
+    const events = ['component:add', 'component:remove', 'component:update', 'component:drag:end', 'page:select'];
+
+    events.forEach((eventName) => {
+      editorInstance.on(eventName, refreshForms);
+    });
+
+    refreshForms();
+
+    return () => {
+      events.forEach((eventName) => {
+        editorInstance.off(eventName, refreshForms);
+      });
+    };
+  }, [editorInstance, detectFormsOnPage]);
 
   // Function to scroll to a specific form
   const scrollToForm = (selector) => {
@@ -1387,6 +2780,68 @@ const PortfolioEdit = () => {
     window.editor = editor;
     setEditorInstance(editor);
 
+    // Ensure block categories dropdown functionality works
+    // This will be called after editor is ready
+    setTimeout(() => {
+      const setupBlockCategories = () => {
+        // Use GrapesJS BlockManager to ensure categories work
+        if (editor.BlockManager) {
+          const blockManager = editor.BlockManager;
+          
+          // Listen for block manager updates
+          if (typeof blockManager.on === 'function') {
+            blockManager.on('all', () => {
+              setTimeout(() => {
+                const categories = document.querySelectorAll('.gjs-block-category');
+                categories.forEach(category => {
+                  const title = category.querySelector('.gjs-title');
+                  if (title && !title.hasAttribute('data-category-setup')) {
+                    title.setAttribute('data-category-setup', 'true');
+                    
+                    // DEFAULT: Ensure category starts closed
+                    category.classList.remove('gjs-open');
+                    
+                    const blocksContainer = category.querySelector('.gjs-blocks-c');
+                    if (blocksContainer) {
+                      blocksContainer.style.display = 'none';
+                      blocksContainer.style.maxHeight = '0';
+                      blocksContainer.style.padding = '0';
+                      blocksContainer.style.height = '0';
+                    }
+                    
+                    // Add click handler
+                    title.addEventListener('click', function(e) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      
+                      // Toggle category
+                      category.classList.toggle('gjs-open');
+                      
+                      if (blocksContainer) {
+                        if (category.classList.contains('gjs-open')) {
+                          blocksContainer.style.display = 'block';
+                          blocksContainer.style.maxHeight = '5000px';
+                          blocksContainer.style.padding = '8px';
+                          blocksContainer.style.height = 'auto';
+                        } else {
+                          blocksContainer.style.display = 'none';
+                          blocksContainer.style.maxHeight = '0';
+                          blocksContainer.style.padding = '0';
+                          blocksContainer.style.height = '0';
+                        }
+                      }
+                    });
+                  }
+                });
+              }, 100);
+            });
+          }
+        }
+      };
+      
+      setupBlockCategories();
+    }, 500);
+
     const getPageElements = () => {
       const elements = [{ id: '', name: '-- Select element --' }];
       // Add null check for editor.Pages
@@ -1441,18 +2896,24 @@ const PortfolioEdit = () => {
     editor.on('component:update component:add component:remove', () => {
       // Check if CSS still exists in iframe and re-inject if needed
       setTimeout(() => {
+        if (!editor.Canvas || typeof editor.Canvas.getFrameEl !== 'function') {
+          console.warn('Canvas not ready for CSS check');
+          return;
+        }
         const iframe = editor.Canvas.getFrameEl();
-        if (iframe && iframe.contentWindow && iframe.contentWindow.document) {
-          const iframeDoc = iframe.contentWindow.document;
-          const hasPageCss = iframeDoc.querySelector('style[data-page-css]');
-          
-          const currentPage = editor.Pages?.getSelected();
-          if (currentPage) {
-            if (!hasPageCss) {
-              console.log('⚠️ CSS lost after component change, re-injecting...');
-              injectPageCSS(currentPage, true);
-            }
-          }
+        if (!iframe || !iframe.contentWindow || !iframe.contentWindow.document) {
+          console.warn('Iframe not ready for CSS check');
+          return;
+        }
+        const iframeDoc = iframe.contentWindow.document;
+        const hasPageCss = iframeDoc.querySelector('style[data-page-css]');
+        
+        const currentPage = editor.Pages && typeof editor.Pages.getSelected === 'function'
+          ? editor.Pages.getSelected()
+          : null;
+        if (currentPage && !hasPageCss) {
+          console.log('⚠️ CSS lost after component change, re-injecting...');
+          injectPageCSS(currentPage, true);
         }
       }, 100);
     });
@@ -2374,7 +3835,7 @@ const PortfolioEdit = () => {
     editor.BlockManager.add('day-selector-widget', {
       label: 'Day Selector',
       category: 'Interactive Components',
-      content: `<div class="day-selector-display-widget" data-component-id="${Date.now()}"><div class="day-selector-header"><span class="calendar-icon">📅</span><h3>Day Information</h3></div><div class="day-info-content"><div class="selected-day-info"><strong>Selected Day:</strong> <span class="day-value">Click Day Selector to choose</span></div><div class="recent-date-info"><strong>Most Recent Date:</strong> <span class="date-value">No day selected</span></div></div><div class="day-selector-instructions"><p>Use "Day Selector" button to set day for this component</p></div></div>`,
+      content: `<div class="day-selector-display-widget" data-component-id="${Date.now()}"><div class="day-selector-header"><div class="day-selector-title"><span class="calendar-icon">📅</span><div><h3>Day Information</h3><p>Upcoming schedule snapshot</p></div></div><button class="day-refresh-btn" data-refresh-days>Refresh</button></div><div class="day-info-content"><div class="selected-day-info"><div class="info-label">Selected Days</div><span class="day-value">Click Day Selector to choose</span></div><div class="recent-date-info"><div class="info-label">Upcoming Dates</div><span class="date-value">No day selected</span></div></div></div>`,
       attributes: { 
         class: 'day-selector-widget-element',
         'data-selected-day': '',
@@ -2385,12 +3846,13 @@ const PortfolioEdit = () => {
     });
 
     // Add CSS for Day Selector Widget
-    editor.setStyle(`.day-selector-display-widget{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:15px;padding:20px;margin:20px 0;box-shadow:0 10px 30px rgba(0,0,0,0.2);color:white;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;text-align:center;min-height:150px;display:flex;flex-direction:column;justify-content:center;transition:all 0.3s ease;border:3px solid transparent}.day-selector-display-widget.selected{border:3px solid #4CAF50!important;box-shadow:0 0 20px rgba(76,175,80,0.5);animation:selectedPulse 2s infinite}@keyframes selectedPulse{0%{box-shadow:0 0 20px rgba(76,175,80,0.5)}50%{box-shadow:0 0 30px rgba(76,175,80,0.8)}100%{box-shadow:0 0 20px rgba(76,175,80,0.5)}}.day-selector-display{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:15px;padding:20px;margin:20px 0;box-shadow:0 10px 30px rgba(0,0,0,0.2);color:white;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;text-align:center;min-height:150px;display:flex;flex-direction:column;justify-content:center}.day-selector-header{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:20px}.calendar-icon{font-size:24px}.day-selector-header h3{margin:0;font-size:24px;font-weight:600;text-shadow:0 2px 4px rgba(0,0,0,0.3)}.day-info-content{display:flex;flex-direction:column;gap:15px}.selected-day-info,.recent-date-info{background:rgba(255,255,255,0.15);padding:15px 20px;border-radius:10px;border-left:4px solid #ffd700;backdrop-filter:blur(10px)}.selected-day-info strong,.recent-date-info strong{color:#ffd700;margin-right:10px}.selected-day-value,.recent-date-value,.day-value,.date-value{color:#fff;font-weight:500}.day-selector-instructions{margin-top:20px;padding:15px;background:rgba(255,255,255,0.1);border-radius:8px;border:1px dashed rgba(255,255,255,0.3)}.day-selector-instructions p{margin:0;color:rgba(255,255,255,0.8);font-size:14px;font-style:italic}@media (max-width:768px){.day-selector-display-widget,.day-selector-display{margin:10px 0;padding:15px;min-height:120px}.day-selector-header h3{font-size:20px}.selected-day-info,.recent-date-info{padding:12px 15px;font-size:14px}}@media (max-width:480px){.day-selector-header{flex-direction:column;gap:5px}.day-selector-header h3{font-size:18px}.day-info-content{gap:10px}}`);
+    editor.setStyle(`.day-selector-display-widget{background:linear-gradient(120deg,#312e81 0%,#7c3aed 40%,#9333ea 100%);border-radius:20px;padding:24px;margin:20px 0;box-shadow:0 25px 60px rgba(76,29,149,0.35);color:white;font-family:'Inter','Segoe UI',sans-serif;display:flex;flex-direction:column;gap:18px;border:1px solid rgba(255,255,255,0.15);position:relative}.day-selector-display-widget::after{content:'';position:absolute;inset:16px;border-radius:16px;border:1px solid rgba(255,255,255,0.1);pointer-events:none}.day-selector-display-widget.selected{border:1px solid rgba(16,185,129,0.7);box-shadow:0 0 0 1px rgba(16,185,129,0.6),0 25px 60px rgba(16,185,129,0.15)}.day-selector-header{display:flex;align-items:center;justify-content:space-between;gap:16px;z-index:1}.day-selector-title{display:flex;align-items:center;gap:12px}.calendar-icon{font-size:42px;background:rgba(255,255,255,0.12);padding:14px;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.2)}.day-selector-title h3{margin:0;font-size:26px;font-weight:700}.day-selector-title p{margin:2px 0 0 0;font-size:13px;letter-spacing:0.6px;text-transform:uppercase;color:rgba(255,255,255,0.75)}.day-refresh-btn{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:white;padding:10px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .3s ease}.day-refresh-btn:hover{background:rgba(255,255,255,0.25)}.day-info-content{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;z-index:1}.selected-day-info,.recent-date-info{background:rgba(15,23,42,0.25);border-radius:16px;padding:18px;box-shadow:0 15px 30px rgba(2,6,23,0.25);border:1px solid rgba(255,255,255,0.18)}.info-label{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.65);margin-bottom:8px}.day-value,.date-value{font-size:18px;font-weight:600;color:#f8fafc;line-height:1.5}.day-selector-display-widget ::selection{background:rgba(59,130,246,0.4)}@media (max-width:640px){.day-selector-header{flex-direction:column;align-items:flex-start}.day-refresh-btn{width:100%;text-align:center}.day-info-content{grid-template-columns:1fr}}`);
 
     // Component selection handler - REPLACE EXISTING
     editor.on('component:selected', (component) => {
       // Clear all selections first
-      document.querySelectorAll('.day-selector-display-widget, .day-selector-widget-element').forEach(el => {
+      const canvasDocument = getDaySelectorDocument(editor);
+      canvasDocument.querySelectorAll('.day-selector-display-widget, .day-selector-widget-element').forEach(el => {
         el.classList.remove('selected');
       });
       
@@ -2422,6 +3884,7 @@ const PortfolioEdit = () => {
         // Update states
         setSelectedDaySelectorId(componentId);
         setSelectedComponentElement(element);
+        setDaySelectorInitialSelection(parseDaySelectionFromElement(element));
         
         // Visual feedback
         element.classList.add('selected');
@@ -2430,6 +3893,7 @@ const PortfolioEdit = () => {
       } else {
         setSelectedDaySelectorId(null);
         setSelectedComponentElement(null);
+        setDaySelectorInitialSelection([]);
       }
     });
 
@@ -2460,6 +3924,7 @@ const PortfolioEdit = () => {
               editor.select(component);
               setSelectedDaySelectorId(componentId);
               setSelectedComponentElement(element);
+              setDaySelectorInitialSelection(parseDaySelectionFromElement(element));
               element.classList.add('selected');
               console.log('✅ Auto-selected new component:', componentId);
               console.log('Element classes:', element.className);
@@ -2481,42 +3946,16 @@ const PortfolioEdit = () => {
     // Auto-update day selector components
     const setupAutoUpdateDaySelectors = () => {
       const updateDaySelectors = () => {
-        const dayComponents = document.querySelectorAll('[data-selected-day]:not([data-selected-day=""])');
+        const canvasDocument = getDaySelectorDocument(editor);
+        const dayComponents = canvasDocument.querySelectorAll('.day-selector-display-widget');
         dayComponents.forEach(component => {
-          const selectedDay = component.getAttribute('data-selected-day');
-          if (selectedDay) {
-            const findMostRecentDateForDay = (dayName) => {
-              const today = new Date();
-              const dayMap = {
-                'Monday': 1,
-                'Tuesday': 2,
-                'Wednesday': 3,
-                'Thursday': 4,
-                'Friday': 5,
-                'Saturday': 6,
-                'Sunday': 0
-              };
-              
-              const targetDay = dayMap[dayName];
-              const currentDay = today.getDay();
-              let daysToSubtract = (currentDay - targetDay + 7) % 7;
-              if (daysToSubtract === 0) daysToSubtract = 0;
-              
-              const recentDate = new Date(today);
-              recentDate.setDate(today.getDate() - daysToSubtract);
-              
-              return recentDate.toLocaleDateString('en-US', {
-                year: 'numeric', month: 'long', day: 'numeric'
-              });
-            };
-            
-            const newDate = findMostRecentDateForDay(selectedDay);
-            const dateValue = component.querySelector('.date-value');
-            if (dateValue && dateValue.textContent !== newDate) {
-              dateValue.textContent = newDate;
-              component.setAttribute('data-recent-date', newDate);
-            }
-          }
+          const selection = parseDaySelectionFromElement(component);
+          if (!selection.length) return;
+          const refreshedSelection = selection.map(item => ({
+            day: item.day,
+            date: getUpcomingDateForDay(item.day)
+          }));
+          applyDaySelectionToDomElement(component, refreshedSelection);
         });
       };
       
@@ -2530,41 +3969,31 @@ const PortfolioEdit = () => {
     setupAutoUpdateDaySelectors();
 
     // Direct DOM update function for day selector
-    window.updateDaySelectorDirectly = (selectedDay, recentDate) => {
-      console.log('Direct DOM update called with:', selectedDay, recentDate);
+    window.updateDaySelectorDirectly = (selectionPayload, legacyRecentDate) => {
+      console.log('Direct DOM update called with:', selectionPayload);
+      const normalizedSelection = normalizeDaySelection(selectionPayload, legacyRecentDate);
+      if (!normalizedSelection.length) return 0;
       
-      // Find all day selector components
-      const dayComponents = document.querySelectorAll('.day-selector-display-widget');
+      const canvasDocument = getDaySelectorDocument(editor);
+      const dayComponents = canvasDocument.querySelectorAll('.day-selector-display-widget');
       console.log('Found day components for direct update:', dayComponents.length);
       
-      dayComponents.forEach((component, index) => {
-        const dayValue = component.querySelector('.day-value');
-        const dateValue = component.querySelector('.date-value');
-        
-        if (dayValue) {
-          dayValue.textContent = selectedDay;
-          console.log(`Updated day-value ${index}:`, selectedDay);
-        }
-        
-        if (dateValue) {
-          dateValue.textContent = recentDate;
-          console.log(`Updated date-value ${index}:`, recentDate);
-        }
-        
-        // Update attributes
-        component.setAttribute('data-selected-day', selectedDay);
-        component.setAttribute('data-recent-date', recentDate);
+      dayComponents.forEach((component) => {
+        const applied = applyDaySelectionToDomElement(component, normalizedSelection);
+        syncDaySelectorComponentModel(component, applied, editor);
       });
       
       return dayComponents.length;
     };
 
     // Function to update day selector widget
-    window.updateDaySelectorWidget = (selectedDay, recentDate) => {
-      console.log('Updating day selector widgets with:', selectedDay, recentDate);
+    window.updateDaySelectorWidget = (selectionPayload, legacyRecentDate) => {
+      console.log('Updating day selector widgets with:', selectionPayload);
+      const normalizedSelection = normalizeDaySelection(selectionPayload, legacyRecentDate);
+      if (!normalizedSelection.length) return;
       
-      // Find all day selector widgets on the page with multiple selectors
-      const widgets = document.querySelectorAll(
+      const canvasDocument = getDaySelectorDocument(editor);
+      const widgets = canvasDocument.querySelectorAll(
         '.day-selector-widget-element, .day-selector-display, .day-selector-display-widget, [data-selected-day], .day-info-content'
       );
       
@@ -2572,59 +4001,13 @@ const PortfolioEdit = () => {
       
       widgets.forEach((widget, index) => {
         console.log(`Updating widget ${index}:`, widget);
-        
-        // Try multiple selectors for day value
-        let dayValue = widget.querySelector('.day-value') || 
-                      widget.querySelector('.selected-day-value') ||
-                      widget.querySelector('[class*="day-value"]');
-        
-        // Try multiple selectors for date value  
-        let dateValue = widget.querySelector('.date-value') || 
-                       widget.querySelector('.recent-date-value') ||
-                       widget.querySelector('[class*="date-value"]');
-        
-        // If not found, try to find by text content
-        if (!dayValue) {
-          const allSpans = widget.querySelectorAll('span');
-          allSpans.forEach(span => {
-            if (span.textContent.includes('Select Day') || span.textContent.includes('Day')) {
-              dayValue = span;
-            }
-          });
-        }
-        
-        if (!dateValue) {
-          const allSpans = widget.querySelectorAll('span');
-          allSpans.forEach(span => {
-            if (span.textContent.includes('Invalid Date') || span.textContent.includes('Date')) {
-              dateValue = span;
-            }
-          });
-        }
-        
-        console.log('Day value element:', dayValue);
-        console.log('Date value element:', dateValue);
-        
-        if (dayValue) {
-          dayValue.textContent = selectedDay;
-          console.log('Updated day value to:', selectedDay);
-        }
-        if (dateValue) {
-          dateValue.textContent = recentDate;
-          console.log('Updated date value to:', recentDate);
-        }
-        
-        // Update data attributes
-        widget.setAttribute('data-selected-day', selectedDay);
-        widget.setAttribute('data-recent-date', recentDate);
-        
-        console.log('Updated widget attributes');
+        const applied = applyDaySelectionToDomElement(widget, normalizedSelection);
+        syncDaySelectorComponentModel(widget, applied, editor);
       });
       
-      // Also try to update using GrapesJS editor if available
       if (window.editor || editorInstance) {
-        const editor = window.editor || editorInstance;
-        const components = editor.DomComponents.getComponents();
+        const activeEditor = window.editor || editorInstance;
+        const components = activeEditor.DomComponents.getComponents();
         
         components.forEach(component => {
           const componentEl = component.getEl();
@@ -2634,25 +4017,16 @@ const PortfolioEdit = () => {
             componentEl.classList.contains('day-selector-display-widget')
           )) {
             console.log('Updating GrapesJS component:', component);
-            
-            const dayValue = componentEl.querySelector('.day-value') || 
-                            componentEl.querySelector('.selected-day-value');
-            const dateValue = componentEl.querySelector('.date-value') || 
-                             componentEl.querySelector('.recent-date-value');
-            
-            if (dayValue) dayValue.textContent = selectedDay;
-            if (dateValue) dateValue.textContent = recentDate;
-            
-            // Update component attributes
+            applyDaySelectionToDomElement(componentEl, normalizedSelection);
             component.addAttributes({
-              'data-selected-day': selectedDay,
-              'data-recent-date': recentDate
+              'data-selected-day': normalizedSelection[0]?.day || '',
+              'data-recent-date': normalizedSelection[0]?.date || '',
+              'data-selected-days': JSON.stringify(normalizedSelection)
             });
           }
         });
         
-        // Refresh the editor
-        editor.trigger('change:canvas');
+        activeEditor.trigger('change:canvas');
       }
     };
 
@@ -2999,26 +4373,9 @@ const PortfolioEdit = () => {
       // Store interval ID for cleanup
       window.cssCheckInterval = cssCheckInterval;
 
-      // FIXED: Periodic check to ensure right sidebar stays visible
+      // FIXED: Periodic check to ensure GrapesJS sidebar stays visible
       const rightSidebarCheckInterval = setInterval(() => {
-        const rightPanels = document.querySelectorAll('.gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
-        rightPanels.forEach(panel => {
-          const computedStyle = window.getComputedStyle(panel);
-          if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden' || computedStyle.opacity === '0') {
-            console.log('⚠️ Right sidebar hidden, restoring visibility...');
-            panel.style.display = 'block';
-            panel.style.visibility = 'visible';
-            panel.style.opacity = '1';
-            panel.style.position = 'fixed';
-            panel.style.right = '0';
-            panel.style.top = '68px';
-            panel.style.height = 'calc(100vh - 68px)';
-            panel.style.maxHeight = 'calc(100vh - 68px)';
-            panel.style.zIndex = '1001';
-            panel.style.marginTop = '0';
-            panel.style.paddingTop = '0';
-          }
-        });
+        applyToolsPanelPlacement();
       }, 2000);
       
       // Store interval ID for cleanup
@@ -3078,7 +4435,6 @@ const PortfolioEdit = () => {
       },
       plugins: [
         gjsPresetWebpage,
-        gjsForms,
         gjsCountdown,
         gjsTabs,
         gjsCustomCode,
@@ -3246,6 +4602,296 @@ const PortfolioEdit = () => {
 
     onEditorReady(editor);
 
+    // Add Copy, Duplicate, and Delete Functions - FIXED TO WORK PROPERLY!
+    setTimeout(() => {
+      // Handle Copy - Works for component level
+      const handleCopy = () => {
+        try {
+          const selected = editor.getSelected();
+          if (!selected) return;
+          
+          const cloned = selected.clone();
+          window.copiedComponent = cloned;
+          console.log('✅ Component copied');
+        } catch (error) {
+          console.error('Copy error:', error);
+        }
+      };
+
+      // Handle Duplicate - FIXED: Proper parent access
+      const handleDuplicate = () => {
+        try {
+          const selected = editor.getSelected();
+          if (!selected) return;
+          
+          // Get parent using proper GrapesJS API
+          let parent = null;
+          if (selected.parent && typeof selected.parent === 'function') {
+            parent = selected.parent();
+          } else if (selected.getParent && typeof selected.getParent === 'function') {
+            parent = selected.getParent();
+          } else {
+            // Fallback: get parent from components collection
+            const allComponents = editor.DomComponents.getComponents();
+            const findParent = (comp) => {
+              if (!comp || !comp.components) return null;
+              const children = comp.components();
+              for (let i = 0; i < children.length; i++) {
+                if (children[i] === selected) return comp;
+                const found = findParent(children[i]);
+                if (found) return found;
+              }
+              return null;
+            };
+            parent = findParent(allComponents);
+          }
+          
+          if (!parent) {
+            // If no parent, add to wrapper
+            const wrapper = editor.DomComponents.getWrapper();
+            if (wrapper) {
+              const cloned = selected.clone();
+              wrapper.components().add(cloned);
+              editor.select(cloned);
+              editor.trigger('change:canvas');
+              console.log('✅ Component duplicated (to wrapper)');
+              return;
+            }
+            return;
+          }
+          
+          // Get index and duplicate
+          const index = parent.indexOf ? parent.indexOf(selected) : -1;
+          const cloned = selected.clone();
+          
+          if (parent.components) {
+            if (index >= 0) {
+              parent.components().add(cloned, { at: index + 1 });
+            } else {
+              parent.components().add(cloned);
+            }
+          } else {
+            parent.append(cloned);
+          }
+          
+          editor.select(cloned);
+          editor.trigger('change:canvas');
+          console.log('✅ Component duplicated');
+        } catch (error) {
+          console.error('Duplicate error:', error);
+        }
+      };
+
+      // Handle Delete - Works for component level
+      const handleDelete = () => {
+        try {
+          const selected = editor.getSelected();
+          if (!selected) return;
+          
+          selected.remove();
+          editor.trigger('change:canvas');
+          console.log('✅ Component deleted');
+        } catch (error) {
+          console.error('Delete error:', error);
+        }
+      };
+
+      // Register commands
+      editor.Commands.add('component-copy', { run: handleCopy });
+      editor.Commands.add('component-duplicate', { run: handleDuplicate });
+      editor.Commands.add('component-delete', { run: handleDelete });
+
+      // Add buttons to Commands Panel (appears for ALL components) - Header Theme
+      const addButtonsToCommandsPanel = () => {
+        const commandsPanel = document.querySelector('.gjs-cm');
+        if (!commandsPanel) return;
+        
+        if (commandsPanel.querySelector('.custom-actions-container')) return;
+
+        const container = document.createElement('div');
+        container.className = 'custom-actions-container';
+        container.style.cssText = 'display: flex; align-items: center; gap: 2px; margin-left: 8px; padding-left: 8px; border-left: 1px solid #2d2d2d;';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'gjs-cm-btn custom-copy-btn';
+        copyBtn.title = 'Copy';
+        copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+        copyBtn.onclick = (e) => { 
+          e.preventDefault(); 
+          e.stopPropagation(); 
+          e.stopImmediatePropagation();
+          handleCopy(); 
+        };
+
+        const duplicateBtn = document.createElement('button');
+        duplicateBtn.className = 'gjs-cm-btn custom-duplicate-btn';
+        duplicateBtn.title = 'Duplicate';
+        duplicateBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path><path d="M9 9h6v6H9z"></path></svg>';
+        duplicateBtn.onclick = (e) => { 
+          e.preventDefault(); 
+          e.stopPropagation(); 
+          e.stopImmediatePropagation();
+          handleDuplicate(); 
+        };
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'gjs-cm-btn custom-delete-btn';
+        deleteBtn.title = 'Delete';
+        deleteBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+        deleteBtn.onclick = (e) => { 
+          e.preventDefault(); 
+          e.stopPropagation(); 
+          e.stopImmediatePropagation();
+          handleDelete(); 
+        };
+
+        container.appendChild(copyBtn);
+        container.appendChild(duplicateBtn);
+        container.appendChild(deleteBtn);
+        commandsPanel.appendChild(container);
+      };
+
+      // Handle text-level operations (when RTE toolbar is visible)
+      const handleTextCopy = () => {
+        try {
+          const iframe = editor.Canvas.getFrameEl();
+          if (!iframe || !iframe.contentWindow) return;
+          
+          const iframeDoc = iframe.contentWindow.document;
+          const selection = iframeDoc.getSelection();
+          if (selection && selection.toString().trim()) {
+            window.copiedText = selection.toString();
+            console.log('✅ Text copied:', window.copiedText);
+          } else {
+            // Fallback to component copy
+            handleCopy();
+          }
+        } catch (error) {
+          console.error('Text copy error:', error);
+          handleCopy();
+        }
+      };
+
+      const handleTextDuplicate = () => {
+        try {
+          const iframe = editor.Canvas.getFrameEl();
+          if (!iframe || !iframe.contentWindow) {
+            handleDuplicate();
+            return;
+          }
+          
+          const iframeDoc = iframe.contentWindow.document;
+          const selection = iframeDoc.getSelection();
+          if (selection && selection.toString().trim()) {
+            const text = selection.toString();
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            range.insertNode(iframeDoc.createTextNode(text + text));
+            selection.removeAllRanges();
+            console.log('✅ Text duplicated');
+          } else {
+            handleDuplicate();
+          }
+        } catch (error) {
+          console.error('Text duplicate error:', error);
+          handleDuplicate();
+        }
+      };
+
+      const handleTextDelete = () => {
+        try {
+          const iframe = editor.Canvas.getFrameEl();
+          if (!iframe || !iframe.contentWindow) {
+            handleDelete();
+            return;
+          }
+          
+          const iframeDoc = iframe.contentWindow.document;
+          const selection = iframeDoc.getSelection();
+          if (selection && selection.toString().trim()) {
+            selection.deleteFromDocument();
+            console.log('✅ Text deleted');
+          } else {
+            handleDelete();
+          }
+        } catch (error) {
+          console.error('Text delete error:', error);
+          handleDelete();
+        }
+      };
+
+      // Add buttons to RTE toolbar (for text editing) - Header Theme
+      const addButtonsToRTEToolbar = () => {
+        const rteToolbar = document.querySelector('.gjs-rte-toolbar');
+        if (!rteToolbar || rteToolbar.querySelector('.rte-custom-buttons-container')) return;
+
+        const container = document.createElement('div');
+        container.className = 'rte-custom-buttons-container';
+        container.style.cssText = 'display: flex; align-items: center; gap: 2px; margin-left: 8px; padding-left: 8px; border-left: 1px solid #2d2d2d;';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'gjs-rte-toolbar-item rte-copy-btn';
+        copyBtn.title = 'Copy';
+        copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+        copyBtn.onclick = (e) => { 
+          e.preventDefault(); 
+          e.stopPropagation(); 
+          e.stopImmediatePropagation();
+          handleTextCopy(); 
+        };
+
+        const duplicateBtn = document.createElement('button');
+        duplicateBtn.className = 'gjs-rte-toolbar-item rte-duplicate-btn';
+        duplicateBtn.title = 'Duplicate';
+        duplicateBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path><path d="M9 9h6v6H9z"></path></svg>';
+        duplicateBtn.onclick = (e) => { 
+          e.preventDefault(); 
+          e.stopPropagation(); 
+          e.stopImmediatePropagation();
+          handleTextDuplicate(); 
+        };
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'gjs-rte-toolbar-item rte-delete-btn';
+        deleteBtn.title = 'Delete';
+        deleteBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+        deleteBtn.onclick = (e) => { 
+          e.preventDefault(); 
+          e.stopPropagation(); 
+          e.stopImmediatePropagation();
+          handleTextDelete(); 
+        };
+
+        container.appendChild(copyBtn);
+        container.appendChild(duplicateBtn);
+        container.appendChild(deleteBtn);
+        rteToolbar.appendChild(container);
+      };
+
+      // Watch for both toolbars
+      const observer = new MutationObserver(() => {
+        addButtonsToCommandsPanel();
+        addButtonsToRTEToolbar();
+      });
+
+      observer.observe(document.body, { childList: true, subtree: true });
+      const canvasEl = document.querySelector('#gjs');
+      if (canvasEl) observer.observe(canvasEl, { childList: true, subtree: true });
+      
+      // Add buttons on component selection (for ALL components)
+      editor.on('component:selected', () => {
+        setTimeout(() => { addButtonsToCommandsPanel(); addButtonsToRTEToolbar(); }, 100);
+      });
+      
+      editor.on('rte:enable', () => setTimeout(addButtonsToRTEToolbar, 100));
+      editor.on('component:dblclick', () => setTimeout(() => { addButtonsToCommandsPanel(); addButtonsToRTEToolbar(); }, 150));
+      
+      // Initial attempts
+      setTimeout(() => { addButtonsToCommandsPanel(); addButtonsToRTEToolbar(); }, 300);
+      setTimeout(() => { addButtonsToCommandsPanel(); addButtonsToRTEToolbar(); }, 800);
+      setTimeout(() => { addButtonsToCommandsPanel(); addButtonsToRTEToolbar(); }, 1500);
+    }, 1000);
+
     // FIXED: Ensure Right Sidebar Panels are Always Visible and Functional
     setTimeout(() => {
       // Force show right sidebar panels
@@ -3254,26 +4900,21 @@ const PortfolioEdit = () => {
         panel.style.display = 'block';
         panel.style.visibility = 'visible';
         panel.style.opacity = '1';
-        panel.style.position = 'fixed';
-        panel.style.right = '0';
-        panel.style.top = '68px';
-        panel.style.height = 'calc(100vh - 68px)';
-        panel.style.maxHeight = 'calc(100vh - 68px)';
-        panel.style.zIndex = '1001';
         panel.style.overflowY = 'auto';
         panel.style.overflowX = 'hidden';
         panel.style.marginTop = '0';
         panel.style.paddingTop = '0';
         console.log('✅ Right sidebar panel initialized:', panel);
       });
+      applyToolsPanelPlacement();
 
       // FIXED: Force active buttons to have blue background and white icons
       const fixActiveButtons = () => {
         const activeButtons = document.querySelectorAll('.gjs-cm-btn.gjs-cm-active, .gjs-pn-btn.gjs-pn-active, .gjs-btn.active');
         activeButtons.forEach(btn => {
-          // Force blue background
-          btn.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
-          btn.style.backgroundColor = '#3b82f6';
+          // Force blue background - Figma Style
+          btn.style.background = '#18a0fb';
+          btn.style.backgroundColor = '#18a0fb';
           btn.style.color = 'white';
           
           // Force white icons
@@ -3318,6 +4959,373 @@ const PortfolioEdit = () => {
         console.log('✅ Style Manager panel enabled');
       }
 
+      // Professional Empty State for Style Manager
+      const setupStyleManagerEmptyState = () => {
+        const updateEmptyState = () => {
+          const sectorsContainer = document.querySelector('.gjs-sm-sectors');
+          if (!sectorsContainer) return;
+
+          const selected = editor.getSelected();
+          const hasSectors = sectorsContainer.querySelector('.gjs-sm-sector');
+          let emptyState = sectorsContainer.querySelector('.gjs-sm-empty-state');
+
+          // Check if Style Manager panel is active
+          const styleManagerBtn = document.querySelector('.gjs-pn-btn[data-pn-type="style-manager"]');
+          const isStyleManagerActive = styleManagerBtn && styleManagerBtn.classList.contains('gjs-pn-active');
+
+          if (!selected && !hasSectors && isStyleManagerActive) {
+            // Show empty state
+            if (!emptyState) {
+              emptyState = document.createElement('div');
+              emptyState.className = 'gjs-sm-empty-state';
+              emptyState.innerHTML = `
+                <div class="gjs-sm-empty-state-icon">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                  </svg>
+                </div>
+                <h3 class="gjs-sm-empty-state-title">Select an Element</h3>
+                <p class="gjs-sm-empty-state-message">Click on any element in the canvas to start styling with the Style Manager</p>
+                <div class="gjs-sm-empty-state-hint">
+                  💡 Tip: Select text, images, buttons, or any component to customize its appearance
+                </div>
+              `;
+              sectorsContainer.appendChild(emptyState);
+            } else {
+              emptyState.style.display = 'flex';
+            }
+          } else {
+            // Hide empty state
+            if (emptyState) {
+              emptyState.style.display = 'none';
+            }
+          }
+        };
+
+        // Update on component selection changes
+        editor.on('component:selected', updateEmptyState);
+        editor.on('component:deselected', updateEmptyState);
+        editor.on('component:update', updateEmptyState);
+
+        // Update when switching between panels
+        const styleManagerBtn = document.querySelector('.gjs-pn-btn[data-pn-type="style-manager"]');
+        if (styleManagerBtn) {
+          styleManagerBtn.addEventListener('click', () => {
+            setTimeout(updateEmptyState, 100);
+          });
+        }
+
+        // Initial update
+        setTimeout(updateEmptyState, 200);
+        
+        // Watch for DOM changes in sectors container
+        const sectorsContainer = document.querySelector('.gjs-sm-sectors');
+        if (sectorsContainer) {
+          const observer = new MutationObserver(() => {
+            setTimeout(updateEmptyState, 50);
+          });
+          observer.observe(sectorsContainer, {
+            childList: true,
+            subtree: true
+          });
+        }
+      };
+
+      // Setup empty state after a short delay to ensure DOM is ready
+      setTimeout(setupStyleManagerEmptyState, 500);
+
+      // Enhance Style Manager Fields - Make Unit Dropdowns Visible & User-Friendly
+      const enhanceStyleManagerFields = () => {
+        const enhanceFields = () => {
+          // Add placeholders to empty input fields
+          const allInputs = document.querySelectorAll('.gjs-sm-property input[type="text"], .gjs-sm-property input[type="number"], .gjs-sm-composite input[type="text"], .gjs-sm-composite input[type="number"]');
+          allInputs.forEach(input => {
+            if (!input.placeholder && !input.value) {
+              const label = input.closest('.gjs-sm-property')?.querySelector('.gjs-sm-label')?.textContent?.toLowerCase();
+              if (label) {
+                input.placeholder = `Enter ${label}...`;
+              }
+            }
+          });
+
+          // Remove "-" buttons and ensure unit selectors are visible
+          const allFields = document.querySelectorAll('.gjs-sm-property .gjs-field, .gjs-sm-composite .gjs-field');
+          allFields.forEach(field => {
+            const input = field.querySelector('input[type="text"], input[type="number"]');
+            
+            // Remove any "-" buttons or dash symbols
+            const dashButtons = field.querySelectorAll('button, .fa-minus, [class*="minus"], [class*="dash"]');
+            dashButtons.forEach(btn => {
+              if (btn.textContent === '-' || btn.textContent.includes('-') || btn.classList.contains('fa-minus')) {
+                btn.style.display = 'none';
+                btn.style.visibility = 'hidden';
+              }
+            });
+            
+            if (input) {
+              // Check if unit selector exists
+              let unitSelect = field.querySelector('.gjs-field-unit select, select[class*="unit"]');
+              let unitWrapper = field.querySelector('.gjs-field-unit');
+              
+              // Detect field type based on label or property name
+              const property = field.closest('.gjs-sm-property');
+              const label = property?.querySelector('.gjs-sm-label')?.textContent?.toLowerCase() || '';
+              const propertyName = property?.getAttribute('name')?.toLowerCase() || 
+                                   property?.getAttribute('data-name')?.toLowerCase() || '';
+              
+              // Check if this is a transition duration field
+              const isDurationField = label.includes('duration') || 
+                                     propertyName.includes('duration') ||
+                                     label.includes('transition-duration') ||
+                                     propertyName.includes('transition-duration');
+              
+              // Create unit selector if it doesn't exist
+              if (!unitSelect || !unitWrapper) {
+                // Remove old wrapper if exists
+                if (unitWrapper && !unitSelect) {
+                  unitWrapper.remove();
+                }
+                
+                unitWrapper = document.createElement('div');
+                unitWrapper.className = 'gjs-field-unit';
+                
+                unitSelect = document.createElement('select');
+                
+                // Use time units for duration fields, otherwise use default units
+                let options, defaultSelected;
+                if (isDurationField) {
+                  options = ['s', 'ms'];
+                  defaultSelected = 's';
+                } else {
+                  options = ['px', '%', 'em', 'rem', 'auto', 'inherit', 'initial', 'none', 'vh', 'vw'];
+                  defaultSelected = 'px';
+                }
+                
+                options.forEach(opt => {
+                  const option = document.createElement('option');
+                  option.value = opt;
+                  option.textContent = opt;
+                  if (opt === defaultSelected) option.selected = true;
+                  unitSelect.appendChild(option);
+                });
+                
+                unitWrapper.appendChild(unitSelect);
+                
+                // Insert after input
+                if (input.nextSibling) {
+                  field.insertBefore(unitWrapper, input.nextSibling);
+                } else {
+                  field.appendChild(unitWrapper);
+                }
+              } else {
+                // If unit selector already exists, update it if it's a duration field
+                if (isDurationField) {
+                  const currentValue = unitSelect.value;
+                  // Check if current options are time units
+                  const hasTimeUnits = Array.from(unitSelect.options).some(opt => opt.value === 's' || opt.value === 'ms');
+                  if (!hasTimeUnits) {
+                    // Replace with time units
+                    unitSelect.innerHTML = '';
+                    ['s', 'ms'].forEach(opt => {
+                      const option = document.createElement('option');
+                      option.value = opt;
+                      option.textContent = opt;
+                      if (opt === 's') option.selected = true;
+                      unitSelect.appendChild(option);
+                    });
+                  }
+                }
+              }
+              
+              // Ensure unit selector is visible and styled
+              if (unitWrapper) {
+                unitWrapper.style.display = 'inline-flex';
+                unitWrapper.style.visibility = 'visible';
+                unitWrapper.style.opacity = '1';
+                unitWrapper.style.position = 'relative';
+              }
+              
+              // Style the select
+              if (unitSelect) {
+                unitSelect.style.display = 'block';
+                unitSelect.style.visibility = 'visible';
+                unitSelect.style.opacity = '1';
+                unitSelect.style.cursor = 'pointer';
+              }
+            }
+          });
+
+          // Hide ALL duplicate parent labels and add single "Margin" label
+          const compositeContainers = document.querySelectorAll('.gjs-sm-composite');
+          compositeContainers.forEach(container => {
+            // Hide ALL parent property labels (remove all duplicate "Margin" text)
+            const parentProperty = container.closest('.gjs-sm-property');
+            if (parentProperty) {
+              const allParentLabels = parentProperty.querySelectorAll('.gjs-sm-label');
+              allParentLabels.forEach(label => {
+                // Only hide if it's not inside the composite itself
+                if (!container.contains(label)) {
+                  label.style.display = 'none';
+                  label.style.visibility = 'hidden';
+                  label.style.opacity = '0';
+                  label.style.height = '0';
+                  label.style.margin = '0';
+                  label.style.padding = '0';
+                  label.style.overflow = 'hidden';
+                }
+              });
+            }
+            
+            // Remove any existing duplicate labels
+            const existingLabels = container.querySelectorAll('.composite-field-label');
+            if (existingLabels.length > 1) {
+              for (let i = 1; i < existingLabels.length; i++) {
+                existingLabels[i].remove();
+              }
+            }
+            
+            // Check if label already exists, if not create one
+            let existingLabel = container.querySelector('.composite-field-label');
+            if (!existingLabel) {
+              // Check parent property to determine if it's Margin or Padding
+              const propertyName = parentProperty?.getAttribute('data-name')?.toLowerCase() || 
+                                   parentProperty?.getAttribute('name')?.toLowerCase() || '';
+              const labelText = propertyName.includes('padding') ? 'Padding' : 'Margin';
+              
+              existingLabel = document.createElement('div');
+              existingLabel.className = 'composite-field-label';
+              existingLabel.textContent = labelText;
+              container.insertBefore(existingLabel, container.firstChild);
+            }
+          });
+
+          // Enhance composite fields (Margin, Padding) with better UX
+          const compositeFields = document.querySelectorAll('.gjs-sm-composite .gjs-field');
+          compositeFields.forEach(field => {
+            const inputs = field.querySelectorAll('input[type="text"], input[type="number"]');
+            inputs.forEach((input, index) => {
+              // Make input clearly editable
+              input.style.display = 'block';
+              input.style.visibility = 'visible';
+              input.style.opacity = '1';
+              input.style.width = '100%';
+              input.style.minWidth = '60px';
+              input.style.padding = '4px 0';
+              input.style.fontSize = '14px';
+              input.style.fontWeight = '500';
+              input.style.color = '#1e293b';
+              input.style.background = 'transparent';
+              input.style.border = 'none';
+              input.style.outline = 'none';
+              input.readOnly = false;
+              input.disabled = false;
+              
+              // Add placeholder
+              if (!input.placeholder) {
+                input.placeholder = '0';
+              }
+              
+              // Make inputs more visible based on value
+              if (!input.value || input.value === '-' || input.value === 'auto' || input.value.trim() === '') {
+                input.style.color = '#94a3b8';
+                input.style.fontStyle = 'italic';
+              } else {
+                input.style.color = '#1e293b';
+                input.style.fontStyle = 'normal';
+              }
+              
+              // Ensure input is focusable
+              input.tabIndex = 0;
+            });
+            
+            // Ensure the field container is properly structured
+            field.style.display = 'flex';
+            field.style.alignItems = 'center';
+            field.style.gap = '10px';
+          });
+
+          // Add tooltips/hints for link/unlink buttons
+          const linkButtons = document.querySelectorAll('.gjs-sm-composite .fa-link, .gjs-sm-composite .fa-unlink, .gjs-sm-composite [class*="link"]');
+          linkButtons.forEach(btn => {
+            if (!btn.title) {
+              btn.title = btn.classList.contains('fa-unlink') || btn.classList.contains('unlink') 
+                ? 'Unlink values - Set different values for each side' 
+                : 'Link values - Use same value for all sides';
+            }
+          });
+
+          // Add clear labels and tooltips to ALL inputs that don't have clear labels
+          const allProperties = document.querySelectorAll('.gjs-sm-property:not(:has(.gjs-sm-composite))');
+          allProperties.forEach(property => {
+            const label = property.querySelector('.gjs-sm-label');
+            const field = property.querySelector('.gjs-field');
+            const input = property.querySelector('input, select, textarea');
+            
+            if (field && !label) {
+              // Create label from field name or attribute
+              const fieldName = field.getAttribute('data-name') || 
+                               field.getAttribute('name') || 
+                               field.className.match(/gjs-field-(\w+)/)?.[1] || 
+                               'Property';
+              const labelText = fieldName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              
+              const newLabel = document.createElement('div');
+              newLabel.className = 'gjs-sm-label';
+              newLabel.textContent = labelText;
+              newLabel.style.cssText = `
+                font-family: 'Inter', sans-serif !important;
+                font-weight: 600 !important;
+                font-size: 13px !important;
+                color: #334155 !important;
+                margin-bottom: 8px !important;
+                display: block !important;
+              `;
+              property.insertBefore(newLabel, field);
+            }
+            
+            // Add tooltip to input if no clear label
+            if (input && !input.title && !input.getAttribute('aria-label')) {
+              const labelText = label?.textContent || 
+                               input.getAttribute('placeholder') || 
+                               input.getAttribute('name') || 
+                               'Enter value';
+              input.setAttribute('title', labelText);
+              input.setAttribute('aria-label', labelText);
+              input.setAttribute('data-label', labelText);
+            }
+          });
+        };
+
+        // Run on component selection and updates
+        editor.on('component:selected', () => {
+          setTimeout(enhanceFields, 100);
+        });
+
+        editor.on('component:update', () => {
+          setTimeout(enhanceFields, 100);
+        });
+
+        // Watch for DOM changes
+        const sectorsContainer = document.querySelector('.gjs-sm-sectors');
+        if (sectorsContainer) {
+          const observer = new MutationObserver(() => {
+            setTimeout(enhanceFields, 50);
+          });
+          observer.observe(sectorsContainer, {
+            childList: true,
+            subtree: true
+          });
+        }
+
+        // Initial enhancement
+        setTimeout(enhanceFields, 300);
+      };
+
+      // Setup field enhancements
+      setTimeout(enhanceStyleManagerFields, 600);
+
       // Force show all panel views
       const panelViews = editor.Panels.getPanels();
       panelViews.forEach(panel => {
@@ -3335,6 +5343,443 @@ const PortfolioEdit = () => {
       });
 
       console.log('✅ Right sidebar panels fully initialized and visible');
+
+      // Add search bar for block categories - TOP POSITION
+      const addBlockSearchBar = () => {
+        const viewsContainer = document.querySelector('.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
+        
+        if (!viewsContainer) return;
+        
+        // Check if search bar already exists
+        if (document.querySelector('.gjs-blocks-search-container')) return;
+        
+        // Create search container
+        const searchContainer = document.createElement('div');
+        searchContainer.className = 'gjs-blocks-search-container';
+        searchContainer.innerHTML = `
+          <input 
+            type="text" 
+            class="gjs-blocks-search-input" 
+            placeholder="Search blocks and categories..." 
+            autocomplete="off"
+          />
+        `;
+        
+        // Insert search bar at the TOP of views container (first child)
+        viewsContainer.insertBefore(searchContainer, viewsContainer.firstChild);
+        
+        // Add search functionality
+        const searchInput = searchContainer.querySelector('.gjs-blocks-search-input');
+        if (searchInput) {
+          searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            const categories = document.querySelectorAll('.gjs-block-category');
+            const allBlocks = document.querySelectorAll('.gjs-block');
+            
+            if (searchTerm === '') {
+              // Show all categories and blocks
+              categories.forEach(category => {
+                category.style.display = '';
+                category.removeAttribute('data-search-match');
+                // Reset to default closed state
+                category.classList.remove('gjs-open');
+                const catBlocksContainer = category.querySelector('.gjs-blocks-c');
+                if (catBlocksContainer) {
+                  catBlocksContainer.style.display = 'none';
+                  catBlocksContainer.style.maxHeight = '0';
+                  catBlocksContainer.style.padding = '0';
+                }
+              });
+              
+              allBlocks.forEach(block => {
+                block.style.display = '';
+                block.removeAttribute('data-block-match');
+              });
+            } else {
+              // Filter categories and blocks
+              let hasAnyMatch = false;
+              
+              categories.forEach(category => {
+                const title = category.querySelector('.gjs-title');
+                const titleText = title ? title.textContent.toLowerCase().trim() : '';
+                const categoryBlocks = category.querySelectorAll('.gjs-block');
+                let categoryHasMatch = false;
+                let blockMatchesInCategory = 0;
+                
+                // Check if category title matches
+                if (titleText.includes(searchTerm)) {
+                  categoryHasMatch = true;
+                  hasAnyMatch = true;
+                }
+                
+                // Check each block in category
+                categoryBlocks.forEach(block => {
+                  const label = block.querySelector('.gjs-block-label');
+                  const labelText = label ? label.textContent.toLowerCase().trim() : '';
+                  
+                  // Also check block type/attributes
+                  const blockType = block.getAttribute('data-type') || '';
+                  const blockId = block.getAttribute('data-id') || '';
+                  
+                  if (labelText.includes(searchTerm) || 
+                      blockType.toLowerCase().includes(searchTerm) ||
+                      blockId.toLowerCase().includes(searchTerm)) {
+                    block.setAttribute('data-block-match', 'true');
+                    block.style.display = 'flex';
+                    categoryHasMatch = true;
+                    blockMatchesInCategory++;
+                    hasAnyMatch = true;
+                  } else {
+                    block.removeAttribute('data-block-match');
+                    block.style.display = 'none';
+                  }
+                });
+                
+                // Show/hide category based on matches
+                if (categoryHasMatch) {
+                  category.style.display = '';
+                  category.setAttribute('data-search-match', 'true');
+                  // Auto-open matching categories only if search is active
+                  if (searchTerm) {
+                    category.classList.add('gjs-open');
+                    const catBlocksContainer = category.querySelector('.gjs-blocks-c');
+                    if (catBlocksContainer) {
+                      catBlocksContainer.style.setProperty('display', 'grid', 'important');
+                      catBlocksContainer.style.setProperty('grid-template-columns', 'repeat(2, 1fr)', 'important');
+                      catBlocksContainer.style.setProperty('gap', '8px', 'important');
+                      catBlocksContainer.style.setProperty('max-height', '5000px', 'important');
+                      catBlocksContainer.style.setProperty('padding', '10px', 'important');
+                      catBlocksContainer.style.setProperty('opacity', '1', 'important');
+                      catBlocksContainer.style.setProperty('visibility', 'visible', 'important');
+                      catBlocksContainer.style.setProperty('overflow', 'visible', 'important');
+                    }
+                  }
+                } else {
+                  category.style.display = 'none';
+                  category.removeAttribute('data-search-match');
+                }
+              });
+            }
+          });
+        }
+      };
+
+      // Add search bar after a delay to ensure blocks are loaded
+      setTimeout(addBlockSearchBar, 500);
+      setTimeout(addBlockSearchBar, 1500);
+      setTimeout(addBlockSearchBar, 2500);
+
+      // Ensure block categories dropdown functionality works - SIMPLE & RELIABLE
+      const setupBlockCategoryClickHandlers = () => {
+        const blockCategories = document.querySelectorAll('.gjs-block-category');
+        blockCategories.forEach(category => {
+          const title = category.querySelector('.gjs-title');
+          if (title) {
+            // Ensure it's clickable
+            title.style.cursor = 'pointer';
+            title.style.pointerEvents = 'auto';
+            title.style.userSelect = 'none';
+            
+            // Remove old handler if exists
+            if (title._clickHandler) {
+              title.removeEventListener('click', title._clickHandler);
+            }
+            
+            // Create new click handler
+            const clickHandler = function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              e.stopImmediatePropagation();
+              
+              console.log('✅ Category clicked:', category);
+              
+              // Mark as user-opened
+              category.setAttribute('data-user-opened', 'true');
+              
+              // Toggle the gjs-open class
+              const isCurrentlyOpen = category.classList.contains('gjs-open');
+              category.classList.toggle('gjs-open');
+              const isNowOpen = category.classList.contains('gjs-open');
+              
+              console.log('✅ Toggle:', isCurrentlyOpen ? 'OPEN -> CLOSED' : 'CLOSED -> OPEN');
+              
+              // Get blocks container
+              const blocksContainer = category.querySelector('.gjs-blocks-c');
+              if (blocksContainer) {
+                if (isNowOpen) {
+                  // OPEN: Show blocks with GRID LAYOUT (2 columns) - PROPER SPACE
+                  blocksContainer.style.setProperty('display', 'grid', 'important');
+                  blocksContainer.style.setProperty('grid-template-columns', 'repeat(2, 1fr)', 'important');
+                  blocksContainer.style.setProperty('gap', '8px', 'important');
+                  blocksContainer.style.setProperty('max-height', '5000px', 'important');
+                  blocksContainer.style.setProperty('padding', '10px', 'important');
+                  blocksContainer.style.setProperty('padding-top', '10px', 'important');
+                  blocksContainer.style.setProperty('padding-bottom', '10px', 'important');
+                  blocksContainer.style.setProperty('margin', '0', 'important');
+                  blocksContainer.style.setProperty('opacity', '1', 'important');
+                  blocksContainer.style.setProperty('visibility', 'visible', 'important');
+                  blocksContainer.style.setProperty('overflow', 'visible', 'important');
+                  blocksContainer.style.setProperty('width', '100%', 'important');
+                  blocksContainer.style.setProperty('height', 'auto', 'important');
+                  blocksContainer.setAttribute('data-force-show', 'true');
+                  
+                  // Also ensure all blocks inside are visible
+                  const blocks = blocksContainer.querySelectorAll('.gjs-block');
+                  blocks.forEach(block => {
+                    block.style.setProperty('display', 'flex', 'important');
+                    block.style.setProperty('visibility', 'visible', 'important');
+                    block.style.setProperty('opacity', '1', 'important');
+                  });
+                  
+                  console.log('✅ Blocks container OPENED, blocks count:', blocks.length);
+                } else {
+                  // CLOSE: Hide blocks - NO SPACE
+                  blocksContainer.style.setProperty('max-height', '0', 'important');
+                  blocksContainer.style.setProperty('padding-top', '0', 'important');
+                  blocksContainer.style.setProperty('padding-bottom', '0', 'important');
+                  blocksContainer.style.setProperty('padding-left', '0', 'important');
+                  blocksContainer.style.setProperty('padding-right', '0', 'important');
+                  blocksContainer.style.setProperty('margin', '0', 'important');
+                  blocksContainer.style.setProperty('opacity', '0', 'important');
+                  blocksContainer.style.setProperty('visibility', 'hidden', 'important');
+                  blocksContainer.style.setProperty('overflow', 'hidden', 'important');
+                  blocksContainer.removeAttribute('data-force-show');
+                  console.log('✅ Blocks container CLOSED');
+                }
+              } else {
+                console.warn('⚠️ Blocks container not found for category:', category);
+              }
+              
+              return false;
+            };
+            
+            // Store handler reference and attach
+            title._clickHandler = clickHandler;
+            title.addEventListener('click', clickHandler, true);
+            
+            // Initialize display state - DEFAULT CLOSED (only if not user-opened)
+            // EXCEPT for "basic" category which should be open by default
+            const categoryTitle = title.textContent?.toLowerCase().trim() || '';
+            const isBasicCategory = categoryTitle === 'basic';
+            
+            if (!category.hasAttribute('data-user-opened')) {
+              if (isBasicCategory) {
+                // Keep "basic" category open by default
+                category.classList.add('gjs-open');
+                const blocksContainer = category.querySelector('.gjs-blocks-c');
+                if (blocksContainer) {
+                  blocksContainer.style.setProperty('display', 'grid', 'important');
+                  blocksContainer.style.setProperty('grid-template-columns', 'repeat(2, 1fr)', 'important');
+                  blocksContainer.style.setProperty('gap', '8px', 'important');
+                  blocksContainer.style.setProperty('max-height', '5000px', 'important');
+                  blocksContainer.style.setProperty('padding', '10px', 'important');
+                  blocksContainer.style.setProperty('padding-top', '10px', 'important');
+                  blocksContainer.style.setProperty('padding-bottom', '10px', 'important');
+                  blocksContainer.style.setProperty('margin', '0', 'important');
+                  blocksContainer.style.setProperty('opacity', '1', 'important');
+                  blocksContainer.style.setProperty('visibility', 'visible', 'important');
+                  blocksContainer.style.setProperty('overflow', 'visible', 'important');
+                  blocksContainer.style.setProperty('width', '100%', 'important');
+                  blocksContainer.style.setProperty('height', 'auto', 'important');
+                  blocksContainer.setAttribute('data-force-show', 'true');
+                }
+              } else {
+                // Close all other categories
+                category.classList.remove('gjs-open');
+                const blocksContainer = category.querySelector('.gjs-blocks-c');
+                if (blocksContainer) {
+                  blocksContainer.style.setProperty('max-height', '0', 'important');
+                  blocksContainer.style.setProperty('padding-top', '0', 'important');
+                  blocksContainer.style.setProperty('padding-bottom', '0', 'important');
+                  blocksContainer.style.setProperty('padding-left', '0', 'important');
+                  blocksContainer.style.setProperty('padding-right', '0', 'important');
+                  blocksContainer.style.setProperty('margin', '0', 'important');
+                  blocksContainer.style.setProperty('opacity', '0', 'important');
+                  blocksContainer.style.setProperty('visibility', 'hidden', 'important');
+                  blocksContainer.style.setProperty('overflow', 'hidden', 'important');
+                }
+              }
+            }
+          }
+        });
+      };
+      
+      // Also use event delegation for more reliability
+      const setupEventDelegation = () => {
+        const viewsContainer = document.querySelector('.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]');
+        if (viewsContainer && !viewsContainer.hasAttribute('data-delegation-setup')) {
+          viewsContainer.setAttribute('data-delegation-setup', 'true');
+          viewsContainer.addEventListener('click', function(e) {
+            const title = e.target.closest('.gjs-block-category .gjs-title');
+            if (title) {
+              const category = title.closest('.gjs-block-category');
+              if (category) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Trigger toggle
+                category.setAttribute('data-user-opened', 'true');
+                category.classList.toggle('gjs-open');
+                
+                const blocksContainer = category.querySelector('.gjs-blocks-c');
+                if (blocksContainer) {
+                  if (category.classList.contains('gjs-open')) {
+                    // OPEN: Show with proper space
+                    blocksContainer.style.setProperty('display', 'grid', 'important');
+                    blocksContainer.style.setProperty('grid-template-columns', 'repeat(2, 1fr)', 'important');
+                    blocksContainer.style.setProperty('gap', '8px', 'important');
+                    blocksContainer.style.setProperty('max-height', '5000px', 'important');
+                    blocksContainer.style.setProperty('padding', '10px', 'important');
+                    blocksContainer.style.setProperty('padding-top', '10px', 'important');
+                    blocksContainer.style.setProperty('padding-bottom', '10px', 'important');
+                    blocksContainer.style.setProperty('margin', '0', 'important');
+                    blocksContainer.style.setProperty('opacity', '1', 'important');
+                    blocksContainer.style.setProperty('visibility', 'visible', 'important');
+                    blocksContainer.style.setProperty('overflow', 'visible', 'important');
+                    blocksContainer.style.setProperty('width', '100%', 'important');
+                    blocksContainer.style.setProperty('height', 'auto', 'important');
+                    blocksContainer.setAttribute('data-force-show', 'true');
+                    
+                    // Ensure blocks inside are visible
+                    const blocks = blocksContainer.querySelectorAll('.gjs-block');
+                    blocks.forEach(block => {
+                      block.style.setProperty('display', 'flex', 'important');
+                      block.style.setProperty('visibility', 'visible', 'important');
+                      block.style.setProperty('opacity', '1', 'important');
+                    });
+                  } else {
+                    // CLOSE: Hide with no space
+                    blocksContainer.style.setProperty('max-height', '0', 'important');
+                    blocksContainer.style.setProperty('padding-top', '0', 'important');
+                    blocksContainer.style.setProperty('padding-bottom', '0', 'important');
+                    blocksContainer.style.setProperty('padding-left', '0', 'important');
+                    blocksContainer.style.setProperty('padding-right', '0', 'important');
+                    blocksContainer.style.setProperty('margin', '0', 'important');
+                    blocksContainer.style.setProperty('opacity', '0', 'important');
+                    blocksContainer.style.setProperty('visibility', 'hidden', 'important');
+                    blocksContainer.style.setProperty('overflow', 'hidden', 'important');
+                    blocksContainer.removeAttribute('data-force-show');
+                  }
+                }
+              }
+            }
+          }, true);
+        }
+      };
+
+      // Run immediately and periodically to catch all categories
+      // Also ensure all categories start closed by default EXCEPT "basic" which should be open
+      const ensureAllClosed = () => {
+        const categories = document.querySelectorAll('.gjs-block-category');
+        categories.forEach(category => {
+          // Only close if user hasn't explicitly opened it and search is not active
+          const searchInput = document.querySelector('.gjs-blocks-search-input');
+          const isSearchActive = searchInput && searchInput.value.trim() !== '';
+          
+          // Check if this is the "basic" category
+          const title = category.querySelector('.gjs-title');
+          const categoryTitle = title?.textContent?.toLowerCase().trim() || '';
+          const isBasicCategory = categoryTitle === 'basic';
+          
+          if (!category.hasAttribute('data-user-opened') && !isSearchActive) {
+            if (isBasicCategory) {
+              // Keep "basic" category open by default
+              category.classList.add('gjs-open');
+              const blocksContainer = category.querySelector('.gjs-blocks-c');
+              if (blocksContainer) {
+                blocksContainer.style.setProperty('display', 'grid', 'important');
+                blocksContainer.style.setProperty('grid-template-columns', 'repeat(2, 1fr)', 'important');
+                blocksContainer.style.setProperty('gap', '8px', 'important');
+                blocksContainer.style.setProperty('max-height', '5000px', 'important');
+                blocksContainer.style.setProperty('padding', '10px', 'important');
+                blocksContainer.style.setProperty('padding-top', '10px', 'important');
+                blocksContainer.style.setProperty('padding-bottom', '10px', 'important');
+                blocksContainer.style.setProperty('margin', '0', 'important');
+                blocksContainer.style.setProperty('opacity', '1', 'important');
+                blocksContainer.style.setProperty('visibility', 'visible', 'important');
+                blocksContainer.style.setProperty('overflow', 'visible', 'important');
+                blocksContainer.style.setProperty('width', '100%', 'important');
+                blocksContainer.style.setProperty('height', 'auto', 'important');
+                blocksContainer.setAttribute('data-force-show', 'true');
+              }
+            } else {
+              // Close all other categories
+              category.classList.remove('gjs-open');
+              const blocksContainer = category.querySelector('.gjs-blocks-c');
+              if (blocksContainer) {
+                blocksContainer.style.setProperty('max-height', '0', 'important');
+                blocksContainer.style.setProperty('padding-top', '0', 'important');
+                blocksContainer.style.setProperty('padding-bottom', '0', 'important');
+                blocksContainer.style.setProperty('padding-left', '0', 'important');
+                blocksContainer.style.setProperty('padding-right', '0', 'important');
+                blocksContainer.style.setProperty('margin', '0', 'important');
+                blocksContainer.style.setProperty('opacity', '0', 'important');
+                blocksContainer.style.setProperty('visibility', 'hidden', 'important');
+                blocksContainer.style.setProperty('overflow', 'hidden', 'important');
+              }
+            }
+          }
+        });
+      };
+
+      // Setup handlers multiple times to ensure they work
+      setupEventDelegation();
+      setupBlockCategoryClickHandlers();
+      ensureAllClosed();
+      
+      setTimeout(() => { setupEventDelegation(); setupBlockCategoryClickHandlers(); }, 100);
+      setTimeout(() => { setupEventDelegation(); setupBlockCategoryClickHandlers(); ensureAllClosed(); }, 300);
+      setTimeout(() => { setupEventDelegation(); setupBlockCategoryClickHandlers(); ensureAllClosed(); }, 800);
+      setTimeout(() => { setupEventDelegation(); setupBlockCategoryClickHandlers(); ensureAllClosed(); }, 1500);
+      setTimeout(() => { setupEventDelegation(); setupBlockCategoryClickHandlers(); ensureAllClosed(); }, 2500);
+      
+      // Also setup on any DOM changes
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+          setTimeout(() => { setupEventDelegation(); setupBlockCategoryClickHandlers(); }, 100);
+        });
+      } else {
+        setTimeout(() => { setupEventDelegation(); setupBlockCategoryClickHandlers(); }, 100);
+      }
+
+      // Watch for new categories being added
+      const categoryObserver = new MutationObserver((mutations) => {
+        let shouldSetup = false;
+        mutations.forEach(mutation => {
+          if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+            mutation.addedNodes.forEach(node => {
+              if (node.nodeType === 1 && (node.classList?.contains('gjs-block-category') || node.querySelector?.('.gjs-block-category'))) {
+                shouldSetup = true;
+              }
+            });
+          }
+        });
+        if (shouldSetup) {
+          setTimeout(setupBlockCategoryClickHandlers, 100);
+        }
+      });
+
+      const blocksContainer = document.querySelector('.gjs-blocks-c, .gjs-blocks, #gjs-blocks');
+      if (blocksContainer) {
+        categoryObserver.observe(blocksContainer, {
+          childList: true,
+          subtree: true
+        });
+      }
+
+      // Also watch the entire document for any new block categories
+      const globalObserver = new MutationObserver(() => {
+        const categories = document.querySelectorAll('.gjs-block-category:not([data-handler-checked])');
+        if (categories.length > 0) {
+          categories.forEach(cat => cat.setAttribute('data-handler-checked', 'true'));
+          setTimeout(setupBlockCategoryClickHandlers, 100);
+        }
+      });
+
+      globalObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
     }, 1000);
 
     return () => {
@@ -4044,23 +6489,39 @@ setTimeout(fillAppointmentForms, 5000);
     setShowTemplateSelector(false);
   };
 
-  const handleRedirectSelect = (pageSlug) => {
-    const formattedSlug = pageSlug.replace(/^\/|\/$/g, '');
-    console.log('Setting redirect page to:', formattedSlug);
+  const handleRedirectSelect = (targetValue) => {
+    if (!targetValue) {
+      alert('Please choose a redirect destination');
+      return;
+    }
 
-    setSelectedRedirectPage(formattedSlug);
+    let formattedTarget = targetValue.trim();
+    const isExternalLink = /^https?:\/\//i.test(formattedTarget);
+
+    if (!isExternalLink) {
+      formattedTarget = formattedTarget.replace(/^\/|\/$/g, '');
+    }
+
+    if (!formattedTarget) {
+      alert('Please provide a valid redirect destination');
+      return;
+    }
+
+    console.log('Setting redirect destination to:', formattedTarget);
+
+    setSelectedRedirectPage(formattedTarget);
 
     if (editorInstance) {
       const currentPage = editorInstance.Pages.getSelected();
       if (currentPage) {
-        currentPage.set('redirectPage', formattedSlug);
-        console.log('Updated current page redirect to:', formattedSlug);
+        currentPage.set('redirectPage', formattedTarget);
+        console.log('Updated current page redirect to:', formattedTarget);
       }
 
-      updateDirectFormsRedirect(editorInstance, formattedSlug);
+      updateDirectFormsRedirect(editorInstance, formattedTarget);
 
       setTimeout(() => {
-        updateDirectFormsRedirect(editorInstance, formattedSlug);
+        updateDirectFormsRedirect(editorInstance, formattedTarget);
       }, 500);
 
       if (currentStage) {
@@ -4068,7 +6529,7 @@ setTimeout(fillAppointmentForms, 5000);
           stageId: currentStage.id,
           stageType: currentStage.type,
           basicInfo: currentStage.basicInfo || {},
-          redirectPage: formattedSlug
+          redirectPage: formattedTarget
         };
         dispatch(updateStageBasicInfo(updateData));
         console.log('Dispatched redirect page update to Redux:', updateData);
@@ -4076,26 +6537,130 @@ setTimeout(fillAppointmentForms, 5000);
     }
 
     setShowRedirectPopup(false);
-    alert(`Redirect page set to: ${formattedSlug}\nAll direct forms will now redirect to this page after submission.`);
+    alert(`Redirect destination set to: ${formattedTarget}\nAll direct forms will now redirect here after submission.`);
   };
 
-  const handleDaySelectorSelect = (selectedDay, recentDate) => {
-    console.log('🎯 Day selected:', selectedDay, 'Date:', recentDate);
+  const getDaySelectorDocument = (instanceOverride) => {
+    const activeEditor = instanceOverride || window.editor || editorInstance;
+    const frameEl = activeEditor?.Canvas?.getFrameEl?.();
+    if (frameEl?.contentDocument) {
+      return frameEl.contentDocument;
+    }
+    if (frameEl?.contentWindow?.document) {
+      return frameEl.contentWindow.document;
+    }
+    return document;
+  };
+
+  const applyDaySelectionToDomElement = (targetElement, selectionInput) => {
+    if (!targetElement) return [];
+    const normalizedSelection = normalizeDaySelection(selectionInput);
+    const daySummary = formatDaySummary(normalizedSelection);
+    const dateSummary = formatDateSummary(normalizedSelection);
+
+    const daySpan = targetElement.querySelector('.day-value');
+    const dateSpan = targetElement.querySelector('.date-value');
+
+    if (daySpan) {
+      daySpan.textContent = daySummary;
+    }
+    if (dateSpan) {
+      dateSpan.textContent = dateSummary;
+    }
+
+    const primaryDay = normalizedSelection[0]?.day || '';
+    const primaryDate = normalizedSelection[0]?.date || (primaryDay ? getUpcomingDateForDay(primaryDay) : '');
+
+    targetElement.setAttribute('data-selected-days', JSON.stringify(normalizedSelection));
+    targetElement.setAttribute('data-selected-day', primaryDay);
+    targetElement.setAttribute('data-recent-date', primaryDate);
+
+    return normalizedSelection;
+  };
+
+  const syncDaySelectorComponentModel = (targetElement, selectionInput, editorOverride) => {
+    const activeEditor = editorOverride || window.editor || editorInstance;
+    if (!activeEditor || !targetElement) {
+      return;
+    }
+
+    const normalizedSelection = normalizeDaySelection(selectionInput);
+    const componentId = targetElement.getAttribute('data-component-id');
+    const wrapper = activeEditor.DomComponents?.getWrapper?.();
+    let componentModel = null;
+
+    if (componentId && wrapper?.find) {
+      const matches = wrapper.find(`[data-component-id="${componentId}"]`);
+      if (matches?.length) {
+        componentModel = matches[0];
+      }
+    }
+
+    if (!componentModel) {
+      const selected = activeEditor.getSelected?.();
+      if (selected?.getEl?.() === targetElement) {
+        componentModel = selected;
+      }
+    }
+
+    if (!componentModel) return;
+
+    const primaryDay = normalizedSelection[0]?.day || '';
+    const primaryDate = normalizedSelection[0]?.date || (primaryDay ? getUpcomingDateForDay(primaryDay) : '');
+
+    componentModel.addAttributes?.({
+      'data-selected-day': primaryDay,
+      'data-recent-date': primaryDate,
+      'data-selected-days': JSON.stringify(normalizedSelection)
+    });
+
+    const dayValueComponent = componentModel.find?.('.day-value')?.[0];
+    const dateValueComponent = componentModel.find?.('.date-value')?.[0];
+
+    if (dayValueComponent) {
+      dayValueComponent.components?.(formatDaySummary(normalizedSelection));
+    }
+    if (dateValueComponent) {
+      dateValueComponent.components?.(formatDateSummary(normalizedSelection));
+    }
+
+    componentModel.view?.render?.();
+    activeEditor.trigger?.('change:canvas');
+  };
+
+  const openDaySelectorPopupForElement = (element) => {
+    if (element) {
+      setDaySelectorInitialSelection(parseDaySelectionFromElement(element));
+    } else {
+      setDaySelectorInitialSelection([]);
+    }
+    setShowDaySelectorPopup(true);
+  };
+
+  const handleDaySelectorSelect = (selectionPayload, legacyRecentDate) => {
+    const normalizedSelection = normalizeDaySelection(selectionPayload, legacyRecentDate);
+    console.log('🎯 Day selected:', normalizedSelection);
     console.log('🔍 Selected ID:', selectedDaySelectorId);
     console.log('📍 Selected Element:', selectedComponentElement);
     console.log('📊 Editor Instance:', !!editorInstance);
 
+    if (!normalizedSelection.length) {
+      alert('Please select at least one day');
+      return;
+    }
+
     let targetElement = null;
+    const canvasDocument = getDaySelectorDocument();
     
     // Method 1: Use stored element reference
-    if (selectedComponentElement && document.contains(selectedComponentElement)) {
+    if (selectedComponentElement && canvasDocument.contains(selectedComponentElement)) {
       targetElement = selectedComponentElement;
       console.log('✅ Using stored element reference');
     }
     
     // Method 2: Find by component ID
     if (!targetElement && selectedDaySelectorId) {
-      targetElement = document.querySelector(`[data-component-id="${selectedDaySelectorId}"]`);
+      targetElement = canvasDocument.querySelector(`[data-component-id="${selectedDaySelectorId}"]`);
       console.log('✅ Found by component ID:', !!targetElement);
     }
     
@@ -4113,7 +6678,7 @@ setTimeout(fillAppointmentForms, 5000);
     
     // Method 4: Find any available day selector
     if (!targetElement) {
-      const allDayComponents = document.querySelectorAll('.day-selector-display-widget');
+      const allDayComponents = canvasDocument.querySelectorAll('.day-selector-display-widget');
       if (allDayComponents.length > 0) {
         targetElement = allDayComponents[0];
         console.log('✅ Using first available component');
@@ -4123,50 +6688,11 @@ setTimeout(fillAppointmentForms, 5000);
     if (targetElement) {
       console.log('🔄 Updating component...');
       
-      // Direct DOM update - using exact selectors from component structure
-      const daySpan = targetElement.querySelector('.day-value');
-      const dateSpan = targetElement.querySelector('.date-value');
-      
-      console.log('Day span found:', !!daySpan);
-      console.log('Date span found:', !!dateSpan);
-      console.log('Target element HTML:', targetElement.innerHTML);
-      
-      if (daySpan) {
-        daySpan.textContent = selectedDay;
-        daySpan.innerHTML = selectedDay;
-        console.log('✅ Day updated:', selectedDay);
-      } else {
-        // Try finding by text content
-        const allSpans = targetElement.querySelectorAll('span');
-        allSpans.forEach((span, index) => {
-          console.log(`Span ${index}:`, span.textContent, span.className);
-          if (span.textContent.includes('Click Day Selector')) {
-            span.textContent = selectedDay;
-            span.innerHTML = selectedDay;
-            console.log('✅ Day updated via text search');
-          }
-        });
-      }
-      
-      if (dateSpan) {
-        dateSpan.textContent = recentDate;
-        dateSpan.innerHTML = recentDate;
-        console.log('✅ Date updated:', recentDate);
-      } else {
-        // Try finding by text content
-        const allSpans = targetElement.querySelectorAll('span');
-        allSpans.forEach((span, index) => {
-          if (span.textContent.includes('No day selected')) {
-            span.textContent = recentDate;
-            span.innerHTML = recentDate;
-            console.log('✅ Date updated via text search');
-          }
-        });
-      }
-      
-      // Update attributes
-      targetElement.setAttribute('data-selected-day', selectedDay);
-      targetElement.setAttribute('data-recent-date', recentDate);
+      const appliedSelection = applyDaySelectionToDomElement(targetElement, normalizedSelection);
+
+      // Sync GrapesJS component model so the value persists after save/export
+      syncDaySelectorComponentModel(targetElement, appliedSelection);
+      setDaySelectorInitialSelection(appliedSelection);
       
       // Force visual update
       targetElement.style.display = 'none';
@@ -4347,37 +6873,16 @@ setTimeout(fillAppointmentForms, 5000);
   // Auto-update functionality - onEditorReady के अंत में add करो:
   useEffect(() => {
     const autoUpdateInterval = setInterval(() => {
-      const dayComponents = document.querySelectorAll('[data-selected-day]:not([data-selected-day=""])');
+      const dayComponents = document.querySelectorAll('.day-selector-display-widget');
       
       dayComponents.forEach(component => {
-        const selectedDay = component.getAttribute('data-selected-day');
-        if (selectedDay) {
-          const findMostRecentDateForDay = (dayName) => {
-            const today = new Date();
-            const dayMap = {
-              'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
-              'Friday': 5, 'Saturday': 6, 'Sunday': 0
-            };
-            
-            const targetDay = dayMap[dayName];
-            const currentDay = today.getDay();
-            let daysToSubtract = (currentDay - targetDay + 7) % 7;
-            
-            const recentDate = new Date(today);
-            recentDate.setDate(today.getDate() - daysToSubtract);
-            
-            return recentDate.toLocaleDateString('en-US', {
-              year: 'numeric', month: 'long', day: 'numeric'
-            });
-          };
-          
-          const newDate = findMostRecentDateForDay(selectedDay);
-          const dateSpan = component.querySelector('.date-value');
-          if (dateSpan && dateSpan.textContent !== newDate) {
-            dateSpan.textContent = newDate;
-            component.setAttribute('data-recent-date', newDate);
-          }
-        }
+        const selection = parseDaySelectionFromElement(component);
+        if (!selection.length) return;
+        const refreshedSelection = selection.map(item => ({
+          day: item.day,
+          date: getUpcomingDateForDay(item.day)
+        }));
+        applyDaySelectionToDomElement(component, refreshedSelection);
       });
     }, 60000); // Update every minute
 
@@ -4386,15 +6891,29 @@ setTimeout(fillAppointmentForms, 5000);
 
   // Global function for day selector popup
   useEffect(() => {
-    window.openDaySelectorPopup = (currentDay, currentDate) => {
-      console.log('Opening day selector popup for:', currentDay, currentDate);
+    window.openDaySelectorPopup = (selectionPayload, legacyRecentDate) => {
+      console.log('Opening day selector popup for:', selectionPayload);
+
+      if (selectionPayload instanceof Element) {
+        openDaySelectorPopupForElement(selectionPayload);
+        return;
+      }
+
+      if (selectionPayload) {
+        setDaySelectorInitialSelection(normalizeDaySelection(selectionPayload, legacyRecentDate));
+      } else if (selectedComponentElement) {
+        setDaySelectorInitialSelection(parseDaySelectionFromElement(selectedComponentElement));
+      } else {
+        setDaySelectorInitialSelection([]);
+      }
+
       setShowDaySelectorPopup(true);
     };
     
     return () => {
       delete window.openDaySelectorPopup;
     };
-  }, []);
+  }, [selectedComponentElement]);
 
   const getSelectedTemplateKey = () => {
     if (!currentStage) return null;
@@ -4622,9 +7141,49 @@ setTimeout(fillAppointmentForms, 5000);
       <div className={`pages-sidebar ${showPagesSidebar ? 'show' : 'hide'}`}>
         <div className="pages-sidebar-header">
           <div className="header-title">
-            <FaFileAlt className="header-icon" />
-            <h3>Pages</h3>
+            {showBlocksPanel ? (
+              <>
+                <FaLayerGroup className="header-icon" />
+                <h3>Layers</h3>
+              </>
+            ) : (
+              <>
+                <FaFileAlt className="header-icon" />
+                <h3>Pages</h3>
+              </>
+            )}
           </div>
+          <div className="header-actions">
+            <button
+              className={`blocks-toggle-btn ${showBlocksPanel ? 'active' : ''}`}
+              onClick={() => setShowBlocksPanel(prev => !prev)}
+              title={showBlocksPanel ? 'Show Pages' : 'Show Layers'}
+            >
+              <FaLayerGroup />
+            </button>
+            {BUILDER_PANEL_ENABLED && (
+              <button
+                className={`builder-panel-btn ${showBuilderPanel ? 'active' : ''}`}
+                onClick={() => setShowBuilderPanel(prev => !prev)}
+                title={showBuilderPanel ? 'Close Page Builder' : 'Open Page Builder'}
+              >
+                <FaThLarge />
+              </button>
+            )}
+            <button
+              className={`tools-toggle-btn ${isToolsPanelOpen ? 'active' : ''}`}
+              onClick={toggleToolsPanel}
+              title={isToolsPanelOpen ? 'Hide Builder Tools' : 'Show Builder Tools'}
+            >
+              <FaLayerGroup />
+            </button>
+            <button
+              className="tools-position-btn"
+              onClick={toggleToolsPanelSide}
+              title={`Move builder tools to the ${toolsPanelSide === 'left' ? 'right' : 'left'} side`}
+            >
+              <FaExchangeAlt />
+            </button>
           <button
             className="sidebar-toggle-btn"
             onClick={() => setShowPagesSidebar(!showPagesSidebar)}
@@ -4632,9 +7191,118 @@ setTimeout(fillAppointmentForms, 5000);
           >
             <FaArrowLeft />
           </button>
+          </div>
         </div>
+
+        {BUILDER_PANEL_ENABLED && showBuilderPanel && (
+          <div className="builder-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="builder-panel-header">
+              <div className="builder-panel-title">
+                <FaThLarge />
+                <div>
+                  <h4>Page Builder</h4>
+                  <p>Add sections, columns, and reusable elements</p>
+                </div>
+              </div>
+              <button
+                className="builder-panel-close-btn"
+                onClick={() => setShowBuilderPanel(false)}
+                title="Close builder panel"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="builder-panel-search">
+              <input
+                type="text"
+                placeholder="Search elements..."
+                value={builderSearchTerm}
+                onChange={(e) => setBuilderSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <div className="builder-panel-body">
+              <div className="builder-panel-nav">
+                {builderNavItems.map(category => (
+                  <button
+                    key={category.id}
+                    className={`builder-nav-item ${category.id === activeBuilderCategory ? 'active' : ''}`}
+                    onClick={() => setActiveBuilderCategory(category.id)}
+                  >
+                    <span>{category.label}</span>
+                    <span className="item-count">{category.count}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="builder-panel-content">
+                {builderItems.length === 0 && (
+                  <div className="builder-panel-empty">
+                    <p>No presets available for this category yet.</p>
+                  </div>
+                )}
+
+                {builderItems.length > 0 && filteredBuilderItems.length === 0 && (
+                  <div className="builder-panel-empty">
+                    <p>No elements match your search.</p>
+                  </div>
+                )}
+
+                {filteredBuilderItems.length > 0 && (
+                  <div className="builder-blocks-grid">
+                    <div className="builder-panel-instructions">
+                      Drag any card onto the canvas to insert it into the page.
+                    </div>
+                    {filteredBuilderItems.map(item => (
+                      <div
+                        key={item.id}
+                        className="builder-block-card"
+                        draggable
+                        onDragStart={(event) => handleBuilderDragStart(item, event)}
+                        onDragEnd={handleBuilderDragEnd}
+                        onDoubleClick={() => handleBuilderItemClick(item)}
+                      >
+                        <div className="block-card-header">
+                          <div className="block-card-label">
+                            <span className="block-title">{item.label}</span>
+                            {item.description && (
+                              <span className="block-description">{item.description}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="block-preview">
+                          {renderBuilderPreview(item)}
+                        </div>
+                        <div className="block-card-actions">
+                          <button
+                            className="block-add-btn"
+                            onClick={() => handleBuilderItemClick(item)}
+                          >
+                            <FaPlus />
+                            <span>Add to Page</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Layers Panel - GrapesJS Layers/Component Tree */}
+        {showBlocksPanel && (
+          <div className="blocks-panel-container" id="left-sidebar-blocks-container">
+            {/* This container will hold the GrapesJS layers/component tree content */}
+          </div>
+        )}
         
-        <div className="pages-list">
+        {/* Pages List - shown when blocks panel is hidden */}
+        {!showBlocksPanel && (
+          <>
+            <div className="pages-list">
           {stages.map((stage, index) => {
             const isActive = selectedPageId === stage.id;
             const stageTypeIcons = {
@@ -4680,6 +7348,8 @@ setTimeout(fillAppointmentForms, 5000);
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* Sidebar Toggle Button (when sidebar is hidden) */}
@@ -4693,15 +7363,9 @@ setTimeout(fillAppointmentForms, 5000);
         </button>
       )}
 
-      {/* Floating Form Buttons */}
-      <FloatingFormButton
-        forms={availableForms}
-        onScrollToForm={scrollToForm}
-      />
-
       {showTemplateSelector && currentStage && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content day-selector-modal-content">
             <button
               className="modal-close-btn"
               onClick={() => setShowTemplateSelector(false)}
@@ -4776,6 +7440,7 @@ setTimeout(fillAppointmentForms, 5000);
             </button>
             <DaySelectorPopup
               onSelect={handleDaySelectorSelect}
+              initialSelection={daySelectorInitialSelection}
               onClose={() => setShowDaySelectorPopup(false)}
             />
           </div>
@@ -4802,8 +7467,35 @@ setTimeout(fillAppointmentForms, 5000);
           </button>
           
           <div className="page-info">
-            <span className="page-title">{currentStage?.name || 'Editor'}</span>
+              <span className="page-title">{currentStage?.name || 'Editor'}</span>
             <span className="page-subtitle">Visual Page Builder</span>
+          </div>
+
+          <div className="btn-divider"></div>
+
+          {/* Device Preview Controls - moved next to Pages sidebar */}
+          <div className="device-preview-controls left-aligned-device-controls">
+            <button
+              onClick={() => handlePresetWidth(null)}
+              className={`device-preview-btn desktop ${frameWidth === null ? 'active' : ''}`}
+              title="Desktop preview"
+            >
+              <FaLaptop />
+            </button>
+            <button
+              onClick={() => handlePresetWidth(1024)}
+              className={`device-preview-btn tablet ${frameWidth === 1024 ? 'active' : ''}`}
+              title="Tablet preview (1024px)"
+            >
+              <FaTabletAlt />
+            </button>
+            <button
+              onClick={() => handlePresetWidth(414)}
+              className={`device-preview-btn mobile ${frameWidth === 414 ? 'active' : ''}`}
+              title="Mobile preview (414px)"
+            >
+              <FaMobileAlt />
+            </button>
           </div>
         </div>
 
@@ -4886,37 +7578,49 @@ setTimeout(fillAppointmentForms, 5000);
 
           <div className="btn-divider"></div>
 
-          <button
-            onClick={() => setShowRedirectPopup(true)}
-            className="modern-btn info-btn"
-            title="Set Form Redirect"
-          >
-            <FaFileAlt />
-            <span>Redirect</span>
-          </button>
+          {hasDirectForms && (
+            <button
+              onClick={() => setShowRedirectPopup(true)}
+              className="modern-btn info-btn"
+              title="Set Form Redirect"
+            >
+              <FaFileAlt />
+              <span>Redirect</span>
+            </button>
+          )}
 
+          {hasDaySelectors && (
           <button
             onClick={() => {
               console.log('📅 Day Selector button clicked');
-              const dayComponents1 = document.querySelectorAll('.day-selector-display-widget');
-              const dayComponents2 = document.querySelectorAll('.day-selector-widget-element');
-              const dayComponents3 = document.querySelectorAll('[data-component-id*="day-selector"]');
+                const canvasDocument = getDaySelectorDocument();
+                const dayComponents1 = canvasDocument.querySelectorAll('.day-selector-display-widget');
+                const dayComponents2 = canvasDocument.querySelectorAll('.day-selector-widget-element');
+                const dayComponents3 = canvasDocument.querySelectorAll('[data-component-id*="day-selector"]');
               
               const allDayComponents = [...dayComponents1, ...dayComponents2, ...dayComponents3];
               const uniqueComponents = [...new Set(allDayComponents)];
               
-              if (selectedDaySelectorId || selectedComponentElement) {
-                setShowDaySelectorPopup(true);
-              } else if (uniqueComponents.length > 0) {
-                const firstComp = uniqueComponents[0];
-                const compId = firstComp.getAttribute('data-component-id') || 
-                              `day-selector-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-                
-                firstComp.setAttribute('data-component-id', compId);
+                let targetElement = null;
+
+                if (selectedComponentElement && canvasDocument.contains(selectedComponentElement)) {
+                  targetElement = selectedComponentElement;
+                } else if (selectedDaySelectorId) {
+                  targetElement = canvasDocument.querySelector(`[data-component-id="${selectedDaySelectorId}"]`);
+                }
+
+                if (!targetElement && uniqueComponents.length > 0) {
+                  targetElement = uniqueComponents[0];
+                  const compId = targetElement.getAttribute('data-component-id') || 
+                                 `day-selector-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+                  targetElement.setAttribute('data-component-id', compId);
                 setSelectedDaySelectorId(compId);
-                setSelectedComponentElement(firstComp);
-                firstComp.classList.add('selected');
-                setShowDaySelectorPopup(true);
+                  setSelectedComponentElement(targetElement);
+                  targetElement.classList.add('selected');
+                }
+
+                if (targetElement) {
+                  openDaySelectorPopupForElement(targetElement);
               } else {
                 alert('⚠️ No Day Selector found!\n\n1. Drag "Day Selector" from left panel\n2. Drop it on the page\n3. Click to select\n4. Then click this button');
               }
@@ -4927,6 +7631,7 @@ setTimeout(fillAppointmentForms, 5000);
             <FaCalendarDay />
             <span>Day Selector</span>
           </button>
+          )}
 
           <button
             onClick={() => setShowCustomCodePopup(true)}
@@ -4939,15 +7644,6 @@ setTimeout(fillAppointmentForms, 5000);
         </div>
 
         <div className="action-bar-section right-section">
-          <button
-            onClick={toggleDarkMode}
-            className={`modern-btn dark-mode-toggle ${isDarkMode ? 'dark-active' : ''}`}
-            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            {isDarkMode ? <FaSun /> : <FaMoon />}
-            <span>{isDarkMode ? 'Light' : 'Dark'}</span>
-          </button>
-
           <button
             onClick={() => setShowAIPopup(true)}
             className="modern-btn ai-btn"
@@ -4976,7 +7672,7 @@ setTimeout(fillAppointmentForms, 5000);
       </div>
 
 
-      <div className={`editor-main-area ${showPagesSidebar ? 'with-sidebar' : 'full-width'}`}>
+        <div className={`editor-main-area ${showPagesSidebar ? 'with-sidebar' : 'full-width'} ${isToolsPanelOpen ? 'tools-panel-open' : 'tools-panel-hidden'} ${toolsPanelSide === 'left' ? 'tools-left' : 'tools-right'} ${BUILDER_PANEL_ENABLED && isBuilderDragging ? 'builder-drag-active' : ''}`}>
         <div 
           id="gjs" 
           key={`editor-${slug}-${forceRefreshKey}`}
@@ -4994,7 +7690,8 @@ setTimeout(fillAppointmentForms, 5000);
         </div>
       </div>
 
-      <style>{`
+      <style>
+        {`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
         * {
@@ -5013,14 +7710,21 @@ setTimeout(fillAppointmentForms, 5000);
           left: 0;
           overflow: hidden;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          background: #f8fafc;
+          background: #1a1a1a;
+          color: #e5e5e5;
           transition: background-color 0.3s ease, color 0.3s ease;
+          --nav-sidebar-width: 300px;
+          --tools-panel-width: 280px;
+          --header-bg: #1e1e1e;
+          --header-border-color: #2d2d2d;
         }
 
-        /* Dark Mode Styles */
+        /* Dark Mode Styles - Figma-like Professional Black Theme */
         .portfolio-edit-container.dark-mode {
-          background: #0f172a;
-          color: #e2e8f0;
+          background: #1a1a1a;
+          color: #e5e5e5;
+          --header-bg: #1e1e1e;
+          --header-border-color: #2d2d2d;
         }
 
         .dark-mode-toggle {
@@ -5044,26 +7748,28 @@ setTimeout(fillAppointmentForms, 5000);
           background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
         }
 
-        /* Left Sidebar - Pages Navigation */
+        /* Left Sidebar - Pages Navigation - Figma Style */
         .pages-sidebar {
           position: fixed;
           left: 0;
           top: 68px;
-          width: 300px;
+          width: var(--nav-sidebar-width);
           height: calc(100vh - 68px);
-          background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-          border-right: 2px solid #e2e8f0;
-          box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08);
+          background: #1e1e1e;
+          border-right: 1px solid #2d2d2d;
+          box-shadow: 4px 0 20px rgba(0, 0, 0, 0.45);
           display: flex;
           flex-direction: column;
           z-index: 1001;
           transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease, border-color 0.3s ease;
         }
 
-        .dark-mode .pages-sidebar {
-          background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-          border-right-color: #334155;
-          box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+        .pages-sidebar.hide {
+          transform: translateX(-100%);
+        }
+
+        .pages-sidebar.show {
+          transform: translateX(0);
         }
 
         .pages-sidebar.hide {
@@ -5075,52 +7781,578 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         .pages-sidebar-header {
-          padding: 20px;
-          background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-          border-bottom: 3px solid #3b82f6;
+          padding: 16px 18px;
+          background: #1e1e1e;
+          border-bottom: 1px solid #2d2d2d;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
         }
 
         .header-title {
           display: flex;
           align-items: center;
           gap: 12px;
-          color: white;
+          color: #e5e5e5;
         }
 
         .header-title .header-icon {
           font-size: 20px;
-          color: #3b82f6;
+          color: #18a0fb;
         }
 
         .header-title h3 {
           margin: 0;
-          font-size: 18px;
+          font-size: 17px;
           font-weight: 700;
-          letter-spacing: -0.3px;
+          letter-spacing: -0.2px;
+          color: #e5e5e5;
         }
 
+        .header-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          position: relative;
+        }
+
+        .header-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .blocks-toggle-btn,
+        .builder-panel-btn,
+        .tools-toggle-btn,
+        .tools-position-btn,
         .sidebar-toggle-btn {
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          color: white;
+          background: #ffffff;
+          border: 1px solid #e5e7eb;
+          color: #1e293b;
           width: 32px;
           height: 32px;
-          border-radius: 8px;
+          border-radius: 6px;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: all 0.3s ease;
-          backdrop-filter: blur(10px);
+          transition: all 0.2s ease;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
 
+        .dark-mode .blocks-toggle-btn,
+        .dark-mode .builder-panel-btn,
+        .dark-mode .tools-toggle-btn,
+        .dark-mode .tools-position-btn,
+        .dark-mode .sidebar-toggle-btn {
+          background: #2d2d2d;
+          border: 1px solid #3a3a3a;
+          color: #e5e5e5;
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+        }
+
+        .blocks-toggle-btn:hover,
+        .builder-panel-btn:hover,
+        .tools-toggle-btn:hover,
+        .tools-position-btn:hover,
         .sidebar-toggle-btn:hover {
-          background: rgba(255, 255, 255, 0.2);
-          transform: scale(1.05);
+          background: #f1f5f9;
+          border-color: #e5e7eb;
+          color: #2563eb;
+          transform: translateY(-1px);
+        }
+
+        .dark-mode .blocks-toggle-btn:hover,
+        .dark-mode .builder-panel-btn:hover,
+        .dark-mode .tools-toggle-btn:hover,
+        .dark-mode .tools-position-btn:hover,
+        .dark-mode .sidebar-toggle-btn:hover {
+          background: #3a3a3a;
+          border-color: #4a4a4a;
+          color: #18a0fb;
+          transform: translateY(-1px);
+        }
+
+        /* Right Sidebar (GrapesJS views) - Dark Theme */
+        .gjs-pn-panel.gjs-pn-views-container,
+        .gjs-pn-panel[data-pn-type="views-container"] {
+          background: var(--header-bg) !important;
+          border-left: 1px solid var(--header-border-color) !important;
+          box-shadow: -4px 0 20px rgba(0, 0, 0, 0.45) !important;
+          color: #e5e5e5 !important;
+        }
+
+        /* Force all children of the right panel to inherit dark theme */
+        .gjs-pn-panel.gjs-pn-views-container *,
+        .gjs-pn-panel[data-pn-type="views-container"] * {
+          color: #e5e5e5 !important;
+          border-color: #2d2d2d !important;
+        }
+
+        /* Core backgrounds for views, lists, and sections */
+        .gjs-pn-panel.gjs-pn-views-container .gjs-pn-views,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-pn-views,
+        .gjs-pn-panel.gjs-pn-views-container .gjs-pn-panel,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-pn-panel,
+        .gjs-pn-panel.gjs-pn-views-container .gjs-layers,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-layers,
+        .gjs-pn-panel.gjs-pn-views-container .gjs-blocks-c,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-blocks-c,
+        .gjs-pn-panel.gjs-pn-views-container .gjs-sm-sectors,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-sm-sectors,
+        .gjs-pn-panel.gjs-pn-views-container .gjs-traits-wrapper,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-traits-wrapper {
+          background: var(--header-bg) !important;
+        }
+
+        /* List and item backgrounds */
+        .gjs-pn-panel.gjs-pn-views-container .gjs-block-category,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-block-category,
+        .gjs-pn-panel.gjs-pn-views-container .gjs-layer-item,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-layer-item,
+        .gjs-pn-panel.gjs-pn-views-container .gjs-sm-sector,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-sm-sector,
+        .gjs-pn-panel.gjs-pn-views-container .gjs-trt-trait,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-trt-trait {
+          background: var(--header-bg) !important;
+          border-color: var(--header-border-color) !important;
+        }
+
+        /* Force GrapesJS base theme tokens to dark */
+        .gjs-one-bg {
+          background-color: #1e1e1e !important;
+        }
+        .gjs-two-color,
+        .gjs-four-color,
+        .gjs-field,
+        .gjs-field input,
+        .gjs-field select,
+        .gjs-field textarea {
+          color: #e5e5e5 !important;
+        }
+        .gjs-three-bg,
+        .gjs-field,
+        .gjs-sm-sector,
+        .gjs-traits-label {
+          background-color: #252525 !important;
+        }
+        .gjs-border-color,
+        .gjs-field,
+        .gjs-sm-sector,
+        .gjs-traits-label {
+          border-color: #2d2d2d !important;
+        }
+
+        .gjs-pn-panel.gjs-pn-views-container .gjs-pn-btn,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-pn-btn {
+          color: #e5e5e5 !important;
+        }
+
+        .gjs-pn-panel.gjs-pn-views-container .gjs-pn-btn:hover,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-pn-btn:hover {
+          background: #2d2d2d !important;
+          color: #18a0fb !important;
+        }
+
+        .gjs-pn-panel.gjs-pn-views-container .gjs-pn-btn.gjs-pn-active,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-pn-btn.gjs-pn-active {
+          background: #18a0fb !important;
+          color: #ffffff !important;
+        }
+
+        .gjs-pn-panel.gjs-pn-views-container .gjs-pn-views,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-pn-views {
+          background: #1e1e1e !important;
+        }
+
+        .gjs-pn-panel.gjs-pn-views-container .gjs-title,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-title,
+        .gjs-pn-panel.gjs-pn-views-container .gjs-layer-title,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-layer-title {
+          color: #e5e5e5 !important;
+        }
+
+        .gjs-pn-panel.gjs-pn-views-container .gjs-block,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-block {
+          background: #252525 !important;
+          border: 1px solid #2d2d2d !important;
+          color: #e5e5e5 !important;
+        }
+
+        .gjs-pn-panel.gjs-pn-views-container .gjs-block:hover,
+        .gjs-pn-panel[data-pn-type="views-container"] .gjs-block:hover {
+          background: #2d2d2d !important;
+          border-color: #3a3a3a !important;
+        }
+
+        .blocks-toggle-btn.active,
+        .builder-panel-btn.active,
+        .tools-toggle-btn.active {
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          border-color: #2563eb;
+          color: #ffffff;
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+        }
+
+        .dark-mode .blocks-toggle-btn.active,
+        .dark-mode .builder-panel-btn.active,
+        .dark-mode .tools-toggle-btn.active {
+          background: #18a0fb;
+          border-color: #18a0fb;
+          color: #ffffff;
+          box-shadow: 0 4px 12px rgba(24, 160, 251, 0.35);
+        }
+
+        .builder-panel {
+          position: fixed;
+          top: 68px;
+          left: 60px;
+          width: 360px;
+          height: calc(100vh - 80px);
+          background: #f8fafc;
+          display: flex;
+          flex-direction: column;
+          z-index: 2000;
+          border-radius: 16px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+          animation: builderSlideIn 0.25s ease;
+        }
+
+        .dark-mode .builder-panel {
+          background: #0f172a;
+          border-right-color: #1f2a3d;
+        }
+
+        @keyframes builderSlideIn {
+          from { transform: translate(-10px, 10px); opacity: 0; }
+          to { transform: translate(0, 0); opacity: 1; }
+        }
+
+        .builder-panel-header {
+          padding: 16px 20px 8px 20px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .builder-panel-title {
+          display: flex;
+          gap: 12px;
+          align-items: flex-start;
+          color: #0f172a;
+        }
+
+        .dark-mode .builder-panel-title {
+          color: #e2e8f0;
+        }
+
+        .builder-panel-title h4 {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 700;
+        }
+
+        .builder-panel-title p {
+          margin: 2px 0 0;
+          font-size: 12px;
+          color: #64748b;
+        }
+
+        .dark-mode .builder-panel-title p {
+          color: #94a3b8;
+        }
+
+        .builder-panel-close-btn {
+          background: transparent;
+          border: none;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          color: #94a3b8;
+          cursor: pointer;
+          transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        .builder-panel-close-btn:hover {
+          background: rgba(15, 23, 42, 0.08);
+          color: #0f172a;
+        }
+
+        .dark-mode .builder-panel-close-btn:hover {
+          background: rgba(148, 163, 184, 0.1);
+          color: #e2e8f0;
+        }
+
+        .builder-panel-search {
+          padding: 0 20px 12px;
+        }
+
+        .builder-panel-search input {
+          width: 100%;
+          padding: 10px 12px;
+          border-radius: 10px;
+          border: 1px solid #e2e8f0;
+          background: white;
+          font-size: 13px;
+          outline: none;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .builder-panel-search input:focus {
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .dark-mode .builder-panel-search input {
+          background: #1f2937;
+          border-color: #334155;
+          color: #e2e8f0;
+        }
+
+        .builder-panel-body {
+          flex: 1;
+          display: flex;
+          gap: 10px;
+          overflow: hidden;
+          padding: 0 20px 20px 20px;
+        }
+
+        .builder-panel-nav {
+          width: 140px;
+          border-right: 1px solid #e2e8f0;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding-right: 8px;
+          overflow-y: auto;
+        }
+
+        .builder-nav-item {
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 10px 12px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-weight: 600;
+          color: #334155;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .builder-nav-item.active {
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          color: white;
+          border-color: transparent;
+          box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .builder-nav-item .item-count {
+          font-size: 11px;
+          background: rgba(15, 23, 42, 0.08);
+          padding: 3px 8px;
+          border-radius: 999px;
+          color: inherit;
+        }
+
+        .builder-panel-content {
+          flex: 1;
+          overflow-y: auto;
+        }
+
+        .dark-mode .builder-panel-content {
+          background: #111827;
+        }
+
+        .builder-panel-empty {
+          padding: 24px;
+          text-align: center;
+          color: #94a3b8;
+        }
+
+        .builder-blocks-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .builder-panel-instructions {
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: #64748b;
+          text-align: center;
+        }
+
+        .block-preview {
+          margin: 16px 0;
+          padding: 12px;
+          border: 1px dashed #cbd5f5;
+          border-radius: 12px;
+          background: #f8fafc;
+        }
+
+        .builder-block-card {
+          cursor: grab;
+        }
+
+        .builder-block-card:active {
+          cursor: grabbing;
+        }
+
+        .dark-mode .block-preview {
+          background: #1f2937;
+          border-color: #334155;
+        }
+
+        .preview-grid {
+          display: grid;
+          gap: 8px;
+        }
+
+        .preview-cell {
+          height: 34px;
+          border-radius: 10px;
+          background: linear-gradient(135deg, #93c5fd 0%, #3b82f6 100%);
+          opacity: 0.8;
+        }
+
+        .preview-text {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .preview-text span {
+          display: block;
+          height: 10px;
+          border-radius: 999px;
+          background: rgba(148, 163, 184, 0.6);
+        }
+
+        .preview-button {
+          height: 32px;
+          border-radius: 999px;
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          color: white;
+          font-size: 12px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .preview-media {
+          height: 56px;
+          border-radius: 12px;
+          background: #0f172a;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          font-size: 18px;
+        }
+
+        .preview-banner {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .preview-banner span {
+          height: 12px;
+          border-radius: 4px;
+          background: rgba(249, 115, 22, 0.4);
+        }
+
+        .preview-token {
+          padding: 6px 10px;
+          border-radius: 999px;
+          background: #e0f2fe;
+          color: #0f172a;
+          font-weight: 600;
+          font-size: 13px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .builder-block-card {
+          background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+        }
+
+        .dark-mode .builder-block-card {
+          background: linear-gradient(135deg, #1f2937 0%, #0f172a 100%);
+          border-color: #1e293b;
+        }
+
+        .block-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .block-card-label {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .block-title {
+          font-weight: 700;
+          font-size: 14px;
+          color: #0f172a;
+        }
+
+        .dark-mode .block-title {
+          color: #e2e8f0;
+        }
+
+        .block-description {
+          font-size: 12px;
+          color: #64748b;
+        }
+
+        .dark-mode .block-description {
+          color: #94a3b8;
+        }
+
+        .block-card-actions {
+          display: flex;
+          justify-content: flex-end;
+        }
+
+        .block-add-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          border: none;
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          color: white;
+          font-weight: 600;
+          border-radius: 999px;
+          padding: 8px 16px;
+          cursor: pointer;
+          box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .block-add-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 26px rgba(37, 99, 235, 0.4);
         }
 
         .sidebar-toggle-btn-floating {
@@ -5128,25 +8360,25 @@ setTimeout(fillAppointmentForms, 5000);
           left: 12px;
           top: 50%;
           transform: translateY(-50%);
-          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          background: #18a0fb;
           color: white;
           width: 48px;
           height: 48px;
-          border-radius: 12px;
-          border: none;
+          border-radius: 8px;
+          border: 1px solid #18a0fb;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 4px 12px rgba(24, 160, 251, 0.4);
+          transition: all 0.2s ease;
           z-index: 1002;
         }
 
         .sidebar-toggle-btn-floating:hover {
-          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-          transform: translateY(-50%) scale(1.1);
-          box-shadow: 0 12px 28px rgba(59, 130, 246, 0.5);
+          background: #0d8ce8;
+          transform: translateY(-50%) scale(1.05);
+          box-shadow: 0 6px 16px rgba(24, 160, 251, 0.5);
         }
 
         .pages-list {
@@ -5163,13 +8395,21 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         .pages-list::-webkit-scrollbar-track {
-          background: #f1f5f9;
+          background: #1e1e1e;
           border-radius: 10px;
         }
 
         .pages-list::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+          background: #18a0fb;
           border-radius: 10px;
+        }
+
+        .dark-mode .pages-list::-webkit-scrollbar-track {
+          background: #1e1e1e;
+        }
+
+        .dark-mode .pages-list::-webkit-scrollbar-thumb {
+          background: #18a0fb;
         }
 
         .page-item {
@@ -5177,30 +8417,31 @@ setTimeout(fillAppointmentForms, 5000);
           align-items: center;
           gap: 12px;
           padding: 14px 16px;
-          background: white;
-          border: 2px solid #e5e7eb;
-          border-radius: 12px;
+          background: #252525;
+          border: 1px solid #2d2d2d;
+          border-radius: 8px;
           cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all 0.2s ease;
           position: relative;
           overflow: hidden;
+          color: #e5e5e5;
         }
 
         .dark-mode .page-item {
-          background: #1e293b;
-          border-color: #334155;
-          color: #e2e8f0;
+          background: #252525;
+          border-color: #2d2d2d;
+          color: #e5e5e5;
         }
 
         .dark-mode .page-item:hover {
-          background: #334155;
-          border-color: #475569;
+          background: #2d2d2d;
+          border-color: #3a3a3a;
         }
 
         .dark-mode .page-item.active {
-          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-          border-color: #3b82f6;
-          color: white;
+          background: #18a0fb;
+          border-color: #18a0fb;
+          color: #ffffff;
         }
 
         .page-item::before {
@@ -5209,17 +8450,16 @@ setTimeout(fillAppointmentForms, 5000);
           left: 0;
           top: 0;
           bottom: 0;
-          width: 4px;
-          background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+          width: 3px;
+          background: #18a0fb;
           transform: scaleY(0);
-          transition: transform 0.3s ease;
+          transition: transform 0.2s ease;
         }
 
         .page-item:hover {
-          background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
-          border-color: #3b82f6;
-          transform: translateX(4px);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+          background: #2d2d2d;
+          border-color: #3a3a3a;
+          transform: translateX(2px);
         }
 
         .page-item:hover::before {
@@ -5227,10 +8467,10 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         .page-item.active {
-          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-          border-color: #3b82f6;
-          color: white;
-          box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+          background: #18a0fb;
+          border-color: #18a0fb;
+          color: #ffffff;
+          box-shadow: 0 2px 8px rgba(24, 160, 251, 0.3);
         }
 
         .page-item.active::before {
@@ -5285,7 +8525,7 @@ setTimeout(fillAppointmentForms, 5000);
         .page-item-name {
           font-size: 14px;
           font-weight: 700;
-          color: #1e293b;
+          color: #e5e5e5;
           margin-bottom: 4px;
           white-space: nowrap;
           overflow: hidden;
@@ -5296,7 +8536,7 @@ setTimeout(fillAppointmentForms, 5000);
         .page-item-type {
           font-size: 11px;
           font-weight: 500;
-          color: #64748b;
+          color: #cbd5e1;
           text-transform: capitalize;
           white-space: nowrap;
           overflow: hidden;
@@ -5306,8 +8546,8 @@ setTimeout(fillAppointmentForms, 5000);
         .page-item-order {
           font-size: 12px;
           font-weight: 700;
-          color: #94a3b8;
-          background: #f1f5f9;
+          color: #cbd5e1;
+          background: #2d2d2d;
           padding: 4px 10px;
           border-radius: 20px;
           flex-shrink: 0;
@@ -5320,8 +8560,8 @@ setTimeout(fillAppointmentForms, 5000);
 
         .pages-sidebar-footer {
           padding: 16px;
-          background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-          border-top: 1px solid #e5e7eb;
+          background: #252525;
+          border-top: 1px solid #2d2d2d;
         }
 
         .sidebar-stats {
@@ -5336,36 +8576,106 @@ setTimeout(fillAppointmentForms, 5000);
           align-items: center;
           gap: 4px;
           padding: 12px;
-          background: white;
-          border-radius: 10px;
+          background: #2d2d2d;
+          border-radius: 8px;
           flex: 1;
-          border: 1px solid #e5e7eb;
+          border: 1px solid #3a3a3a;
         }
 
         .stat-value {
           font-size: 24px;
           font-weight: 700;
-          color: #3b82f6;
+          color: #18a0fb;
           line-height: 1;
         }
 
         .stat-label {
           font-size: 11px;
           font-weight: 600;
-          color: #64748b;
+          color: #999999;
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
 
-        /* Modern Action Bar - Top Header */
+        /* Blocks Panel Container in Left Sidebar - Figma Style */
+        .blocks-panel-container {
+          flex: 1;
+          overflow-y: auto;
+          overflow-x: hidden;
+          background: #1e1e1e;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+          position: relative;
+        }
+
+        .dark-mode .blocks-panel-container {
+          background: #1e1e1e;
+        }
+
+        .blocks-panel-container .gjs-blocks-c,
+        .blocks-panel-container .gjs-blocks {
+          padding: 12px;
+          height: 100%;
+          overflow-y: auto;
+        }
+
+        .blocks-panel-container .gjs-layer-wrapper,
+        .blocks-panel-container .gjs-layers,
+        .blocks-panel-container .gjs-pn-view-content,
+        .blocks-panel-container .gjs-pn-view {
+          padding: 0 !important;
+          height: 100% !important;
+          min-height: 100% !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          width: 100% !important;
+          background: #ffffff !important;
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+
+        .dark-mode .blocks-panel-container .gjs-layer-wrapper,
+        .dark-mode .blocks-panel-container .gjs-layers,
+        .dark-mode .blocks-panel-container .gjs-pn-view-content,
+        .dark-mode .blocks-panel-container .gjs-pn-view {
+          background: #1e1e1e !important;
+        }
+
+        .blocks-panel-container .gjs-layer-item,
+        .blocks-panel-container .gjs-layer {
+          cursor: pointer !important;
+          display: block !important;
+          visibility: visible !important;
+        }
+
+        /* Ensure all layers content is visible */
+        .blocks-panel-container .gjs-layer,
+        .blocks-panel-container .gjs-layer-item,
+        .blocks-panel-container [data-layer-item] {
+          visibility: visible !important;
+          display: flex !important;
+          opacity: 1 !important;
+        }
+
+        .blocks-panel-container .gjs-block-category {
+          margin-bottom: 16px;
+        }
+
+        .blocks-panel-container .gjs-block {
+          margin: 4px;
+        }
+
+        /* Modern Action Bar - Top Header - Figma Style */
         .modern-action-bar {
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding: 12px 24px;
-          background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-          border-bottom: 3px solid #3b82f6;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.06);
+          background: var(--header-bg);
+          border-bottom: 1px solid var(--header-border-color);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
           z-index: 1002;
           gap: 20px;
           position: fixed;
@@ -5380,9 +8690,9 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         .dark-mode .modern-action-bar {
-          background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-          border-bottom-color: #3b82f6;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
+        background: var(--header-bg);
+        border-bottom-color: var(--header-border-color);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
         }
 
         .action-bar-section {
@@ -5393,16 +8703,22 @@ setTimeout(fillAppointmentForms, 5000);
 
         .action-bar-section.left-section {
           min-width: 250px;
+          flex: 0 0 auto;
+        }
+
+        .left-aligned-device-controls {
+          margin-left: 8px;
+          flex-shrink: 0;
         }
 
         .action-bar-section.center-section {
           flex: 1;
           justify-content: center;
           max-width: 900px;
-          background: rgba(255, 255, 255, 0.05);
+          background: #252525;
           padding: 6px;
-          border-radius: 14px;
-          backdrop-filter: blur(10px);
+          border-radius: 8px;
+          border: 1px solid #2d2d2d;
         }
 
         .action-bar-section.right-section {
@@ -5417,15 +8733,15 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         .page-title {
-          color: #fff;
+          color: #e5e5e5;
           font-size: 16px;
-          font-weight: 700;
+          font-weight: 600;
           letter-spacing: -0.3px;
           line-height: 1.2;
         }
 
         .page-subtitle {
-          color: rgba(255, 255, 255, 0.6);
+          color: #999999;
           font-size: 12px;
           font-weight: 500;
           margin-top: 2px;
@@ -5485,45 +8801,45 @@ setTimeout(fillAppointmentForms, 5000);
           z-index: 1;
         }
 
-        /* Button Color Variants */
+        /* Button Color Variants - Figma Style */
         .back-btn {
-          background: rgba(255, 255, 255, 0.12);
-          color: #fff;
+          background: #2d2d2d;
+          color: #b3b3b3;
           padding: 11px;
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid #3a3a3a;
         }
 
         .back-btn:hover {
-          background: rgba(255, 255, 255, 0.18);
+          background: #3a3a3a;
+          color: #e5e5e5;
+          border-color: #4a4a4a;
           transform: translateX(-3px);
-          border-color: rgba(255, 255, 255, 0.2);
         }
 
         .primary-btn {
-          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-          color: #fff;
-          box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: #18a0fb;
+          color: #ffffff;
+          box-shadow: 0 2px 8px rgba(24, 160, 251, 0.3);
+          border: 1px solid #18a0fb;
         }
 
         .primary-btn:hover {
-          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-          box-shadow: 0 6px 24px rgba(59, 130, 246, 0.45);
-          transform: translateY(-2px);
+          background: #0d8ce8;
+          box-shadow: 0 4px 12px rgba(24, 160, 251, 0.4);
+          transform: translateY(-1px);
         }
 
         .success-btn {
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          color: #fff;
-          box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: #18a0fb;
+          color: #ffffff;
+          box-shadow: 0 2px 8px rgba(24, 160, 251, 0.3);
+          border: 1px solid #18a0fb;
         }
 
         .success-btn:hover {
-          background: linear-gradient(135deg, #059669 0%, #047857 100%);
-          box-shadow: 0 6px 24px rgba(16, 185, 129, 0.45);
-          transform: translateY(-2px);
+          background: #0d8ce8;
+          box-shadow: 0 4px 12px rgba(24, 160, 251, 0.4);
+          transform: translateY(-1px);
         }
 
         .info-btn {
@@ -5593,6 +8909,7 @@ setTimeout(fillAppointmentForms, 5000);
           transform: translateY(-2px);
         }
 
+
         .btn-divider {
           width: 1px;
           height: 32px;
@@ -5600,18 +8917,74 @@ setTimeout(fillAppointmentForms, 5000);
           margin: 0 8px;
         }
 
+        /* Device Preview Controls */
+        .device-preview-controls {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: #252525;
+          padding: 4px 10px;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+          border: 1px solid #2d2d2d;
+        }
+
+        .device-preview-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 6px;
+          border: 1px solid #3a3a3a;
+          color: #b3b3b3;
+          background: transparent;
+          transition: all 0.2s ease;
+          cursor: pointer;
+          padding: 0;
+        }
+
+        .device-preview-btn.desktop {
+          width: 38px;
+          height: 34px;
+          font-size: 18px;
+        }
+
+        .device-preview-btn.tablet {
+          width: 30px;
+          height: 26px;
+          font-size: 16px;
+        }
+
+        .device-preview-btn.mobile {
+          width: 24px;
+          height: 24px;
+          font-size: 14px;
+        }
+
+        .device-preview-btn:hover {
+          border-color: #18a0fb;
+          color: #e5e5e5;
+        }
+
+        .device-preview-btn.active {
+          border-color: #18a0fb;
+          box-shadow: 0 0 0 2px rgba(24, 160, 251, 0.2);
+          color: #18a0fb;
+          background: rgba(24, 160, 251, 0.1);
+        }
+
         /* Frame Width Controls */
         .frame-width-controls {
           display: flex;
           align-items: center;
           gap: 6px;
-          background: rgba(255, 255, 255, 0.08);
+          background: #2d2d2d;
           padding: 6px 8px;
           border-radius: 8px;
+          border: 1px solid #3a3a3a;
         }
 
         .width-label {
-          color: rgba(255, 255, 255, 0.7);
+          color: #999999;
           font-size: 12px;
           font-weight: 600;
           margin-right: 4px;
@@ -5622,68 +8995,69 @@ setTimeout(fillAppointmentForms, 5000);
           min-width: 40px;
           font-weight: 700;
           font-size: 13px;
-          background: rgba(255, 255, 255, 0.15) !important;
-          border: 1px solid rgba(255, 255, 255, 0.2) !important;
-          color: white !important;
+          background: #3a3a3a !important;
+          border: 1px solid #4a4a4a !important;
+          color: #b3b3b3 !important;
           cursor: pointer;
         }
 
         .preset-width-btn:hover {
-          background: rgba(255, 255, 255, 0.25) !important;
+          background: #4a4a4a !important;
+          color: #e5e5e5 !important;
           transform: translateY(-1px);
-          box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
         }
 
         .preset-width-btn.active {
-          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-          border-color: rgba(255, 255, 255, 0.4) !important;
-          box-shadow: 0 2px 10px rgba(59, 130, 246, 0.5) !important;
+          background: #18a0fb !important;
+          border-color: #18a0fb !important;
+          color: #ffffff !important;
+          box-shadow: 0 2px 8px rgba(24, 160, 251, 0.3) !important;
         }
 
         .current-width-display {
-          color: rgba(255, 255, 255, 0.9);
+          color: #e5e5e5;
           font-size: 12px;
           font-weight: 600;
           margin-left: 4px;
           padding: 4px 8px;
-          background: rgba(59, 130, 246, 0.2);
+          background: rgba(24, 160, 251, 0.2);
           border-radius: 6px;
-          border: 1px solid rgba(59, 130, 246, 0.3);
+          border: 1px solid rgba(24, 160, 251, 0.3);
         }
 
-        /* Frame Resize Handle */
+        /* Frame Resize Handle - Figma Style */
         .frame-resize-handle {
           position: absolute;
           top: 50%;
           transform: translateY(-50%);
           width: 30px;
           height: 100px;
-          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-          border-radius: 15px 0 0 15px;
+          background: #18a0fb;
+          border-radius: 8px 0 0 8px;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: ew-resize;
           z-index: 10000;
-          box-shadow: -4px 0 16px rgba(59, 130, 246, 0.4);
+          box-shadow: -4px 0 16px rgba(24, 160, 251, 0.4);
           transition: opacity 0.3s ease, width 0.3s ease, box-shadow 0.3s ease;
           color: white;
           opacity: 0.8;
           pointer-events: auto;
-          border: 2px solid rgba(255, 255, 255, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .frame-resize-handle:hover {
           opacity: 1;
           width: 36px;
-          box-shadow: -6px 0 20px rgba(59, 130, 246, 0.6);
-          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-          border-color: rgba(255, 255, 255, 0.4);
+          box-shadow: -6px 0 20px rgba(24, 160, 251, 0.6);
+          background: #0d8ce8;
+          border-color: rgba(255, 255, 255, 0.3);
         }
 
         .frame-resize-handle:active {
           opacity: 1;
-          background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+          background: #0b7dd1;
           width: 32px;
         }
 
@@ -5697,66 +9071,113 @@ setTimeout(fillAppointmentForms, 5000);
           transform: scale(1.1);
         }
 
-        /* Editor Main Area - Optimized for full view */
+        /* Editor Main Area - Optimized for full view - Figma Style */
         .editor-main-area {
           flex: 1;
           position: relative;
           height: calc(100vh - 68px);
           width: 100%;
           overflow: hidden;
-          background: #f1f5f9;
+          background: #1a1a1a;
           transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
           padding-top: 0;
           margin-top: 68px;
         }
 
+        .editor-main-area.builder-drag-active::after {
+          content: 'Release to drop section';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          padding: 16px 24px;
+          border-radius: 8px;
+          background: #18a0fb;
+          color: #fff;
+          font-weight: 600;
+          box-shadow: 0 4px 16px rgba(24, 160, 251, 0.4);
+          pointer-events: none;
+          z-index: 5;
+        }
+
         .dark-mode .editor-main-area {
-          background: #0f172a;
+          background: #1a1a1a;
         }
 
         .editor-main-area.with-sidebar {
-          margin-left: 300px;
-          margin-right: 280px;
-          width: calc(100% - 300px - 280px);
+          margin-left: var(--nav-sidebar-width);
+          width: calc(100% - var(--nav-sidebar-width));
         }
 
         .editor-main-area.full-width {
           margin-left: 0;
-          margin-right: 280px;
-          width: calc(100% - 280px);
+          width: 100%;
+        }
+
+        .editor-main-area.with-sidebar.tools-panel-open.tools-left {
+          margin-left: calc(var(--nav-sidebar-width) + var(--tools-panel-width));
+          margin-right: 0;
+          width: calc(100% - (var(--nav-sidebar-width) + var(--tools-panel-width)));
+        }
+
+        .editor-main-area.with-sidebar.tools-panel-hidden.tools-left {
+          margin-left: var(--nav-sidebar-width);
+          margin-right: 0;
+          width: calc(100% - var(--nav-sidebar-width));
+        }
+
+        .editor-main-area.full-width.tools-panel-open.tools-left {
+          margin-left: var(--tools-panel-width);
+          margin-right: 0;
+          width: calc(100% - var(--tools-panel-width));
+        }
+
+        .editor-main-area.full-width.tools-panel-hidden.tools-left {
+          margin-left: 0;
+          margin-right: 0;
+          width: 100%;
+        }
+
+        .editor-main-area.with-sidebar.tools-panel-open.tools-right {
+          margin-left: var(--nav-sidebar-width);
+          margin-right: var(--tools-panel-width);
+          width: calc(100% - (var(--nav-sidebar-width) + var(--tools-panel-width)));
+        }
+
+        .editor-main-area.with-sidebar.tools-panel-hidden.tools-right {
+          margin-left: var(--nav-sidebar-width);
+          margin-right: 0;
+          width: calc(100% - var(--nav-sidebar-width));
+        }
+
+        .editor-main-area.full-width.tools-panel-open.tools-right {
+          margin-left: 0;
+          margin-right: var(--tools-panel-width);
+          width: calc(100% - var(--tools-panel-width));
+        }
+
+        .editor-main-area.full-width.tools-panel-hidden.tools-right {
+          margin-left: 0;
+          margin-right: 0;
+          width: 100%;
         }
 
         /* Adjust for right sidebar on different screen sizes */
         @media (min-width: 1920px) {
-          .editor-main-area.with-sidebar {
-            margin-right: 300px;
-            width: calc(100% - 300px - 300px);
-          }
-          .editor-main-area.full-width {
-            margin-right: 300px;
-            width: calc(100% - 300px);
+          .portfolio-edit-container {
+            --tools-panel-width: 300px;
           }
         }
 
         @media (max-width: 1400px) {
-          .editor-main-area.with-sidebar {
-            margin-right: 260px;
-            width: calc(100% - 300px - 260px);
-          }
-          .editor-main-area.full-width {
-            margin-right: 260px;
-            width: calc(100% - 260px);
+          .portfolio-edit-container {
+            --tools-panel-width: 260px;
           }
         }
 
         @media (max-width: 1200px) {
-          .editor-main-area.with-sidebar {
-            margin-right: 240px;
-            width: calc(100% - 300px - 240px);
-          }
-          .editor-main-area.full-width {
-            margin-right: 240px;
-            width: calc(100% - 240px);
+          .portfolio-edit-container {
+            --tools-panel-width: 240px;
           }
         }
 
@@ -5771,6 +9192,10 @@ setTimeout(fillAppointmentForms, 5000);
             margin-right: 0;
             margin-bottom: 50vh;
             width: 100%;
+          }
+          .editor-main-area.tools-panel-open.with-sidebar,
+          .editor-main-area.tools-panel-open.full-width {
+            margin-left: 0;
           }
         }
 
@@ -5787,21 +9212,21 @@ setTimeout(fillAppointmentForms, 5000);
           overflow: hidden !important;
         }
 
-        /* Canvas Container - Center aligned with top padding */
+        /* Canvas Container - Center aligned with top padding - Figma Style */
         .gjs-cv-canvas {
           width: 100% !important;
           height: 100% !important;
           overflow: auto !important;
-          background: #f1f5f9 !important;
+          background: #1a1a1a !important;
           display: flex !important;
           justify-content: center !important;
           align-items: flex-start !important;
-          padding: 30px 20px 20px 20px !important;
+          padding: 60px 20px 20px 20px !important;
           transition: background 0.3s ease !important;
         }
 
         .dark-mode .gjs-cv-canvas {
-          background: #0f172a !important;
+          background: #1a1a1a !important;
         }
 
         /* Canvas Frame Wrapper - Center with max-width */
@@ -5813,16 +9238,16 @@ setTimeout(fillAppointmentForms, 5000);
           justify-content: center !important;
         }
 
-        /* Main Frame (Website Preview) - Center with controlled width */
+        /* Main Frame (Website Preview) - Center with controlled width - Figma Style */
         .gjs-frame {
           width: 100% !important;
           max-width: 1400px !important;
           min-width: 320px !important;
           height: auto !important;
           min-height: calc(100vh - 108px) !important;
-          border: 1px solid #e5e7eb !important;
-          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08) !important;
-          border-radius: 12px !important;
+          border: 1px solid #2d2d2d !important;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+          border-radius: 8px !important;
           background: #ffffff !important;
           margin: 0 auto !important;
           display: block !important;
@@ -5899,7 +9324,7 @@ setTimeout(fillAppointmentForms, 5000);
             max-width: 1100px !important;
           }
           .gjs-cv-canvas {
-            padding: 25px 18px 18px 18px !important;
+            padding: 50px 18px 18px 18px !important;
           }
         }
 
@@ -5909,7 +9334,7 @@ setTimeout(fillAppointmentForms, 5000);
             max-width: 900px !important;
           }
           .gjs-cv-canvas {
-            padding: 20px 15px 15px 15px !important;
+            padding: 45px 15px 15px 15px !important;
           }
         }
 
@@ -5919,7 +9344,7 @@ setTimeout(fillAppointmentForms, 5000);
             max-width: 800px !important;
           }
           .gjs-cv-canvas {
-            padding: 18px 12px 12px 12px !important;
+            padding: 40px 12px 12px 12px !important;
           }
         }
 
@@ -5929,14 +9354,13 @@ setTimeout(fillAppointmentForms, 5000);
             max-width: 100% !important;
           }
           .gjs-cv-canvas {
-            padding: 15px 10px 10px 10px !important;
+            padding: 35px 10px 10px 10px !important;
           }
         }
 
         /* Modern GrapesJS Panel Customization */
         .gjs-pn-panel {
-          background: #ffffff !important;
-          border-right: 1px solid #e5e7eb !important;
+ 
           box-shadow: 2px 0 10px rgba(0, 0, 0, 0.03) !important;
         }
 
@@ -6004,104 +9428,112 @@ setTimeout(fillAppointmentForms, 5000);
           }
         }
 
-        /* All Panel Types - Force White Background */
-        .gjs-pn-panel,
-        .gjs-pn-panel *,
-        .gjs-pn-views-container,
-        .gjs-pn-views-container *,
-        .gjs-blocks-c,
-        .gjs-blocks-c *,
-        .gjs-layer-wrapper,
-        .gjs-layer-wrapper *,
-        .gjs-trt-traits,
-        .gjs-trt-traits *,
-        .gjs-sm-sectors,
-        .gjs-sm-sectors *,
-        .gjs-sm-sector,
-        .gjs-sm-sector *,
-        .gjs-sm-properties,
-        .gjs-sm-properties *,
-        .gjs-pn-views,
-        .gjs-pn-views * {
-          background-color: #ffffff !important;
+        /* All Panel Types - Default White Background (overridden by dark mode) */
+        .gjs-pn-panel:not(.dark-mode *),
+        .gjs-pn-panel:not(.dark-mode *) *,
+        .gjs-pn-views-container:not(.dark-mode *),
+        .gjs-pn-views-container:not(.dark-mode *) *,
+        .gjs-blocks-c:not(.dark-mode *),
+        .gjs-blocks-c:not(.dark-mode *) *,
+        .gjs-layer-wrapper:not(.dark-mode *),
+        .gjs-layer-wrapper:not(.dark-mode *) *,
+        .gjs-trt-traits:not(.dark-mode *),
+        .gjs-trt-traits:not(.dark-mode *) *,
+        .gjs-sm-sectors:not(.dark-mode *),
+        .gjs-sm-sectors:not(.dark-mode *) *,
+        .gjs-sm-sector:not(.dark-mode *),
+        .gjs-sm-sector:not(.dark-mode *) *,
+        .gjs-sm-properties:not(.dark-mode *),
+        .gjs-sm-properties:not(.dark-mode *) *,
+        .gjs-pn-views:not(.dark-mode *),
+        .gjs-pn-views:not(.dark-mode *) * {
+          background-color: var(--header-bg) !important;
+          color: #e5e5e5 !important;
         }
 
-        /* Specific Panel Overrides */
-        .gjs-pn-panel[data-pn-type="views-container"],
-        .gjs-pn-panel[data-pn-type="blocks"],
-        .gjs-pn-panel[data-pn-type="layers"],
-        .gjs-pn-panel[data-pn-type="traits"],
-        .gjs-pn-panel[data-pn-type="style-manager"] {
-          background: #ffffff !important;
+        /* Specific Panel Overrides - Default (overridden by dark mode) */
+        .gjs-pn-panel[data-pn-type="views-container"]:not(.dark-mode *),
+        .gjs-pn-panel[data-pn-type="blocks"]:not(.dark-mode *),
+        .gjs-pn-panel[data-pn-type="layers"]:not(.dark-mode *),
+        .gjs-pn-panel[data-pn-type="traits"]:not(.dark-mode *),
+        .gjs-pn-panel[data-pn-type="style-manager"]:not(.dark-mode *) {
+          background: var(--header-bg) !important;
         }
 
-        /* Force White Background for All Panel Content */
-        .gjs-pn-panel .gjs-pn-panel,
-        .gjs-pn-panel .gjs-pn-panel *,
-        .gjs-pn-panel .gjs-pn-views-container,
-        .gjs-pn-panel .gjs-pn-views-container *,
-        .gjs-pn-panel .gjs-blocks-c,
-        .gjs-pn-panel .gjs-blocks-c *,
-        .gjs-pn-panel .gjs-layer-wrapper,
-        .gjs-pn-panel .gjs-layer-wrapper *,
-        .gjs-pn-panel .gjs-trt-traits,
-        .gjs-pn-panel .gjs-trt-traits *,
-        .gjs-pn-panel .gjs-sm-sectors,
-        .gjs-pn-panel .gjs-sm-sectors *,
-        .gjs-pn-panel .gjs-sm-sector,
-        .gjs-pn-panel .gjs-sm-sector *,
-        .gjs-pn-panel .gjs-sm-properties,
-        .gjs-pn-panel .gjs-sm-properties *,
-        .gjs-pn-panel .gjs-pn-views,
-        .gjs-pn-panel .gjs-pn-views * {
-          background-color: #ffffff !important;
+        /* Remove default GrapesJS device buttons (replaced with custom controls) */
+        .gjs-pn-devices,
+        .gjs-pn-devices-c,
+        .gjs-pn-panel .gjs-pn-btn.gjs-pn-device {
+          display: none !important;
         }
 
-        /* Remove Any Default Panel Styling */
-        .gjs-pn-panel,
-        .gjs-pn-panel * {
+        /* Force White Background for All Panel Content - Default (overridden by dark mode) */
+        .gjs-pn-panel:not(.dark-mode *) .gjs-pn-panel,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-pn-panel *,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-pn-views-container,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-pn-views-container *,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-blocks-c,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-blocks-c *,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-layer-wrapper,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-layer-wrapper *,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-trt-traits,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-trt-traits *,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-sm-sectors,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-sm-sectors *,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-sm-sector,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-sm-sector *,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-sm-properties,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-sm-properties *,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-pn-views,
+        .gjs-pn-panel:not(.dark-mode *) .gjs-pn-views * {
+          background-color: var(--header-bg) !important;
+        }
+
+        /* Remove Any Default Panel Styling - Default (overridden by dark mode) */
+        .gjs-pn-panel:not(.dark-mode *),
+        .gjs-pn-panel:not(.dark-mode *) * {
           background-image: none !important;
-          background: #ffffff !important;
+          background: var(--header-bg) !important;
         }
 
-        /* Block Categories - Force White Background */
-        .gjs-block-category,
-        .gjs-block-category *,
-        .gjs-block-category .gjs-blocks-c,
-        .gjs-block-category .gjs-blocks-c * {
-          background: #ffffff !important;
-          background-color: #ffffff !important;
+        /* Block Categories - Default White Background (overridden by dark mode) */
+        .gjs-block-category:not(.dark-mode *),
+        .gjs-block-category:not(.dark-mode *) *,
+        .gjs-block-category:not(.dark-mode *) .gjs-blocks-c,
+        .gjs-block-category:not(.dark-mode *) .gjs-blocks-c * {
+          background: var(--header-bg) !important;
+          background-color: var(--header-bg) !important;
           background-image: none !important;
         }
 
-        /* Override Any Default GrapesJS Styling */
-        .gjs-pn-panel *[class*="gjs-"],
-        .gjs-pn-panel *[class*="gjs-"] * {
-          background: #ffffff !important;
-          background-color: #ffffff !important;
+        /* Override Any Default GrapesJS Styling - Default (overridden by dark mode) */
+        .gjs-pn-panel:not(.dark-mode *) *[class*="gjs-"],
+        .gjs-pn-panel:not(.dark-mode *) *[class*="gjs-"] * {
+          background: var(--header-bg) !important;
+          background-color: var(--header-bg) !important;
           background-image: none !important;
         }
 
-        /* Fix Text and Icon Colors in All Panels */
-        .gjs-pn-panel,
-        .gjs-pn-panel *,
-        .gjs-pn-views-container,
-        .gjs-pn-views-container *,
-        .gjs-blocks-c,
-        .gjs-blocks-c *,
-        .gjs-layer-wrapper,
-        .gjs-layer-wrapper *,
-        .gjs-trt-traits,
-        .gjs-trt-traits *,
-        .gjs-sm-sectors,
-        .gjs-sm-sectors *,
-        .gjs-sm-sector,
-        .gjs-sm-sector *,
-        .gjs-sm-properties,
-        .gjs-sm-properties *,
-        .gjs-pn-views,
-        .gjs-pn-views * {
-          color: #1e293b !important;
+        /* Fix Text and Icon Colors in All Panels - Default (overridden by dark mode) */
+        .gjs-pn-panel:not(.dark-mode *),
+        .gjs-pn-panel:not(.dark-mode *) *,
+        .gjs-pn-views-container:not(.dark-mode *),
+        .gjs-pn-views-container:not(.dark-mode *) *,
+        .gjs-blocks-c:not(.dark-mode *),
+        .gjs-blocks-c:not(.dark-mode *) *,
+        .gjs-layer-wrapper:not(.dark-mode *),
+        .gjs-layer-wrapper:not(.dark-mode *) *,
+        .gjs-trt-traits:not(.dark-mode *),
+        .gjs-trt-traits:not(.dark-mode *) *,
+        .gjs-sm-sectors:not(.dark-mode *),
+        .gjs-sm-sectors:not(.dark-mode *) *,
+        .gjs-sm-sector:not(.dark-mode *),
+        .gjs-sm-sector:not(.dark-mode *) *,
+        .gjs-sm-properties:not(.dark-mode *),
+        .gjs-sm-properties:not(.dark-mode *) *,
+        .gjs-pn-views:not(.dark-mode *),
+        .gjs-pn-views:not(.dark-mode *) * {
+          color: #e5e5e5 !important;
         }
 
         /* Specific Text Color Fixes */
@@ -6117,7 +9549,7 @@ setTimeout(fillAppointmentForms, 5000);
         .gjs-pn-panel .gjs-block-label *,
         .gjs-pn-panel .gjs-trt-trait__label,
         .gjs-pn-panel .gjs-trt-trait__label * {
-          color: #1e293b !important;
+          color: #e5e5e5 !important;
         }
 
         /* Icon Color Fixes */
@@ -6130,7 +9562,7 @@ setTimeout(fillAppointmentForms, 5000);
         .gjs-pn-panel .gjs-block__media *,
         .gjs-pn-panel .gjs-trt-trait i,
         .gjs-pn-panel .gjs-trt-trait .fa {
-          color: #64748b !important;
+          color: #e5e5e5 !important;
         }
 
         /* Hover State Colors */
@@ -6197,17 +9629,20 @@ setTimeout(fillAppointmentForms, 5000);
           color: #3b82f6 !important;
         }
 
-        /* Override Any Default GrapesJS Text Colors */
-        .gjs-pn-panel *[class*="gjs-"] {
-          color: #1e293b !important;
-        }
+        // /* Override Any Default GrapesJS Text Colors */
+        // .gjs-pn-panel *[class*="gjs-"] {
+        //   color: #1e293b !important;
+        // }
 
-        .gjs-pn-panel *[class*="gjs-"] * {
-          color: inherit !important;
-        }
+        // .gjs-pn-panel *[class*="gjs-"] * {
+        //   color: inherit !important;
+        // }
 
         .gjs-pn-buttons {
           padding: 8px 4px !important;
+        }
+        #gjs .gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel.gjs-pn-views-container, .gjs-pn-panel[data-pn-type="views-container"]{
+        background: #1e293b !important;
         }
 
         .gjs-pn-btn {
@@ -6215,7 +9650,7 @@ setTimeout(fillAppointmentForms, 5000);
           margin: 4px !important;
           transition: all 0.2s ease !important;
           border: 1px solid transparent !important;
-          color: #1e293b !important;
+          color:rgb(177, 177, 177) !important;
         }
 
         .gjs-pn-btn:hover {
@@ -6463,20 +9898,23 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         .gjs-block {
-          border-radius: 16px !important;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-          border: 3px solid transparent !important;
-          background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
-          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08) !important;
+          border-radius: 8px !important;
+          transition: all 0.2s ease !important;
+          border: 3px solid #cbd5e1 !important; /* thicker border for clearer separation */
+          background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.14), 0 0 0 2px rgba(37, 99, 235, 0.08) !important; /* subtle outer glow to highlight */
           margin: 0 !important;
           position: relative !important;
           overflow: hidden !important;
           width: 100% !important;
-          aspect-ratio: 1 !important;
+          max-width: 100% !important;
+          padding: 8px !important;
+          min-height: 60px !important;
           display: flex !important;
           flex-direction: column !important;
           justify-content: center !important;
           align-items: center !important;
+          box-sizing: border-box !important;
         }
 
         .gjs-block::before {
@@ -6493,52 +9931,57 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         .gjs-block:hover {
-          transform: translateY(-6px) scale(1.08) rotate(1deg) !important;
-          box-shadow: 0 20px 40px rgba(59, 130, 246, 0.25), 0 8px 16px rgba(139, 92, 246, 0.15) !important;
-          border-color: #3b82f6 !important;
-          background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%) !important;
+          transform: translateY(-2px) !important;
+          box-shadow: 0 10px 26px rgba(59, 130, 246, 0.32), 0 0 0 3px rgba(37, 99, 235, 0.18) !important;
+          border-color: #1d4ed8 !important;
+          background: linear-gradient(180deg, #f8fbff 0%, #e9f2ff 100%) !important;
         }
 
         .gjs-block:hover::before {
           opacity: 1 !important;
         }
 
+        /* Hide duplicate drag icons - only show one icon */
         .gjs-block__media {
-          border-radius: 12px !important;
-          transition: all 0.3s ease !important;
-          filter: brightness(1.1) saturate(1.2) !important;
-          width: 48px !important;
-          height: 48px !important;
-          margin-bottom: 8px !important;
+          width: 24px !important;
+          height: 24px !important;
+          margin-bottom: 4px !important;
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
+          opacity: 0.7 !important;
+        }
+
+        /* Hide any duplicate drag handle icons */
+        .gjs-block .fa-grip,
+        .gjs-block .gjs-drag-handle,
+        .gjs-block [class*="drag"],
+        .gjs-block [class*="grip"] {
+          display: none !important;
         }
 
         .gjs-block:hover .gjs-block__media {
-          transform: scale(1.2) !important;
-          filter: brightness(1.3) saturate(1.5) !important;
+          opacity: 1 !important;
         }
 
         .gjs-block-label {
           font-family: 'Inter', sans-serif !important;
-          font-weight: 700 !important;
+          font-weight: 500 !important;
           font-size: 12px !important;
-          color: #1e293b !important;
-          letter-spacing: -0.2px !important;
+          color: #475569 !important;
           text-align: center !important;
-          padding: 4px 8px !important;
+          padding: 4px 6px !important;
           position: relative !important;
           z-index: 2 !important;
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
-          line-height: 1.2 !important;
+          line-height: 1.4 !important;
           max-width: 100% !important;
           word-wrap: break-word !important;
+          transition: color 0.2s ease !important;
         }
 
         .gjs-block:hover .gjs-block-label {
           color: #3b82f6 !important;
-          transform: translateY(-2px) !important;
+          font-weight: 600 !important;
         }
 
         /* Specific Block Types - Beautiful Color Schemes */
@@ -6636,17 +10079,21 @@ setTimeout(fillAppointmentForms, 5000);
           border-left: 3px solid #3b82f6 !important;
         }
 
+
+.gjs-pn-panel input, .gjs-pn-panel input *, .gjs-pn-panel select, .gjs-pn-panel select *, .gjs-pn-panel textarea, .gjs-pn-panel textarea *, .gjs-pn-panel .gjs-field, .gjs-pn-panel .gjs-field *{
+color: gray !important;
+}
+
         /* ========================================
-           RIGHT SIDEBAR - MODERN PROFESSIONAL DESIGN
+           RIGHT SIDEBAR - SIMPLE & PROFESSIONAL DESIGN
            ======================================== */
 
-        /* Right Sidebar Panel - Main Container - Optimized Width */
+        /* Right Sidebar Panel - Main Container */
         #gjs .gjs-pn-panel.gjs-pn-views-container,
         .gjs-pn-panel.gjs-pn-views-container,
         .gjs-pn-panel[data-pn-type="views-container"] {
-          background: #ffffff !important;
-          border-left: 2px solid #e2e8f0 !important;
-          box-shadow: -4px 0 20px rgba(0, 0, 0, 0.08) !important;
+          background: #1e1e1e !important;
+        
           width: 280px !important;
           min-width: 280px !important;
           max-width: 280px !important;
@@ -6663,6 +10110,7 @@ setTimeout(fillAppointmentForms, 5000);
           opacity: 1 !important;
           margin-top: 0 !important;
           padding-top: 0 !important;
+          box-shadow: -2px 0 8px rgba(0, 0, 0, 0.04) !important;
         }
 
         /* Right Sidebar Responsive Width */
@@ -6713,17 +10161,121 @@ setTimeout(fillAppointmentForms, 5000);
           }
         }
 
-        /* Right Sidebar Views Container */
+        /* Right Sidebar Views Container - Professional */
         .gjs-pn-views-container {
           background: #ffffff !important;
           height: 100% !important;
           overflow-y: auto !important;
           overflow-x: hidden !important;
+          display: flex !important;
+          flex-direction: column !important;
+        }
+
+        /* Search Bar for Block Categories - Professional Design */
+        .gjs-blocks-search-container {
+          padding: 14px 12px !important;
+          background: #ffffff !important;
+          border-bottom: 1px solid #e2e8f0 !important;
+          position: sticky !important;
+          top: 0 !important;
+          z-index: 100 !important;
+          margin: 0 !important;
+          backdrop-filter: blur(10px) !important;
+        }
+
+        .gjs-blocks-search-input {
+          width: 100% !important;
+          padding: 9px 12px !important;
+          border: 1px solid #e2e8f0 !important;
+          border-radius: 6px !important;
+          font-family: 'Inter', sans-serif !important;
+          font-size: 13px !important;
+          color: gray !important;
+          background: #f8fafc !important;
+          outline: none !important;
+          transition: all 0.2s ease !important;
+          box-sizing: border-box !important;
+        }
+
+        .gjs-blocks-search-input:hover {
+          border-color: #cbd5e1 !important;
+          background: #ffffff !important;
+        }
+
+        .gjs-blocks-search-input:focus {
+          border-color: #3b82f6 !important;
+          background: #ffffff !important;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+        }
+
+        .gjs-blocks-search-input::placeholder {
+          color: #94a3b8 !important;
+          font-weight: 400 !important;
+        }
+
+        /* Hide categories and blocks that don't match search */
+        .gjs-blocks-c.hide-search .gjs-block-category:not([data-search-match="true"]) {
+          display: none !important;
+        }
+
+        /* Hide individual blocks that don't match */
+        .gjs-block:not([data-block-match="true"]) {
+          display: none !important;
+        }
+
+        /* Show matching blocks */
+        .gjs-block[data-block-match="true"] {
+          display: flex !important;
         }
 
         /* Style Manager Panel Container */
         .gjs-pn-panel.gjs-pn-panel.gjs-pn-views-container {
-          background: #ffffff !important;
+          background: var(--header-bg) !important;
+          border-left: 1px solid var(--header-border-color) !important;
+        }
+
+        /* Right Sidebar Header - Figma Style */
+        .gjs-pn-views-container .gjs-pn-buttons {
+          background: var(--header-bg) !important;
+          border-bottom: 1px solid var(--header-border-color) !important;
+          padding: 8px !important;
+          display: flex !important;
+          gap: 4px !important;
+        }
+
+        /* Right Sidebar Buttons - Figma Style */
+        .gjs-pn-views-container .gjs-pn-btn {
+          flex: 1 !important;
+          padding: 10px 12px !important;
+          border-radius: 6px !important;
+          font-family: 'Inter', sans-serif !important;
+          font-size: 12px !important;
+          font-weight: 500 !important;
+          color: #b3b3b3 !important;
+          background: transparent !important;
+          border: none !important;
+          transition: all 0.2s ease !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 6px !important;
+        }
+
+        .gjs-pn-views-container .gjs-pn-btn:hover {
+          background: #2d2d2d !important;
+          color: #e5e5e5 !important;
+        }
+
+        .gjs-pn-views-container .gjs-pn-btn.gjs-pn-active {
+          background: #18a0fb !important;
+          color: #ffffff !important;
+          box-shadow: 0 2px 8px rgba(24, 160, 251, 0.3) !important;
+        }
+
+        .gjs-pn-views-container .gjs-pn-btn svg,
+        .gjs-pn-views-container .gjs-pn-btn i {
+          width: 16px !important;
+          height: 16px !important;
         }
 
         /* Ensure Right Sidebar Panels are Always Visible */
@@ -6737,31 +10289,41 @@ setTimeout(fillAppointmentForms, 5000);
           z-index: 1 !important;
         }
 
-        /* Right Sidebar Scrollbar Styling */
+        /* Right Sidebar Scrollbar - Figma Style */
         .gjs-pn-views-container::-webkit-scrollbar {
-          width: 8px !important;
+          width: 6px !important;
         }
 
         .gjs-pn-views-container::-webkit-scrollbar-track {
-          background: #f1f5f9 !important;
-          border-radius: 10px !important;
+          background: var(--header-bg) !important;
         }
 
         .gjs-pn-views-container::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
-          border-radius: 10px !important;
+          background: #18a0fb !important;
+          border-radius: 3px !important;
+          transition: background 0.2s ease !important;
         }
 
         .gjs-pn-views-container::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%) !important;
+          background: #0d8ce8 !important;
         }
 
-        /* Style Manager Content Area */
+        /* Style Manager Content Area - Figma Style */
         .gjs-sm-sectors {
-          background: #ffffff !important;
-          padding: 8px !important;
+          background: var(--header-bg) !important;
+          padding: 12px !important;
           max-height: none !important;
           overflow-y: visible !important;
+          min-height: 200px !important;
+        }
+
+        /* Style Manager Container - Figma Style */
+        .gjs-pn-panel[data-pn-type="style-manager"] {
+          background: var(--header-bg) !important;
+        }
+
+        .gjs-pn-panel[data-pn-type="style-manager"] .gjs-pn-views {
+          background: var(--header-bg) !important;
         }
 
         /* Ensure Style Manager is properly displayed */
@@ -6773,9 +10335,117 @@ setTimeout(fillAppointmentForms, 5000);
           opacity: 1 !important;
         }
 
-        /* Traits Panel Styling */
+        /* Professional Empty State for Style Manager */
+        .gjs-sm-sectors:empty::before,
+        .gjs-sm-sectors:has(.gjs-sm-empty-state)::before {
+          content: none !important;
+        }
+
+        .gjs-sm-empty-state {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 48px 24px !important;
+          text-align: center !important;
+          background: var(--header-bg) !important;
+          min-height: 300px !important;
+        }
+
+        .gjs-sm-empty-state-icon {
+          width: 80px !important;
+          height: 80px !important;
+          margin: 0 auto 20px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          background: #252525 !important;
+          border-radius: 20px !important;
+          color: #e5e5e5 !important;
+          font-size: 36px !important;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+        }
+
+        .gjs-sm-empty-state-icon svg {
+          width: 40px !important;
+          height: 40px !important;
+          stroke-width: 1.5 !important;
+        }
+
+        .gjs-sm-empty-state-title {
+          font-family: 'Inter', sans-serif !important;
+          font-size: 18px !important;
+          font-weight: 600 !important;
+          color: #e5e5e5 !important;
+          margin: 0 0 8px 0 !important;
+          line-height: 1.4 !important;
+        }
+
+        .gjs-sm-empty-state-message {
+          font-family: 'Inter', sans-serif !important;
+          font-size: 14px !important;
+          font-weight: 400 !important;
+          color: #e5e7eb !important;
+          margin: 0 !important;
+          line-height: 1.6 !important;
+          max-width: 280px !important;
+        }
+
+        .gjs-sm-empty-state-hint {
+          margin-top: 20px !important;
+          padding: 12px 16px !important;
+          background: #252525 !important;
+          border: 1px solid var(--header-border-color) !important;
+          border-radius: 8px !important;
+          font-family: 'Inter', sans-serif !important;
+          font-size: 12px !important;
+          color: #d1d5db !important;
+          line-height: 1.6 !important;
+          max-width: 300px !important;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+        }
+
+        /* Ensure default Style Manager empty text stays readable */
+        .gjs-sm-sectors .gjs-sm-empty,
+        .gjs-sm-sectors .gjs-sm-empty *,
+        .gjs-sm-sectors .gjs-sm-placeholder,
+        .gjs-sm-sectors .gjs-sm-placeholder *,
+        .gjs-sm-sectors .gjs-sm-help,
+        .gjs-sm-sectors .gjs-sm-help * {
+          color: #e5e7eb !important;
+        }
+
+        /* Responsive Empty State */
+        @media (max-width: 768px) {
+          .gjs-sm-empty-state {
+            padding: 32px 16px !important;
+            min-height: 250px !important;
+          }
+
+          .gjs-sm-empty-state-icon {
+            width: 64px !important;
+            height: 64px !important;
+            font-size: 28px !important;
+          }
+
+          .gjs-sm-empty-state-title {
+            font-size: 16px !important;
+          }
+
+          .gjs-sm-empty-state-message {
+            font-size: 13px !important;
+          }
+        }
+
+        /* Hide default GrapesJS empty message if exists */
+        .gjs-sm-sectors > .gjs-sm-title:only-child,
+        .gjs-sm-sectors > div:empty:only-child {
+          display: none !important;
+        }
+
+        /* Traits Panel Styling - Figma Style */
         .gjs-trt-traits {
-          background: #ffffff !important;
+          background: #1e1e1e !important;
           padding: 16px !important;
           max-height: none !important;
           overflow-y: auto !important;
@@ -6783,7 +10453,7 @@ setTimeout(fillAppointmentForms, 5000);
 
         .gjs-trt-trait {
           padding: 12px 0 !important;
-          border-bottom: 1px solid #f1f5f9 !important;
+          border-bottom: 1px solid #2d2d2d !important;
         }
 
         .gjs-trt-trait:last-child {
@@ -6794,13 +10464,13 @@ setTimeout(fillAppointmentForms, 5000);
           font-family: 'Inter', sans-serif !important;
           font-weight: 600 !important;
           font-size: 13px !important;
-          color: #334155 !important;
+          color: #b3b3b3 !important;
           margin-bottom: 8px !important;
         }
 
-        /* Layers Panel Styling */
+        /* Layers Panel Styling - Figma Style */
         .gjs-layer-wrapper {
-          background: #ffffff !important;
+          background: #1e1e1e !important;
           padding: 8px !important;
           max-height: none !important;
           overflow-y: auto !important;
@@ -6811,15 +10481,16 @@ setTimeout(fillAppointmentForms, 5000);
           margin: 4px 0 !important;
           border-radius: 8px !important;
           transition: all 0.2s ease !important;
+          color: #e5e5e5 !important;
         }
 
         .gjs-layer:hover {
-          background: #f8fafc !important;
+          background: #2d2d2d !important;
         }
 
         .gjs-layer.gjs-selected {
-          background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
-          border-left: 3px solid #3b82f6 !important;
+          background: #2d2d2d !important;
+          border-left: 3px solid #18a0fb !important;
         }
 
         /* Ensure Right Sidebar Panel Buttons are Visible */
@@ -7026,165 +10697,455 @@ setTimeout(fillAppointmentForms, 5000);
 
         }
 
-        /* Style Manager - Modern Card Design */
+        /* Style Manager - Figma Style */
         .gjs-sm-sector {
-          background: #ffffff !important;
-          border-radius: 16px !important;
-          margin: 12px 8px !important;
-          border: 2px solid #e5e7eb !important;
+          background: #252525 !important;
+          margin: 0 0 10px 0 !important;
+          border: 1px solid #2d2d2d !important;
+          border-radius: 8px !important;
           overflow: hidden !important;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+          transition: all 0.2s ease !important;
         }
 
         .gjs-sm-sector:hover {
-          border-color: #3b82f6 !important;
-          box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15) !important;
-          transform: translateY(-2px) !important;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+          border-color: #3a3a3a !important;
         }
 
-        /* Sector Title - Gradient Header */
+        /* Sector Title - Figma Style Header */
         .gjs-sm-sector .gjs-sm-title {
-          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+          background: #252525 !important;
           font-family: 'Inter', sans-serif !important;
-          font-weight: 700 !important;
+          font-weight: 600 !important;
           font-size: 14px !important;
-          letter-spacing: -0.3px !important;
-          color: white !important;
+          color: #e5e5e5 !important;
           padding: 14px 16px !important;
-          border-radius: 0 !important;
-          border: none !important;
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2) !important;
+          border-bottom: 1px solid #2d2d2d !important;
           cursor: pointer !important;
-          transition: all 0.3s ease !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          user-select: none !important;
+          transition: all 0.2s ease !important;
         }
 
         .gjs-sm-sector .gjs-sm-title:hover {
-          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+          background: #2d2d2d !important;
+          color: #ffffff !important;
         }
 
-        /* Sector Title Icon */
+        .gjs-sm-sector.gjs-sm-open .gjs-sm-title {
+          background: #2d2d2d !important;
+          border-bottom-color: #18a0fb !important;
+          color: #18a0fb !important;
+        }
+
+        /* Sector Title Icon - Caret - Figma Style */
         .gjs-sm-sector .gjs-sm-title .gjs-sm-sector-caret {
-          color: white !important;
+          color: #999999 !important;
           font-size: 12px !important;
-          transition: transform 0.3s ease !important;
+          font-weight: 700 !important;
+          transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          margin-right: 8px !important;
+          width: 18px !important;
+          height: 18px !important;
         }
 
         .gjs-sm-sector.gjs-sm-open .gjs-sm-title .gjs-sm-sector-caret {
           transform: rotate(90deg) !important;
+          color: #18a0fb !important;
         }
 
-        /* Sector Properties Container */
+        /* Ensure properties are visible when sector is open */
+        .gjs-sm-sector.gjs-sm-open .gjs-sm-properties {
+          display: block !important;
+          animation: fadeIn 0.2s ease !important;
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-5px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* Hide properties when sector is closed */
+        .gjs-sm-sector:not(.gjs-sm-open) .gjs-sm-properties {
+          display: none !important;
+        }
+
+        /* Sector Properties Container - Figma Style */
         .gjs-sm-sector .gjs-sm-properties {
           padding: 16px !important;
-          background: #ffffff !important;
-          border-radius: 0 0 16px 16px !important;
+          background: #252525 !important;
         }
 
-        /* Property Row - Modern Layout */
+        /* Property Row - Figma Style */
         .gjs-sm-property {
           padding: 12px 0 !important;
-          border-bottom: 1px solid #f1f5f9 !important;
-          transition: all 0.2s ease !important;
+          border-bottom: 1px solid #2d2d2d !important;
+          margin-bottom: 4px !important;
         }
 
         .gjs-sm-property:last-child {
           border-bottom: none !important;
+          margin-bottom: 0 !important;
         }
 
-        .gjs-sm-property:hover {
-          background: #f8fafc !important;
-          padding-left: 8px !important;
-        }
-
-        /* Property Label */
+        /* Property Label - Figma Style */
         .gjs-sm-property .gjs-sm-label {
           font-family: 'Inter', sans-serif !important;
           font-weight: 600 !important;
           font-size: 13px !important;
-          color: #334155 !important;
+          color: #b3b3b3 !important;
           margin-bottom: 8px !important;
-          letter-spacing: -0.2px !important;
+          display: block !important;
+          letter-spacing: -0.01em !important;
         }
 
-        /* Property Field Container */
+        /* Ensure all property labels are visible (except composite parent labels) */
+        .gjs-sm-property:not(:has(.gjs-sm-composite)) .gjs-sm-label {
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+
+        /* Add tooltip/help text for unclear inputs */
+        .gjs-sm-property .gjs-field[title=""],
+        .gjs-sm-property .gjs-field:not([title]) {
+          position: relative !important;
+        }
+
+        /* Tooltip for inputs without clear labels */
+        .gjs-sm-property .gjs-field::before {
+          content: attr(data-label) !important;
+          position: absolute !important;
+          bottom: 100% !important;
+          left: 0 !important;
+          background: #1e293b !important;
+          color: #ffffff !important;
+          padding: 4px 8px !important;
+          border-radius: 4px !important;
+          font-size: 11px !important;
+          white-space: nowrap !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          transition: opacity 0.2s !important;
+          z-index: 1000 !important;
+          margin-bottom: 4px !important;
+        }
+
+        .gjs-sm-property .gjs-field:hover::before {
+          opacity: 1 !important;
+        }
+
+        /* Property Field Container - Figma Style Input */
         .gjs-sm-property .gjs-field {
-          border-radius: 10px !important;
-          border: 2px solid #e5e7eb !important;
-          background: white !important;
-          transition: all 0.3s ease !important;
+          border: 1.5px solid #2d2d2d !important;
+          background: #1e1e1e !important;
           padding: 8px 12px !important;
           width: 100% !important;
           min-width: 120px !important;
           box-sizing: border-box !important;
+          border-radius: 6px !important;
+          transition: all 0.2s ease !important;
+          font-size: 13px !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          position: relative !important;
         }
 
         .gjs-sm-property .gjs-field:hover {
+          border-color: #18a0fb !important;
+          background: #252525 !important;
+          box-shadow: 0 0 0 2px rgba(24, 160, 251, 0.1) !important;
+        }
+
+        .gjs-sm-property .gjs-field:focus-within {
+          border-color: #18a0fb !important;
+          outline: none !important;
+          box-shadow: 0 0 0 3px rgba(24, 160, 251, 0.2) !important;
+          background: #252525 !important;
+        }
+
+        /* Input Field - Figma Style */
+        .gjs-sm-property .gjs-field input[type="text"],
+        .gjs-sm-property .gjs-field input[type="number"] {
+          flex: 1 !important;
+          min-width: 0 !important;
+          border: none !important;
+          background: transparent !important;
+          padding: 0 !important;
+          font-size: 13px !important;
+          color: #e5e5e5 !important;
+          font-weight: 500 !important;
+        }
+
+        .gjs-sm-property .gjs-field input[type="text"]::placeholder,
+        .gjs-sm-property .gjs-field input[type="number"]::placeholder {
+          color: #999999 !important;
+          font-weight: 400 !important;
+        }
+
+        /* Empty/Dash Value Styling */
+        .gjs-sm-property .gjs-field input[type="text"]:not(:focus):empty::before,
+        .gjs-sm-property .gjs-field input[type="number"]:not(:focus):empty::before {
+          content: 'Enter value' !important;
+          color: #94a3b8 !important;
+          font-weight: 400 !important;
+        }
+
+        /* Unit Selector in Property Fields */
+        .gjs-sm-property .gjs-field-unit {
+          flex-shrink: 0 !important;
+        }
+
+        /* Input Fields - Figma Style */
+        .gjs-sm-property input[type="text"],
+        .gjs-sm-property input[type="number"] {
+          font-family: 'Inter', sans-serif !important;
+          font-size: 13px !important;
+          color: #e5e5e5 !important;
+          border: none !important;
+          background: transparent !important;
+          padding: 0 !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+          -webkit-appearance: none !important;
+          appearance: none !important;
+          font-weight: 500 !important;
+          line-height: 1.5 !important;
+        }
+
+        /* Style for empty or dash values */
+        .gjs-sm-property input[type="text"][value=""],
+        .gjs-sm-property input[type="text"][value="-"],
+        .gjs-sm-property input[type="number"][value=""],
+        .gjs-sm-property input[type="number"][value="-"] {
+          color: #999999 !important;
+          font-style: italic !important;
+        }
+
+        .gjs-sm-property input[type="text"]:focus,
+        .gjs-sm-property input[type="number"]:focus {
+          outline: none !important;
+          color: #e5e5e5 !important;
+          font-style: normal !important;
+        }
+
+        .gjs-sm-property input[type="text"]::placeholder,
+        .gjs-sm-property input[type="number"]::placeholder {
+          color: #94a3b8 !important;
+          font-weight: 400 !important;
+          font-style: italic !important;
+        }
+
+        /* Select Dropdown - Figma Style */
+        .gjs-sm-property select {
+          font-family: 'Inter', sans-serif !important;
+          font-size: 13px !important;
+          font-weight: 500 !important;
+          color: #e5e5e5 !important;
+          border: 1.5px solid #2d2d2d !important;
+          background: #1e1e1e !important;
+          padding: 6px 28px 6px 10px !important;
+          width: auto !important;
+          min-width: 80px !important;
+          box-sizing: border-box !important;
+          -webkit-appearance: none !important;
+          appearance: none !important;
+          border-radius: 6px !important;
+          cursor: pointer !important;
+          transition: all 0.2s ease !important;
+          position: relative !important;
+        }
+
+        .gjs-sm-property select:hover {
+          border-color: #18a0fb !important;
+          background: #252525 !important;
+        }
+
+        .gjs-sm-property select:focus {
+          outline: none !important;
+          border-color: #18a0fb !important;
+          box-shadow: 0 0 0 3px rgba(24, 160, 251, 0.2) !important;
+        }
+
+        /* Dropdown Arrow for Select - Figma Style */
+        .gjs-sm-property select {
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999999' d='M6 9L1 4h10z'/%3E%3C/svg%3E") !important;
+          background-repeat: no-repeat !important;
+          background-position: right 10px center !important;
+          background-size: 12px !important;
+          padding-right: 32px !important;
+        }
+
+        /* Classes Section - Figma Style */
+        .gjs-clm-tags,
+        .gjs-clm-select {
+          background: #252525 !important;
+          border: 1px solid #2d2d2d !important;
+          border-radius: 8px !important;
+          padding: 12px !important;
+          margin-bottom: 12px !important;
+          font-family: 'Inter', sans-serif !important;
+        }
+
+        .gjs-clm-tags {
+          display: flex !important;
+          flex-wrap: wrap !important;
+          gap: 8px !important;
+          align-items: center !important;
+        }
+
+        .gjs-clm-tag {
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 6px !important;
+          padding: 6px 12px !important;
+          background: rgba(24, 160, 251, 0.2) !important;
+          border: 1.5px solid #18a0fb !important;
+          border-radius: 6px !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          color: #18a0fb !important;
+          cursor: pointer !important;
+          transition: all 0.2s ease !important;
+        }
+
+        .gjs-clm-tag:hover {
+          background: rgba(24, 160, 251, 0.3) !important;
+          transform: translateY(-1px) !important;
+          box-shadow: 0 2px 8px rgba(24, 160, 251, 0.3) !important;
+        }
+
+        .gjs-clm-tag .fa-check,
+        .gjs-clm-tag .fa-times {
+          font-size: 11px !important;
+          color: #18a0fb !important;
+        }
+
+        .gjs-clm-tag .fa-times {
+          margin-left: 4px !important;
+          opacity: 0.7 !important;
+          cursor: pointer !important;
+        }
+
+        .gjs-clm-tag .fa-times:hover {
+          opacity: 1 !important;
+          color: #dc2626 !important;
+        }
+
+        .gjs-clm-select {
+          display: flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+        }
+
+        .gjs-clm-select select {
+          flex: 1 !important;
+          padding: 8px 12px !important;
+          border: 1.5px solid #e2e8f0 !important;
+          border-radius: 6px !important;
+          font-family: 'Inter', sans-serif !important;
+          font-size: 13px !important;
+          color: #1e293b !important;
+          background: #ffffff !important;
+          cursor: pointer !important;
+          transition: all 0.2s ease !important;
+        }
+
+        .gjs-clm-select select:hover {
           border-color: #cbd5e1 !important;
           background: #f8fafc !important;
         }
 
-        .gjs-sm-property .gjs-field:focus-within {
+        .gjs-clm-select select:focus {
           border-color: #3b82f6 !important;
-          background: white !important;
-          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
+          outline: none !important;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
         }
 
-        /* Input Fields - Modern Style */
-        .gjs-sm-property input[type="text"],
-        .gjs-sm-property input[type="number"],
-        .gjs-sm-property select {
+        .gjs-clm-select button {
+          padding: 8px 14px !important;
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+          color: #ffffff !important;
+          border: none !important;
+          border-radius: 6px !important;
+          font-size: 14px !important;
+          font-weight: 600 !important;
+          cursor: pointer !important;
+          transition: all 0.2s ease !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+
+        .gjs-clm-select button:hover {
+          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+          transform: translateY(-1px) !important;
+          box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3) !important;
+        }
+
+        .gjs-clm-select button:active {
+          transform: translateY(0) !important;
+        }
+
+        /* Classes Header */
+        .gjs-sm-sectors > div:first-child .gjs-sm-title,
+        .gjs-clm-header {
           font-family: 'Inter', sans-serif !important;
+          font-weight: 700 !important;
           font-size: 13px !important;
           color: #1e293b !important;
-          font-weight: 500 !important;
-          border: none !important;
-          background: transparent !important;
-          padding: 4px 8px !important;
-          width: 100% !important;
-          min-width: 120px !important;
-          box-sizing: border-box !important;
+          margin-bottom: 8px !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.5px !important;
         }
 
-        .gjs-sm-property input[type="text"]:focus,
-        .gjs-sm-property input[type="number"]:focus,
-        .gjs-sm-property select:focus {
-          outline: none !important;
+        /* State Section */
+        .gjs-sm-sectors > div:nth-child(2) .gjs-sm-title {
+          font-family: 'Inter', sans-serif !important;
+          font-weight: 700 !important;
+          font-size: 13px !important;
+          color: #1e293b !important;
         }
 
-        /* Color Picker - Modern Design */
-        .gjs-field-color-picker {
-          border-radius: 10px !important;
-          overflow: hidden !important;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-        }
-
+        /* Color Picker - Professional */
         .gjs-field-color-picker .gjs-field-colorp-c {
-          border: 2px solid #e5e7eb !important;
-          border-radius: 8px !important;
-          transition: all 0.3s ease !important;
+          border: 1.5px solid #e2e8f0 !important;
+          border-radius: 6px !important;
+          transition: all 0.2s ease !important;
         }
 
         .gjs-field-color-picker .gjs-field-colorp-c:hover {
-          border-color: #3b82f6 !important;
-          transform: scale(1.05) !important;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important;
+          border-color: #cbd5e1 !important;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
         }
 
-        /* Slider - Modern Track Design */
+        /* Slider - Professional Design */
         .gjs-sm-property input[type="range"] {
           -webkit-appearance: none !important;
           appearance: none !important;
           height: 6px !important;
-          border-radius: 10px !important;
-          background: linear-gradient(90deg, #e5e7eb 0%, #cbd5e1 100%) !important;
+          background: #e2e8f0 !important;
           outline: none !important;
-          transition: all 0.3s ease !important;
+          border-radius: 3px !important;
+          width: 100% !important;
+          transition: all 0.2s ease !important;
         }
 
         .gjs-sm-property input[type="range"]:hover {
-          background: linear-gradient(90deg, #cbd5e1 0%, #94a3b8 100%) !important;
+          background: #cbd5e1 !important;
         }
 
         .gjs-sm-property input[type="range"]::-webkit-slider-thumb {
@@ -7195,13 +11156,14 @@ setTimeout(fillAppointmentForms, 5000);
           border-radius: 50% !important;
           background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
           cursor: pointer !important;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
-          transition: all 0.3s ease !important;
+          border: 2px solid #ffffff !important;
+          box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3) !important;
+          transition: all 0.2s ease !important;
         }
 
         .gjs-sm-property input[type="range"]::-webkit-slider-thumb:hover {
-          transform: scale(1.2) !important;
-          box-shadow: 0 6px 18px rgba(59, 130, 246, 0.6) !important;
+          transform: scale(1.1) !important;
+          box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4) !important;
         }
 
         .gjs-sm-property input[type="range"]::-moz-range-thumb {
@@ -7210,108 +11172,459 @@ setTimeout(fillAppointmentForms, 5000);
           border-radius: 50% !important;
           background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
           cursor: pointer !important;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
-          border: none !important;
+          border: 2px solid #ffffff !important;
+          box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3) !important;
+          transition: all 0.2s ease !important;
         }
 
-        /* Composite Property - Modern Grid Layout */
+        .gjs-sm-property input[type="range"]::-moz-range-thumb:hover {
+          transform: scale(1.1) !important;
+          box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4) !important;
+        }
+
+        .gjs-sm-property input[type="range"]::-moz-range-track {
+          height: 6px !important;
+          background: #e2e8f0 !important;
+          border-radius: 3px !important;
+        }
+
+        /* Composite Property - Vertical Stack (TOP, RIGHT, BOTTOM, LEFT) - Full Width, No Box */
         .gjs-sm-composite {
-          display: grid !important;
-          grid-template-columns: repeat(2, 1fr) !important;
+          display: flex !important;
+          flex-direction: column !important;
           gap: 12px !important;
-          padding: 8px !important;
-          background: #ffffff !important;
-          border-radius: 12px !important;
-          border: 1px solid #e5e7eb !important;
+          padding: 0 !important;
+          background: transparent !important;
+          border: none !important;
+          border-radius: 0 !important;
+          width: 100% !important;
+          margin: 0 !important;
+          box-shadow: none !important;
         }
 
         .gjs-sm-composite.gjs-sm-composite--cols-4 {
-          grid-template-columns: repeat(4, 1fr) !important;
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 12px !important;
         }
 
-        /* Composite Field - Modern Button Groups */
+        /* Composite Field - Match Regular Property Fields (Full Width, No Nested Box) */
         .gjs-sm-composite .gjs-field {
-          background: white !important;
-          border: 2px solid #e5e7eb !important;
-          border-radius: 10px !important;
+          border: 1.5px solid #e2e8f0 !important;
+          background: #ffffff !important;
           padding: 8px 12px !important;
-          transition: all 0.3s ease !important;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04) !important;
           width: 100% !important;
-          min-width: 100px !important;
+          min-width: 120px !important;
           box-sizing: border-box !important;
+          border-radius: 6px !important;
+          transition: all 0.2s ease !important;
+          font-size: 13px !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          position: relative !important;
         }
 
         .gjs-sm-composite .gjs-field:hover {
-          border-color: #cbd5e1 !important;
+          border-color: #3b82f6 !important;
           background: #f8fafc !important;
-          transform: translateY(-1px) !important;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08) !important;
+          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.05) !important;
         }
 
         .gjs-sm-composite .gjs-field:focus-within {
           border-color: #3b82f6 !important;
-          background: white !important;
-          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
+          outline: none !important;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+          background: #ffffff !important;
         }
 
-        /* Composite Input Fields */
+        /* Composite Field Label (TOP, RIGHT, BOTTOM, LEFT) - Clear & Visible */
+        .gjs-sm-composite .gjs-sm-property {
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 8px !important;
+        }
+
+        .gjs-sm-composite .gjs-sm-property .gjs-sm-label {
+          font-family: 'Inter', sans-serif !important;
+          font-weight: 700 !important;
+          font-size: 11px !important;
+          color: #64748b !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.5px !important;
+          margin-bottom: 0 !important;
+        }
+
+        /* Composite Field Input - Clear, Visible & Editable */
+        .gjs-sm-composite .gjs-field input[type="text"],
+        .gjs-sm-composite .gjs-field input[type="number"] {
+          flex: 1 !important;
+          min-width: 60px !important;
+          border: none !important;
+          background: transparent !important;
+          padding: 4px 0 !important;
+          font-size: 14px !important;
+          font-weight: 500 !important;
+          color: #1e293b !important;
+          outline: none !important;
+        }
+
+        .gjs-sm-composite .gjs-field input[type="text"]:focus,
+        .gjs-sm-composite .gjs-field input[type="number"]:focus {
+          color: #0f172a !important;
+          font-weight: 600 !important;
+        }
+
+        .gjs-sm-composite .gjs-field input[type="text"]::placeholder,
+        .gjs-sm-composite .gjs-field input[type="number"]::placeholder {
+          color: #94a3b8 !important;
+          font-weight: 400 !important;
+          font-style: italic !important;
+        }
+
+        /* Link/Unlink Button - Professional */
+        .gjs-sm-composite .gjs-field .fa-link,
+        .gjs-sm-composite .gjs-field .fa-unlink,
+        .gjs-sm-composite .gjs-field [class*="link"],
+        .gjs-sm-composite .gjs-field [class*="unlink"] {
+          color: #64748b !important;
+          font-size: 12px !important;
+          cursor: pointer !important;
+          padding: 4px 6px !important;
+          border-radius: 4px !important;
+          transition: all 0.2s ease !important;
+          flex-shrink: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          width: 24px !important;
+          height: 24px !important;
+        }
+
+        .gjs-sm-composite .gjs-field .fa-link:hover,
+        .gjs-sm-composite .gjs-field .fa-unlink:hover,
+        .gjs-sm-composite .gjs-field [class*="link"]:hover,
+        .gjs-sm-composite .gjs-field [class*="unlink"]:hover {
+          color: #3b82f6 !important;
+          background: #eff6ff !important;
+        }
+
+        /* Show Parent Property Label for Margin/Padding (Main Label) */
+        .gjs-sm-property:has(.gjs-sm-composite) > .gjs-sm-label {
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          font-family: 'Inter', sans-serif !important;
+          font-weight: 700 !important;
+          font-size: 14px !important;
+          color: #1e293b !important;
+          margin-bottom: 12px !important;
+          padding-bottom: 10px !important;
+          border-bottom: 2px solid #e2e8f0 !important;
+          text-transform: capitalize !important;
+          letter-spacing: -0.01em !important;
+          height: auto !important;
+          overflow: visible !important;
+        }
+
+        /* Show label only for individual field items (TOP, RIGHT, BOTTOM, LEFT) - Clear & Visible */
+        .gjs-sm-composite .gjs-sm-property .gjs-sm-label {
+          display: block !important;
+          font-family: 'Inter', sans-serif !important;
+          font-weight: 700 !important;
+          font-size: 12px !important;
+          color: #475569 !important;
+          margin-bottom: 8px !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.5px !important;
+        }
+
+        /* Remove helper text - Keep labels clean */
+        .gjs-sm-composite .gjs-sm-property .gjs-sm-label::after {
+          content: none !important;
+          display: none !important;
+        }
+
+        /* Composite Field Container - No Box, Full Width */
+        .gjs-sm-composite {
+          background: transparent !important;
+          padding: 0 !important;
+          border-radius: 0 !important;
+          border: none !important;
+          margin-top: 0 !important;
+          margin-bottom: 0 !important;
+          position: relative !important;
+          box-shadow: none !important;
+        }
+
+        /* Hide Duplicate Label Inside Composite Container (Keep Only Main Label) */
+        .composite-field-label {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: hidden !important;
+          font-size: 0 !important;
+          line-height: 0 !important;
+        }
+
+        /* Individual Composite Field Items - Match Regular Property Layout */
+        .gjs-sm-composite .gjs-sm-property {
+          margin-bottom: 12px !important;
+          padding-bottom: 0 !important;
+          border-bottom: none !important;
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 8px !important;
+          width: 100% !important;
+        }
+
+        .gjs-sm-composite .gjs-sm-property:last-child {
+          margin-bottom: 0 !important;
+        }
+
+        /* Show Composite Field Labels (TOP, RIGHT, BOTTOM, LEFT) - Clear & Visible */
+        .gjs-sm-composite .gjs-sm-property .gjs-sm-label {
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          font-family: 'Inter', sans-serif !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          color: #475569 !important;
+          margin-bottom: 6px !important;
+          text-transform: capitalize !important;
+          letter-spacing: 0.3px !important;
+          height: auto !important;
+          padding: 0 !important;
+          overflow: visible !important;
+          line-height: 1.4 !important;
+        }
+
+        /* Better Visual Feedback for Empty Composite Fields */
+        .gjs-sm-composite .gjs-field input[type="text"]:empty + .gjs-field-unit,
+        .gjs-sm-composite .gjs-field input[type="number"]:empty + .gjs-field-unit {
+          opacity: 0.6 !important;
+        }
+
+        /* Ensure all unit selectors are visible */
+        .gjs-sm-property .gjs-field-unit,
+        .gjs-sm-composite .gjs-field-unit {
+          display: inline-flex !important;
+          align-items: center !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+
+        /* Composite Input Fields - Match Regular Property Inputs */
         .gjs-sm-composite input[type="text"],
-        .gjs-sm-composite input[type="number"],
-        .gjs-sm-composite select {
+        .gjs-sm-composite input[type="number"] {
+          flex: 1 !important;
+          min-width: 0 !important;
+          border: none !important;
+          background: transparent !important;
+          padding: 0 !important;
+          font-size: 13px !important;
+          color: #1e293b !important;
+          font-weight: 500 !important;
+          font-family: 'Inter', sans-serif !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+          line-height: 1.5 !important;
+        }
+
+        .gjs-sm-composite input[type="text"]::placeholder,
+        .gjs-sm-composite input[type="number"]::placeholder {
+          color: #94a3b8 !important;
+          font-weight: 400 !important;
+        }
+
+        .gjs-sm-composite input[type="text"]:focus,
+        .gjs-sm-composite input[type="number"]:focus {
+          outline: none !important;
+          color: #0f172a !important;
+        }
+
+        /* Unit Selector Dropdown - Professional */
+        .gjs-sm-composite select,
+        .gjs-sm-property select,
+        .gjs-field-unit select {
           font-family: 'Inter', sans-serif !important;
           font-size: 13px !important;
           font-weight: 500 !important;
           color: #1e293b !important;
           border: none !important;
           background: transparent !important;
-          padding: 4px 6px !important;
+          padding: 0 20px 0 0 !important;
           width: 100% !important;
-          min-width: 100px !important;
           box-sizing: border-box !important;
+          cursor: pointer !important;
+          -webkit-appearance: none !important;
+          appearance: none !important;
+          line-height: 1.5 !important;
         }
 
-        .gjs-sm-composite input[type="text"]:focus,
-        .gjs-sm-composite input[type="number"]:focus,
-        .gjs-sm-composite select:focus {
+        /* Hide "-" Symbol Button - Replace with Dropdown */
+        .gjs-field .fa-minus,
+        .gjs-field [class*="minus"],
+        .gjs-field [class*="dash"],
+        .gjs-sm-property .gjs-field button,
+        .gjs-sm-composite .gjs-field button,
+        .gjs-field button[title*="-"],
+        .gjs-field button:empty,
+        .gjs-field .gjs-btn-arrow {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          width: 0 !important;
+          height: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        /* Hide any text content that is just "-" */
+        .gjs-field span:empty,
+        .gjs-field span:contains("-") {
+          display: none !important;
+        }
+
+        /* Unit Selector Container - Visible Dropdown */
+        .gjs-field-unit,
+        .gjs-sm-property .gjs-field-unit,
+        .gjs-sm-composite .gjs-field-unit {
+          position: relative !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          min-width: 75px !important;
+          margin-left: 8px !important;
+          flex-shrink: 0 !important;
+        }
+
+        /* Professional Dropdown Arrow - SVG Icon (Always Visible) */
+        .gjs-field-unit::after {
+          content: '' !important;
+          position: absolute !important;
+          right: 10px !important;
+          top: 50% !important;
+          transform: translateY(-50%) !important;
+          pointer-events: none !important;
+          width: 14px !important;
+          height: 14px !important;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M3.5 5.25L7 8.75L10.5 5.25' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+          background-repeat: no-repeat !important;
+          background-position: center !important;
+          background-size: contain !important;
+          z-index: 10 !important;
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+
+        /* Hover state for dropdown arrow */
+        .gjs-field-unit:hover::after {
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M3.5 5.25L7 8.75L10.5 5.25' stroke='%232563eb' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+        }
+
+        .gjs-field-unit select {
+          padding: 8px 32px 8px 10px !important;
+          border: 1.5px solid #e2e8f0 !important;
+          border-radius: 6px !important;
+          background: #ffffff !important;
+          font-size: 12px !important;
+          font-weight: 500 !important;
+          color: #334155 !important;
+          cursor: pointer !important;
+          transition: all 0.2s ease !important;
+          width: 100% !important;
+          min-width: 75px !important;
+          -webkit-appearance: none !important;
+          appearance: none !important;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        .gjs-field-unit select:hover {
+          border-color: #3b82f6 !important;
+          background: #f8fafc !important;
+          box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1) !important;
+        }
+
+        .gjs-field-unit select:focus {
+          border-color: #3b82f6 !important;
           outline: none !important;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+          background: #ffffff !important;
         }
 
-        /* Composite Button Groups - Modern Design */
+        .gjs-field-unit select option {
+          padding: 10px 12px !important;
+          background: #ffffff !important;
+          color: #1e293b !important;
+          font-size: 13px !important;
+        }
+
+        .gjs-field-unit select option:hover {
+          background: #f8fafc !important;
+        }
+
+        /* Ensure unit selector is always visible in composite fields */
+        .gjs-sm-composite .gjs-field .gjs-field-unit {
+          display: inline-flex !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          margin-left: 8px !important;
+          flex-shrink: 0 !important;
+        }
+
+        /* Make sure the select element is visible */
+        .gjs-sm-composite .gjs-field .gjs-field-unit select,
+        .gjs-sm-property .gjs-field .gjs-field-unit select {
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          min-width: 70px !important;
+        }
+
+        /* Ensure input field takes proper space */
+        .gjs-sm-composite .gjs-field {
+          min-height: 44px !important;
+        }
+
+        /* Make input clearly visible and editable */
+        .gjs-sm-composite .gjs-field input {
+          min-width: 80px !important;
+          flex: 1 1 auto !important;
+        }
+
+        /* Composite Button Groups - Professional */
         .gjs-sm-composite .gjs-field-radio {
           display: flex !important;
-          background: white !important;
-          border: 2px solid #e5e7eb !important;
-          border-radius: 10px !important;
+          background: #ffffff !important;
+          border: 1.5px solid #e2e8f0 !important;
+          border-radius: 6px !important;
           overflow: hidden !important;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04) !important;
-          transition: all 0.3s ease !important;
+          transition: all 0.2s ease !important;
         }
 
         .gjs-sm-composite .gjs-field-radio:hover {
           border-color: #cbd5e1 !important;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08) !important;
         }
 
-        .gjs-sm-composite .gjs-field-radio:focus-within {
-          border-color: #3b82f6 !important;
-          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
-        }
-
-        /* Radio Button Options */
+        /* Radio Button Options - Professional */
         .gjs-sm-composite .gjs-field-radio .gjs-field-radio-option {
           flex: 1 !important;
           padding: 10px 12px !important;
           font-family: 'Inter', sans-serif !important;
-          font-size: 13px !important;
+          font-size: 12px !important;
           font-weight: 500 !important;
           color: #64748b !important;
           background: transparent !important;
           border: none !important;
-          border-right: 1px solid #e5e7eb !important;
+          border-right: 1px solid #e2e8f0 !important;
           cursor: pointer !important;
-          transition: all 0.3s ease !important;
           text-align: center !important;
+          transition: all 0.2s ease !important;
         }
 
         .gjs-sm-composite .gjs-field-radio .gjs-field-radio-option:last-child {
@@ -7325,408 +11638,557 @@ setTimeout(fillAppointmentForms, 5000);
 
         .gjs-sm-composite .gjs-field-radio .gjs-field-radio-option.gjs-field-radio-option-active {
           background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-          color: white !important;
+          color: #ffffff !important;
           font-weight: 600 !important;
-          box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3) !important;
+          box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2) !important;
         }
 
-        /* Single Button Fields */
-        .gjs-sm-composite .gjs-field-select {
-          background: white !important;
-          border: 2px solid #e5e7eb !important;
-          border-radius: 10px !important;
-          padding: 10px 12px !important;
-          transition: all 0.3s ease !important;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04) !important;
-        }
-
-        .gjs-sm-composite .gjs-field-select:hover {
-          border-color: #cbd5e1 !important;
-          background: #f8fafc !important;
-          transform: translateY(-1px) !important;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08) !important;
-        }
-
-        .gjs-sm-composite .gjs-field-select:focus-within {
-          border-color: #3b82f6 !important;
-          background: white !important;
-          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
-        }
-
-        /* Select Dropdown */
+        /* Select Dropdown - Professional */
         .gjs-sm-composite .gjs-field-select select {
           font-family: 'Inter', sans-serif !important;
           font-size: 13px !important;
-          font-weight: 500 !important;
+          font-weight: 400 !important;
           color: #1e293b !important;
           border: none !important;
           background: transparent !important;
           padding: 0 !important;
           width: 100% !important;
           cursor: pointer !important;
+          -webkit-appearance: none !important;
+          appearance: none !important;
+          line-height: 1.5 !important;
         }
 
         .gjs-sm-composite .gjs-field-select select:focus {
           outline: none !important;
         }
 
-        /* General Section - Modern Blue Theme */
-        .gjs-sm-sector[data-name="general"] {
-          background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
-          border-color: #3b82f6 !important;
+        .gjs-sm-composite .gjs-field-select select option {
+          padding: 8px 12px !important;
+          font-family: 'Inter', sans-serif !important;
+          font-size: 13px !important;
         }
 
-        .gjs-sm-sector[data-name="general"] .gjs-sm-title {
-          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+        /* Hide custom dropdown arrow icon added by GrapesJS */
+        .gjs-field-select::after,
+        .gjs-sm-property .gjs-field-select::after,
+        .gjs-sm-composite .gjs-field-select::after {
+          display: none !important;
+          content: none !important;
         }
 
-        .gjs-sm-sector[data-name="general"] .gjs-sm-properties {
-          background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
-        }
+        /* All sections use same simple styling - no special themes */
 
-        /* Dimension Section - Modern Golden Theme */
-        .gjs-sm-sector[data-name="dimension"] {
-          background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
-          border-color: #f59e0b !important;
-        }
-
-        .gjs-sm-sector[data-name="dimension"] .gjs-sm-title {
-          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
-        }
-
-        .gjs-sm-sector[data-name="dimension"] .gjs-sm-properties {
-          background: linear-gradient(135deg, #ffffff 0%, #fefce8 100%) !important;
-        }
-
-        /* Typography Section - Modern Blue Theme */
-        .gjs-sm-sector[data-name="typography"] {
-          background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
-          border-color: #3b82f6 !important;
-        }
-
-        .gjs-sm-sector[data-name="typography"] .gjs-sm-title {
-          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-        }
-
-        .gjs-sm-sector[data-name="typography"] .gjs-sm-properties {
-          background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%) !important;
-        }
-
-        /* Decorations Section - Modern Purple Theme */
-        .gjs-sm-sector[data-name="decorations"] {
-          background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%) !important;
-          border-color: #8b5cf6 !important;
-        }
-
-        .gjs-sm-sector[data-name="decorations"] .gjs-sm-title {
-          background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
-        }
-
-        .gjs-sm-sector[data-name="decorations"] .gjs-sm-properties {
-          background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%) !important;
-        }
-
-        /* Flexbox Section - Modern Green Theme */
-        .gjs-sm-sector[data-name="flexbox"] {
-          background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
-          border-color: #10b981 !important;
-        }
-
-        .gjs-sm-sector[data-name="flexbox"] .gjs-sm-title {
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-        }
-
-        .gjs-sm-sector[data-name="flexbox"] .gjs-sm-properties {
-          background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%) !important;
-        }
-
-        /* Extra Section - Modern Red Theme */
-        .gjs-sm-sector[data-name="extra"] {
-          background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%) !important;
-          border-color: #ef4444 !important;
-        }
-
-        .gjs-sm-sector[data-name="extra"] .gjs-sm-title {
-          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-        }
-
-        .gjs-sm-sector[data-name="extra"] .gjs-sm-properties {
-          background: linear-gradient(135deg, #ffffff 0%, #fef2f2 100%) !important;
-        }
-
-        /* Layout Section - Modern Indigo Theme */
-        .gjs-sm-sector[data-name="layout"] {
-          background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%) !important;
-          border-color: #6366f1 !important;
-        }
-
-        .gjs-sm-sector[data-name="layout"] .gjs-sm-title {
-          background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
-        }
-
-        .gjs-sm-sector[data-name="layout"] .gjs-sm-properties {
-          background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
-        }
-
-        /* Border Section - Modern Teal Theme */
-        .gjs-sm-sector[data-name="border"] {
-          background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%) !important;
-          border-color: #14b8a6 !important;
-        }
-
-        .gjs-sm-sector[data-name="border"] .gjs-sm-title {
-          background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%) !important;
-        }
-
-        .gjs-sm-sector[data-name="border"] .gjs-sm-properties {
-          background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%) !important;
-        }
-
-        /* Stack Property - Modern Spacing */
+        /* Stack Property - Full Width, No Box (Text Shadow, Box Shadow, etc.) */
         .gjs-sm-stack {
+          background: transparent !important;
+          padding: 0 !important;
+          margin-top: 0 !important;
+          border: none !important;
+          width: 100% !important;
+          box-shadow: none !important;
+        }
+
+        /* Remove grey box from ALL stack layers - Keep content visible (First, Second, Third, etc.) */
+        .gjs-sm-stack .gjs-sm-layer,
+        .gjs-sm-stack .gjs-sm-layer:first-child,
+        .gjs-sm-stack .gjs-sm-layer:last-child,
+        .gjs-sm-stack .gjs-sm-layer:nth-child(1),
+        .gjs-sm-stack .gjs-sm-layer:nth-child(2),
+        .gjs-sm-stack .gjs-sm-layer:nth-child(3),
+        .gjs-sm-stack .gjs-sm-layer:nth-child(n) {
+          background: transparent !important;
+          padding: 0 !important;
+          margin-bottom: 16px !important;
+          border: none !important;
+          width: 100% !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+        }
+
+        .gjs-sm-stack .gjs-sm-layer:hover,
+        .gjs-sm-stack .gjs-sm-layer:first-child:hover,
+        .gjs-sm-stack .gjs-sm-layer:last-child:hover,
+        .gjs-sm-stack .gjs-sm-layer:nth-child(n):hover {
+          background: transparent !important;
+          border: none !important;
+        }
+
+        /* Minimize layer header box for ALL layers - Make it less prominent */
+        .gjs-sm-stack .gjs-sm-layer > div:first-child,
+        .gjs-sm-stack .gjs-sm-layer:first-child > div:first-child,
+        .gjs-sm-stack .gjs-sm-layer:last-child > div:first-child,
+        .gjs-sm-stack .gjs-sm-layer:nth-child(n) > div:first-child {
           background: #f8fafc !important;
-          border-radius: 10px !important;
-          padding: 12px !important;
-          margin-top: 8px !important;
-          border: 1px solid #e5e7eb !important;
+          border: 1px solid #e2e8f0 !important;
+          padding: 8px 12px !important;
+          margin-bottom: 12px !important;
+          border-radius: 6px !important;
+          box-shadow: none !important;
         }
 
-        .gjs-sm-stack .gjs-sm-layer {
-          background: white !important;
-          border-radius: 8px !important;
-          padding: 10px 12px !important;
-          margin-bottom: 8px !important;
-          border: 1px solid #e5e7eb !important;
+        /* Make layer header compact and clean for ALL layers */
+        .gjs-sm-stack .gjs-sm-layer > div:first-child:hover,
+        .gjs-sm-stack .gjs-sm-layer:first-child > div:first-child:hover,
+        .gjs-sm-stack .gjs-sm-layer:last-child > div:first-child:hover,
+        .gjs-sm-stack .gjs-sm-layer:nth-child(n) > div:first-child:hover {
+          background: #f1f5f9 !important;
+          border-color: #cbd5e1 !important;
+        }
+
+        /* Keep properties visible for ALL layers */
+        .gjs-sm-stack .gjs-sm-layer .gjs-sm-properties,
+        .gjs-sm-stack .gjs-sm-layer:first-child .gjs-sm-properties,
+        .gjs-sm-stack .gjs-sm-layer:last-child .gjs-sm-properties,
+        .gjs-sm-stack .gjs-sm-layer:nth-child(n) .gjs-sm-properties {
+          display: block !important;
+          width: 100% !important;
+          background: transparent !important;
+          border: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        /* Stack Layer Fields - Full Width for ALL layers */
+        .gjs-sm-stack .gjs-sm-layer .gjs-sm-property,
+        .gjs-sm-stack .gjs-sm-layer:first-child .gjs-sm-property,
+        .gjs-sm-stack .gjs-sm-layer:last-child .gjs-sm-property,
+        .gjs-sm-stack .gjs-sm-layer:nth-child(n) .gjs-sm-property {
+          width: 100% !important;
+          margin-bottom: 12px !important;
+          padding: 0 !important;
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+
+        .gjs-sm-stack .gjs-sm-layer .gjs-sm-property:last-child,
+        .gjs-sm-stack .gjs-sm-layer:first-child .gjs-sm-property:last-child,
+        .gjs-sm-stack .gjs-sm-layer:last-child .gjs-sm-property:last-child,
+        .gjs-sm-stack .gjs-sm-layer:nth-child(n) .gjs-sm-property:last-child {
+          margin-bottom: 0 !important;
+        }
+
+        /* Remove any wrapper boxes around fields */
+        .gjs-sm-stack .gjs-sm-layer .gjs-sm-property > div,
+        .gjs-sm-stack .gjs-sm-layer .gjs-sm-property > span,
+        .gjs-sm-stack .gjs-sm-layer .gjs-field-wrapper {
+          background: transparent !important;
+          border: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+
+        /* Stack Layer Field Inputs - Full Width for ALL layers, No Nested Boxes */
+        .gjs-sm-stack .gjs-sm-layer .gjs-field,
+        .gjs-sm-stack .gjs-sm-layer:first-child .gjs-field,
+        .gjs-sm-stack .gjs-sm-layer:last-child .gjs-field,
+        .gjs-sm-stack .gjs-sm-layer:nth-child(n) .gjs-field {
+          border: 1.5px solid #e2e8f0 !important;
+          background: #ffffff !important;
+          padding: 8px 12px !important;
+          width: 100% !important;
+          min-width: 120px !important;
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+          border-radius: 6px !important;
           transition: all 0.2s ease !important;
+          font-size: 13px !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          position: relative !important;
+          margin: 0 !important;
         }
 
-        .gjs-sm-stack .gjs-sm-layer:hover {
+        /* Remove any additional boxes or containers */
+        .gjs-sm-stack .gjs-sm-layer .gjs-field > div,
+        .gjs-sm-stack .gjs-sm-layer .gjs-field > span {
+          background: transparent !important;
+          border: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+        }
+
+        /* Hover and focus states for ALL layers */
+        .gjs-sm-stack .gjs-sm-layer .gjs-field:hover,
+        .gjs-sm-stack .gjs-sm-layer:first-child .gjs-field:hover,
+        .gjs-sm-stack .gjs-sm-layer:last-child .gjs-field:hover,
+        .gjs-sm-stack .gjs-sm-layer:nth-child(n) .gjs-field:hover {
           border-color: #3b82f6 !important;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1) !important;
-          transform: translateX(4px) !important;
+          background: #f8fafc !important;
+          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.05) !important;
         }
 
-        /* Layers Panel - Modern Tree View */
+        .gjs-sm-stack .gjs-sm-layer .gjs-field:focus-within,
+        .gjs-sm-stack .gjs-sm-layer:first-child .gjs-field:focus-within,
+        .gjs-sm-stack .gjs-sm-layer:last-child .gjs-field:focus-within,
+        .gjs-sm-stack .gjs-sm-layer:nth-child(n) .gjs-field:focus-within {
+          border-color: #3b82f6 !important;
+          outline: none !important;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+          background: #ffffff !important;
+        }
+
+        /* Stack Layer Field Labels - Visible for ALL layers */
+        .gjs-sm-stack .gjs-sm-layer .gjs-sm-property .gjs-sm-label,
+        .gjs-sm-stack .gjs-sm-layer:first-child .gjs-sm-property .gjs-sm-label,
+        .gjs-sm-stack .gjs-sm-layer:last-child .gjs-sm-property .gjs-sm-label,
+        .gjs-sm-stack .gjs-sm-layer:nth-child(n) .gjs-sm-property .gjs-sm-label {
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          font-family: 'Inter', sans-serif !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          color: #475569 !important;
+          margin-bottom: 6px !important;
+          text-transform: capitalize !important;
+          letter-spacing: 0.3px !important;
+          height: auto !important;
+          padding: 0 !important;
+          overflow: visible !important;
+          line-height: 1.4 !important;
+        }
+
+        /* Stack Layer Field Inputs - Match Regular Property Inputs - Full Width */
+        .gjs-sm-stack .gjs-sm-layer .gjs-field input[type="text"],
+        .gjs-sm-stack .gjs-sm-layer .gjs-field input[type="number"] {
+          flex: 1 !important;
+          min-width: 0 !important;
+          border: none !important;
+          background: transparent !important;
+          padding: 0 !important;
+          font-size: 13px !important;
+          color: #1e293b !important;
+          font-weight: 500 !important;
+          font-family: 'Inter', sans-serif !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        }
+
+        /* Ensure field wrapper doesn't restrict width - Full Width */
+        .gjs-sm-stack .gjs-sm-layer .gjs-field-wrapper,
+        .gjs-sm-stack .gjs-sm-layer .gjs-sm-property .gjs-field-wrapper,
+        .gjs-sm-stack .gjs-sm-layer .gjs-sm-property > * {
+          width: 100% !important;
+          max-width: 100% !important;
+          display: block !important;
+          background: transparent !important;
+          border: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+        }
+
+        /* Ensure input field takes full width */
+        .gjs-sm-stack .gjs-sm-layer .gjs-sm-property .gjs-field {
+          width: 100% !important;
+          max-width: 100% !important;
+          display: flex !important;
+        }
+
+        /* Layers Panel - Simple */
         #gjs .gjs-layer-wrapper {
           background: #ffffff !important;
-          padding: 16px 12px !important;
+          padding: 12px !important;
         }
 
         .gjs-layer {
-          border-radius: 12px !important;
-          margin: 6px 0 !important;
-          padding: 14px 16px !important;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-          border: 2px solid #e5e7eb !important;
+          margin: 4px 0 !important;
+          padding: 10px 12px !important;
+          border: 1px solid #e5e7eb !important;
           background: #ffffff !important;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
         }
 
         .gjs-layer:hover {
-          background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
-          border-color: #3b82f6 !important;
-          transform: translateX(6px) scale(1.02) !important;
-          box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15) !important;
+          background: #f8fafc !important;
+          border-color: #cbd5e1 !important;
         }
 
         .gjs-layer.gjs-selected {
-          background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+          background: #dbeafe !important;
           border-color: #3b82f6 !important;
-          box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25) !important;
-          font-weight: 600 !important;
-          transform: translateX(4px) !important;
         }
 
         .gjs-layer__icon {
           color: #64748b !important;
-          margin-right: 12px !important;
-          transition: all 0.3s ease !important;
-          font-size: 16px !important;
-        }
-
-        .gjs-layer:hover .gjs-layer__icon {
-          color: #3b82f6 !important;
-          transform: scale(1.2) !important;
+          margin-right: 8px !important;
+          font-size: 14px !important;
         }
 
         .gjs-layer.gjs-selected .gjs-layer__icon {
           color: #3b82f6 !important;
-          transform: scale(1.15) !important;
         }
 
         /* Layer Title */
         .gjs-layer-title {
           font-family: 'Inter', sans-serif !important;
-          font-size: 14px !important;
-          font-weight: 600 !important;
+          font-size: 13px !important;
+          font-weight: 500 !important;
           color: #334155 !important;
-          letter-spacing: -0.2px !important;
         }
 
         .gjs-layer.gjs-selected .gjs-layer-title {
           color: #1e40af !important;
-          font-weight: 700 !important;
+          font-weight: 600 !important;
         }
 
         /* Layer Eye Icon (Visibility) */
         .gjs-layer__eye {
           color: #64748b !important;
-          transition: all 0.3s ease !important;
-          font-size: 16px !important;
+          font-size: 14px !important;
           margin-left: 8px !important;
         }
 
         .gjs-layer__eye:hover {
           color: #3b82f6 !important;
-          transform: scale(1.2) !important;
         }
 
-        /* Blocks Panel - Modern Card Grid - Responsive */
-        #gjs .gjs-blocks-c {
-          padding: 16px 12px !important;
-          background: #ffffff !important;
+        /* Blocks Panel - 2 Columns Grid - Professional */
+        #gjs .gjs-blocks-c,
+        .gjs-blocks-c {
+          padding: 10px !important;
+          background: var(--header-bg) !important;
           display: grid !important;
           grid-template-columns: repeat(2, 1fr) !important;
-          gap: 12px !important;
+          gap: 8px !important;
+          width: 100% !important;
         }
 
-        /* Blocks Grid - Responsive Layout */
+        /* Ensure blocks take proper width in grid */
+        .gjs-blocks-c .gjs-block {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+        }
+
+        /* Blocks Grid - Always 2 Columns - Professional Spacing */
         @media (min-width: 1920px) {
-          #gjs .gjs-blocks-c {
+          #gjs .gjs-blocks-c,
+          .gjs-blocks-c {
             grid-template-columns: repeat(2, 1fr) !important;
-            gap: 14px !important;
+            gap: 8px !important;
+            padding: 10px !important;
           }
         }
 
         @media (max-width: 1400px) {
-          #gjs .gjs-blocks-c {
+          #gjs .gjs-blocks-c,
+          .gjs-blocks-c {
             grid-template-columns: repeat(2, 1fr) !important;
-            gap: 10px !important;
-            padding: 12px 10px !important;
+            gap: 8px !important;
+            padding: 10px !important;
           }
         }
 
         @media (max-width: 1200px) {
-          #gjs .gjs-blocks-c {
+          #gjs .gjs-blocks-c,
+          .gjs-blocks-c {
             grid-template-columns: repeat(2, 1fr) !important;
             gap: 8px !important;
-            padding: 10px 8px !important;
+            padding: 10px !important;
           }
         }
 
+        /* Force 2 columns for all block containers - Professional */
+        .gjs-block-category .gjs-blocks-c,
+        .gjs-block-category.gjs-open .gjs-blocks-c,
+        .gjs-block-category .gjs-blocks-c[data-force-show="true"] {
+          display: grid !important;
+          grid-template-columns: repeat(2, 1fr) !important;
+          gap: 8px !important;
+          padding: 10px !important;
+          width: 100% !important;
+        }
+
+        /* Ensure blocks don't break grid layout */
+        .gjs-block-category .gjs-blocks-c .gjs-block {
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+          flex-shrink: 0 !important;
+          box-sizing: border-box !important;
+        }
+
+        /* Block Category - Professional Design */
         .gjs-block-category {
-          margin-bottom: 20px !important;
-          border-radius: 16px !important;
-          overflow: hidden !important;
-          border: 2px solid #e5e7eb !important;
-          background: white !important;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          margin-bottom: 6px !important;
+          border: 1px solid var(--header-border-color) !important;
+          background: var(--header-bg) !important;
           grid-column: 1 / -1 !important;
+          border-radius: 6px !important;
+          overflow: visible !important;
+          transition: all 0.2s ease !important;
+          position: relative !important;
         }
 
         .gjs-block-category:hover {
-          border-color: #3b82f6 !important;
-          box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15) !important;
-          transform: translateY(-2px) !important;
+          border-color: var(--header-border-color) !important;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
         }
 
         .gjs-block-category .gjs-title {
-          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-          color: white !important;
+          background: var(--header-bg) !important;
+          color: #e5e5e5 !important;
           font-family: 'Inter', sans-serif !important;
-          font-weight: 700 !important;
-          font-size: 14px !important;
-          padding: 16px 20px !important;
-          border-bottom: none !important;
+          font-weight: 600 !important;
+          font-size: 13px !important;
+          padding: 10px 12px !important;
           cursor: pointer !important;
-          transition: all 0.3s ease !important;
-          letter-spacing: -0.3px !important;
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2) !important;
+          position: relative !important;
+          user-select: none !important;
+          margin: 0 !important;
+          border: none !important;
+          border-bottom: 1px solid var(--header-border-color) !important;
+          transition: all 0.2s ease !important;
         }
 
         .gjs-block-category .gjs-title:hover {
-          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+          background: #252525 !important;
+          color: #ffffff !important;
         }
 
-        /* Block Category Specific Colors */
-        
-        /* Basic Blocks Category */
-        .gjs-block-category[data-name="basic"] .gjs-title {
-          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+        /* Block Category Caret Icon - Professional */
+        .gjs-block-category .gjs-title::before {
+          content: '▶' !important;
+          display: inline-block !important;
+          margin-right: 10px !important;
+          font-size: 10px !important;
+          color: #64748b !important;
+          transition: transform 0.2s ease, color 0.2s ease !important;
+          vertical-align: middle !important;
         }
 
-        /* Typography Category */
-        .gjs-block-category[data-name="typography"] .gjs-title {
-          background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+        .gjs-block-category .gjs-title:hover::before {
+          color: #3b82f6 !important;
         }
 
-        /* Media Category */
-        .gjs-block-category[data-name="media"] .gjs-title {
-          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        .gjs-block-category.gjs-open .gjs-title::before {
+          transform: rotate(90deg) !important;
+          color: #3b82f6 !important;
         }
 
-        /* Layout Category */
-        .gjs-block-category[data-name="layout"] .gjs-title {
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        /* Block Category Content - Professional Expand/Collapse */
+        .gjs-block-category .gjs-blocks-c {
+          background: var(--header-bg) !important;
+          overflow: hidden !important;
+          transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.25s ease, margin 0.25s ease !important;
+          box-sizing: border-box !important;
         }
 
-        /* Forms Category */
-        .gjs-block-category[data-name="forms"] .gjs-title {
-          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+        /* Hide blocks completely when category is closed - NO SPACE, NO HEIGHT */
+        .gjs-block-category:not(.gjs-open) .gjs-blocks-c {
+          max-height: 0 !important;
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          margin: 0 !important;
+          opacity: 0 !important;
+          visibility: hidden !important;
+          overflow: hidden !important;
         }
 
-        /* Advanced Category */
-        .gjs-block-category[data-name="advanced"] .gjs-title {
-          background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+        /* Show blocks when category is open - PROPER SPACE with GRID LAYOUT (2 columns) */
+        .gjs-block-category.gjs-open .gjs-blocks-c,
+        .gjs-block-category.gjs-open .gjs-blocks-c[data-force-show="true"],
+        .gjs-blocks-c[data-force-show="true"] {
+          display: grid !important;
+          grid-template-columns: repeat(2, 1fr) !important;
+          gap: 8px !important;
+          max-height: 5000px !important;
+          padding: 10px !important;
+          margin: 0 !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+          overflow: visible !important;
+          width: 100% !important;
+          height: auto !important;
         }
 
-        /* Extra Category */
-        .gjs-block-category[data-name="extra"] .gjs-title {
-          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        /* Ensure blocks inside are visible when category is open */
+        .gjs-block-category.gjs-open .gjs-blocks-c .gjs-block {
+          display: flex !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+
+        /* Ensure category title is clickable and always interactive */
+        .gjs-block-category .gjs-title {
+          pointer-events: auto !important;
+          cursor: pointer !important;
+          user-select: none !important;
+          -webkit-user-select: none !important;
+          -moz-user-select: none !important;
+          position: relative !important;
+          z-index: 10 !important;
+        }
+
+        /* Prevent any overlay from blocking clicks */
+        .gjs-block-category {
+          position: relative !important;
+          z-index: 1 !important;
+        }
+
+        /* When closed, category should take minimal space */
+        .gjs-block-category:not(.gjs-open) {
+          border-bottom: 1px solid #e5e7eb !important;
+        }
+
+        /* When open, show border */
+        .gjs-block-category.gjs-open {
+          border-bottom: 1px solid #e5e7eb !important;
+        }
+
+        /* Ensure search doesn't block category clicks */
+        .gjs-blocks-search-container {
+          pointer-events: auto !important;
+        }
+
+        .gjs-blocks-search-container * {
+          pointer-events: auto !important;
         }
 
         /* Extra Category Content Area */
         .gjs-block-category[data-name="extra"] {
-          background: #ffffff !important;
+          background: var(--header-bg) !important;
         }
 
         .gjs-block-category[data-name="extra"] .gjs-blocks-c {
-          background: #ffffff !important;
+          background: var(--header-bg) !important;
         }
 
-        /* Traits Panel - Modern Form Design */
+        /* Traits Panel - Simple */
         #gjs .gjs-trt-traits {
-          padding: 16px 12px !important;
-          background: #ffffff !important;
+          padding: 12px !important;
+          background: var(--header-bg) !important;
         }
 
         .gjs-trt-trait {
-          padding: 16px !important;
-          margin-bottom: 16px !important;
-          background: white !important;
-          border-radius: 12px !important;
-          border: 2px solid #e5e7eb !important;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+          padding: 12px 0 !important;
+          margin-bottom: 12px !important;
+          border-bottom: 1px solid var(--header-border-color) !important;
         }
 
-        .gjs-trt-trait:hover {
-          border-color: #3b82f6 !important;
-          background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
-          box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15) !important;
-          transform: translateY(-2px) !important;
+        .gjs-trt-trait:last-child {
+          border-bottom: none !important;
         }
 
         .gjs-trt-trait__label {
           font-family: 'Inter', sans-serif !important;
-          font-weight: 700 !important;
-          font-size: 14px !important;
-          color: #334155 !important;
-          margin-bottom: 12px !important;
+          font-weight: 500 !important;
+          font-size: 12px !important;
+          color: #e5e5e5 !important;
+          margin-bottom: 6px !important;
           display: block !important;
-          letter-spacing: -0.2px !important;
         }
 
         .gjs-trt-trait input,
@@ -7734,24 +12196,13 @@ setTimeout(fillAppointmentForms, 5000);
         .gjs-trt-trait textarea {
           width: 100% !important;
           min-width: 140px !important;
-          padding: 12px 16px !important;
-          border: 2px solid #e5e7eb !important;
-          border-radius: 10px !important;
+          padding: 6px 10px !important;
+          border: 1px solid #e5e7eb !important;
           font-family: 'Inter', sans-serif !important;
-          font-size: 14px !important;
-          font-weight: 500 !important;
+          font-size: 13px !important;
           color: #1e293b !important;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
           background: white !important;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04) !important;
           box-sizing: border-box !important;
-        }
-
-        .gjs-trt-trait input:hover,
-        .gjs-trt-trait select:hover,
-        .gjs-trt-trait textarea:hover {
-          border-color: #cbd5e1 !important;
-          background: #f8fafc !important;
         }
 
         .gjs-trt-trait input:focus,
@@ -7759,8 +12210,6 @@ setTimeout(fillAppointmentForms, 5000);
         .gjs-trt-trait textarea:focus {
           border-color: #3b82f6 !important;
           outline: none !important;
-          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
-          background: white !important;
         }
 
         /* Right Sidebar Scrollbar - Modern Style */
@@ -7785,6 +12234,19 @@ setTimeout(fillAppointmentForms, 5000);
           box-sizing: border-box !important;
         }
 
+        /* Hide native dropdown arrow for all select fields */
+        .gjs-field select {
+          -webkit-appearance: none !important;
+          appearance: none !important;
+        }
+
+        /* Hide custom dropdown arrow icon added by GrapesJS on wrapper */
+        .gjs-field-select::after,
+        .gjs-field-select::before {
+          display: none !important;
+          content: none !important;
+        }
+
         /* Fix for GrapesJS default field sizing */
         .gjs-sm-property .gjs-field-wrapper,
         .gjs-sm-composite .gjs-field-wrapper,
@@ -7799,13 +12261,12 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         #gjs .gjs-pn-panel.gjs-pn-views-container::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
-          border-radius: 10px !important;
-          transition: all 0.3s ease !important;
+          background: #cbd5e1 !important;
+          border-radius: 3px !important;
         }
 
         #gjs .gjs-pn-panel.gjs-pn-views-container::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%) !important;
+          background: #94a3b8 !important;
         }
 
         /* Toolbar - Modern Floating Design - Left Side Positioned */
@@ -7839,11 +12300,155 @@ setTimeout(fillAppointmentForms, 5000);
           box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
         }
 
+        /* RTE Toolbar - Header Theme Design (Single Line) */
+        .gjs-rte-toolbar {
+          background: #1e1e1e !important;
+          border-radius: 8px !important;
+          padding: 6px 10px !important;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+          border: 1px solid #2d2d2d !important;
+          display: flex !important;
+          flex-direction: row !important;
+          align-items: center !important;
+          gap: 2px !important;
+          flex-wrap: nowrap !important;
+        }
+
+        /* Custom buttons container - Single Line - Header Theme */
+        .rte-custom-buttons-container {
+          display: flex !important;
+          align-items: center !important;
+          gap: 2px !important;
+          margin-left: 8px !important;
+          padding-left: 8px !important;
+          border-left: 1px solid #2d2d2d !important;
+        }
+
+        /* Custom toolbar buttons (Copy, Duplicate, Delete) - Header Theme Design */
+        .rte-copy-btn,
+        .rte-duplicate-btn,
+        .rte-delete-btn {
+          color: #e5e5e5 !important;
+          background: transparent !important;
+          border: none !important;
+          cursor: pointer !important;
+          padding: 6px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          border-radius: 4px !important;
+          transition: all 0.2s ease !important;
+          min-width: 26px !important;
+          height: 26px !important;
+        }
+
+        .rte-copy-btn:hover {
+          background: #2d2d2d !important;
+          color: #ffffff !important;
+        }
+
+        .rte-duplicate-btn:hover {
+          background: #2d2d2d !important;
+          color: #ffffff !important;
+        }
+
+        .rte-delete-btn:hover {
+          background: #2d2d2d !important;
+          color: #ffffff !important;
+        }
+
+        .rte-copy-btn:active,
+        .rte-duplicate-btn:active,
+        .rte-delete-btn:active {
+          background: #252525 !important;
+          transform: scale(0.95) !important;
+        }
+
+        .rte-copy-btn svg,
+        .rte-duplicate-btn svg,
+        .rte-delete-btn svg {
+          width: 14px !important;
+          height: 14px !important;
+          stroke: currentColor !important;
+          fill: none !important;
+          stroke-width: 2.5 !important;
+        }
+
+        /* Ensure RTE toolbar items are in single line - Header Theme */
+        .gjs-rte-toolbar .gjs-rte-toolbar-item {
+          display: inline-flex !important;
+          margin: 0 1px !important;
+          color: #e5e5e5 !important;
+        }
+
+        .gjs-rte-toolbar .gjs-rte-toolbar-item:hover {
+          background: #2d2d2d !important;
+        }
+
+        /* Commands Panel - Custom Actions (Copy, Duplicate, Delete) - Header Theme */
+        .custom-actions-container {
+          display: flex !important;
+          align-items: center !important;
+          gap: 2px !important;
+          margin-left: 8px !important;
+          padding-left: 8px !important;
+          border-left: 1px solid #2d2d2d !important;
+        }
+
+        .custom-copy-btn,
+        .custom-duplicate-btn,
+        .custom-delete-btn {
+          color: #e5e5e5 !important;
+          background: transparent !important;
+          border: none !important;
+          cursor: pointer !important;
+          padding: 6px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          border-radius: 4px !important;
+          transition: all 0.2s ease !important;
+          min-width: 26px !important;
+          height: 26px !important;
+        }
+
+        .custom-copy-btn:hover,
+        .custom-duplicate-btn:hover,
+        .custom-delete-btn:hover {
+          background: #2d2d2d !important;
+          color: #ffffff !important;
+        }
+
+        .custom-copy-btn:active,
+        .custom-duplicate-btn:active,
+        .custom-delete-btn:active {
+          background: #252525 !important;
+          transform: scale(0.95) !important;
+        }
+
+        .custom-copy-btn svg,
+        .custom-duplicate-btn svg,
+        .custom-delete-btn svg {
+          width: 14px !important;
+          height: 14px !important;
+          stroke: currentColor !important;
+          fill: none !important;
+          stroke-width: 2.5 !important;
+        }
+
+        /* Commands Panel Styling - Header Theme */
+        .gjs-cm {
+          background: #1e1e1e !important;
+          border: 1px solid #2d2d2d !important;
+          border-radius: 8px !important;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+        }
+
         /* Panel Tabs - Modern Tab Design */
         .gjs-pn-views {
           background: #ffffff !important;
-          border-bottom: 2px solid #e5e7eb !important;
-          padding: 8px 4px !important;
+         
+        
         }
 
         .gjs-pn-btn.gjs-pn-views-item {
@@ -7999,6 +12604,11 @@ setTimeout(fillAppointmentForms, 5000);
           border: 1px solid rgba(255, 255, 255, 0.8);
           animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           transition: background 0.3s ease, border-color 0.3s ease;
+        }
+
+        .day-selector-modal-content {
+          width: clamp(320px, 92vw, 760px);
+          padding: clamp(20px, 4vw, 36px);
         }
 
         @keyframes slideUp {
@@ -8199,6 +12809,45 @@ setTimeout(fillAppointmentForms, 5000);
           margin-bottom: 24px;
         }
 
+        .redirect-mode-toggle {
+          display: flex;
+          gap: 12px;
+          margin-bottom: 20px;
+          background: #f8fafc;
+          padding: 6px;
+          border-radius: 12px;
+          border: 1px solid #e2e8f0;
+        }
+
+        .redirect-mode-btn {
+          flex: 1;
+          padding: 10px 16px;
+          border-radius: 10px;
+          border: none;
+          background: transparent;
+          font-weight: 600;
+          font-size: 14px;
+          color: #475569;
+          cursor: pointer;
+          transition: all 0.25s ease;
+        }
+
+        .redirect-mode-btn.active {
+          background: #2563eb;
+          color: #fff;
+          box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+        }
+
+        .redirect-popup-content .input-label {
+          display: block;
+          font-size: 13px;
+          font-weight: 600;
+          color: #475569;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
         .redirect-popup-content select {
           width: 100%;
           padding: 14px 16px;
@@ -8225,31 +12874,132 @@ setTimeout(fillAppointmentForms, 5000);
           background: #ffffff;
         }
 
+        .redirect-popup-content input[type="url"] {
+          width: 100%;
+          padding: 14px 16px;
+          border: 2px solid #e5e7eb;
+          border-radius: 12px;
+          font-size: 15px;
+          font-family: 'Inter', sans-serif;
+          font-weight: 500;
+          background: #ffffff;
+          color: #1e293b;
+          outline: none;
+          transition: all 0.3s ease;
+        }
+
+        .redirect-popup-content input[type="url"]:focus {
+          border-color: #22c55e;
+          box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+        }
+
+        .redirect-popup-content .helper-text {
+          display: block;
+          margin-top: 6px;
+          font-size: 12px;
+          color: #94a3b8;
+        }
+
         /* Day Selector Popup - Modern Design */
         .day-selector-popup-content {
-          min-width: 560px;
-          max-width: 640px;
+          width: 100%;
         }
 
-        .day-selector-popup-content h3 {
-          margin: 0 0 12px 0;
+        .day-popup-header {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          padding: 18px;
+          border: 1px solid #e2e8f0;
+          border-radius: 18px;
+          background: linear-gradient(120deg, rgba(59,130,246,0.08), rgba(244,114,182,0.1));
+          margin-bottom: 24px;
+        }
+
+        .day-popup-icon {
+          width: 56px;
+          height: 56px;
+          border-radius: 16px;
+          background: #1d4ed8;
+          color: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 26px;
+          box-shadow: 0 12px 30px rgba(29, 78, 216, 0.25);
+        }
+
+        .day-popup-copy h3 {
+          margin: 0;
           font-size: 24px;
           font-weight: 700;
-          color: #1e293b;
-          letter-spacing: -0.5px;
+          color: #0f172a;
         }
 
-        .day-selector-popup-content p {
-          color: #64748b;
-          margin-bottom: 28px;
+        .day-popup-copy p {
+          margin: 4px 0 0 0;
+          color: #475569;
           font-size: 14px;
-          line-height: 1.6;
+        }
+
+        .selected-count {
+          margin-left: auto;
+          text-align: center;
+          min-width: 80px;
+          background: rgba(15, 23, 42, 0.06);
+          border-radius: 14px;
+          padding: 8px 12px;
+          border: 1px solid rgba(15, 23, 42, 0.08);
+        }
+
+        .selected-count span {
+          display: block;
+          font-size: 24px;
+          font-weight: 700;
+          color: #0f172a;
+        }
+
+        .selected-count small {
+          font-size: 11px;
+          letter-spacing: 0.5px;
+          color: #475569;
+          text-transform: uppercase;
+        }
+
+        .quick-select-row {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-bottom: 20px;
+        }
+
+        .quick-select-btn {
+          padding: 10px 18px;
+          border-radius: 999px;
+          border: none;
+          background: rgba(59, 130, 246, 0.12);
+          color: #1d4ed8;
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.25s ease;
+        }
+
+        .quick-select-btn:hover {
+          background: rgba(59, 130, 246, 0.2);
+          transform: translateY(-1px);
+        }
+
+        .quick-select-btn.ghost {
+          background: rgba(15, 23, 42, 0.08);
+          color: #0f172a;
         }
 
         .day-grid-popup {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 12px;
+          justify-items: center;
           margin-bottom: 24px;
         }
 
@@ -8257,15 +13007,18 @@ setTimeout(fillAppointmentForms, 5000);
           background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
           border: 2px solid #e5e7eb;
           border-radius: 12px;
-          padding: 18px 12px;
-          text-align: center;
+          padding: 16px 18px;
           cursor: pointer;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           font-weight: 600;
-          font-size: 14px;
-          color: #475569;
+          color: #0f172a;
           position: relative;
           overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          width: min(100%, 240px);
+          min-height: 95px;
         }
 
         .day-card-popup::before {
@@ -8300,37 +13053,79 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         .day-name {
-          font-size: 14px;
+          font-size: 16px;
           position: relative;
           z-index: 1;
-        }
-
-        .selected-day-info {
-          background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-          border-radius: 12px;
-          padding: 24px;
-          margin-bottom: 24px;
-          border-left: 4px solid #3b82f6;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
-        }
-
-        .selected-day-display, .recent-date-display {
-          margin-bottom: 12px;
-          padding: 14px 16px;
-          background: white;
-          border-radius: 10px;
-          border: 1px solid #e0e7ff;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-        }
-
-        .selected-day-display:last-child, .recent-date-display:last-child {
-          margin-bottom: 0;
-        }
-
-        .selected-day-display strong, .recent-date-display strong {
-          color: #3b82f6;
-          margin-right: 8px;
           font-weight: 700;
+        }
+
+        .day-date {
+          font-size: 12px;
+          color: #475569;
+          margin-top: 4px;
+          opacity: 0.85;
+        }
+
+        .day-card-popup.selected .day-date {
+          color: rgba(255,255,255,0.85);
+        }
+
+        .day-summary-panel {
+          background: linear-gradient(135deg, #fdf2f8 0%, #eef2ff 100%);
+          border-radius: 16px;
+          padding: 20px;
+          margin-bottom: 24px;
+          border: 1px solid rgba(59, 130, 246, 0.2);
+          box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+        }
+
+        .summary-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 16px;
+        }
+
+        .summary-label {
+          margin: 0;
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: #475569;
+        }
+
+        .day-summary-panel h4 {
+          margin: 2px 0 0 0;
+          font-size: 18px;
+          color: #0f172a;
+        }
+
+        .summary-chip-list {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 12px;
+        }
+
+        .summary-chip {
+          background: #fff;
+          border-radius: 12px;
+          padding: 12px 14px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .summary-chip strong {
+          color: #111827;
+          font-size: 15px;
+        }
+
+        .summary-chip span {
+          font-size: 12px;
+          color: #475569;
         }
 
         /* Popup Buttons - Modern Design */
@@ -8370,6 +13165,94 @@ setTimeout(fillAppointmentForms, 5000);
           background: linear-gradient(135deg, #10b981 0%, #059669 100%);
           color: white;
           box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .ghost-btn {
+          background: #f8fafc;
+          color: #0f172a;
+          border: 1px solid #e2e8f0;
+          box-shadow: none;
+        }
+
+        .ghost-btn:hover {
+          background: #e2e8f0;
+          transform: translateY(-2px);
+        }
+
+        .ghost-btn.small {
+          padding: 8px 16px;
+          font-size: 12px;
+          border-radius: 999px;
+        }
+
+        @media (max-width: 640px) {
+          .day-popup-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+
+          .selected-count {
+            margin-left: 0;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          }
+
+          .selected-count span {
+            font-size: 20px;
+          }
+
+          .quick-select-row {
+            flex-direction: column;
+          }
+
+          .quick-select-btn,
+          .quick-select-btn.ghost {
+            width: 100%;
+            text-align: center;
+          }
+
+          .day-grid-popup {
+            gap: 10px;
+          }
+
+          @media (max-width: 420px) {
+            .day-grid-popup {
+              grid-template-columns: 1fr;
+            }
+
+            .day-card-popup {
+              width: 100%;
+            }
+          }
+
+          .day-card-popup {
+            min-height: 90px;
+          }
+
+          .day-summary-panel {
+            padding: 16px;
+          }
+
+          .summary-header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .summary-chip-list {
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+          }
+
+          .popup-buttons {
+            flex-direction: column;
+          }
+
+          .popup-buttons button {
+            width: 100%;
+            text-align: center;
+          }
         }
 
         .submit-btn:hover {
@@ -9758,6 +14641,35 @@ setTimeout(fillAppointmentForms, 5000);
           border-color: #475569 !important;
         }
 
+        .dark-mode .redirect-popup-content input[type="url"] {
+          background: #0f172a !important;
+          border-color: #334155 !important;
+          color: #e2e8f0 !important;
+        }
+
+        .dark-mode .redirect-popup-content input[type="url"]:focus {
+          border-color: #22c55e !important;
+          box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2) !important;
+        }
+
+        .dark-mode .redirect-mode-toggle {
+          background: rgba(15, 23, 42, 0.8) !important;
+          border-color: #334155 !important;
+        }
+
+        .dark-mode .redirect-mode-btn {
+          color: #cbd5f5 !important;
+        }
+
+        .dark-mode .redirect-mode-btn.active {
+          background: #2563eb !important;
+          box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35) !important;
+        }
+
+        .dark-mode .redirect-popup-content .helper-text {
+          color: #94a3b8 !important;
+        }
+
         .dark-mode .day-card-popup {
           background: #1e293b !important;
           border-color: #334155 !important;
@@ -9872,7 +14784,7 @@ setTimeout(fillAppointmentForms, 5000);
           color: rgba(255, 255, 255, 0.7) !important;
         }
 
-        /* GrapesJS Panels Dark Mode */
+        /* GrapesJS Panels Dark Mode - Figma Style */
         .dark-mode .gjs-pn-panel,
         .dark-mode .gjs-pn-panel *,
         .dark-mode .gjs-pn-views-container,
@@ -9889,43 +14801,43 @@ setTimeout(fillAppointmentForms, 5000);
         .dark-mode .gjs-sm-sector *,
         .dark-mode .gjs-sm-properties,
         .dark-mode .gjs-sm-properties * {
-          background-color: #1e293b !important;
-          color: #e2e8f0 !important;
+          background-color: #1e1e1e !important;
+          color: #e5e5e5 !important;
         }
 
         .dark-mode .gjs-pn-panel {
-          border-right-color: #334155 !important;
-          border-left-color: #334155 !important;
+          border-right-color: #2d2d2d !important;
+          border-left-color: #2d2d2d !important;
         }
 
         .dark-mode .gjs-pn-btn {
-          color: #e2e8f0 !important;
+          color: #b3b3b3 !important;
         }
 
         .dark-mode .gjs-pn-btn:hover {
-          background: #334155 !important;
-          color: #3b82f6 !important;
+          background: #2d2d2d !important;
+          color: #18a0fb !important;
         }
 
         .dark-mode .gjs-sm-sector {
-          background: #1e293b !important;
-          border-color: #334155 !important;
+          background: #252525 !important;
+          border-color: #2d2d2d !important;
         }
 
         .dark-mode .gjs-sm-property .gjs-sm-label {
-          color: #cbd5e1 !important;
+          color: #b3b3b3 !important;
         }
 
         .dark-mode .gjs-sm-property .gjs-field {
-          background: #0f172a !important;
-          border-color: #334155 !important;
-          color: #e2e8f0 !important;
+          background: #252525 !important;
+          border-color: #2d2d2d !important;
+          color: #e5e5e5 !important;
         }
 
         .dark-mode .gjs-sm-property input[type="text"],
         .dark-mode .gjs-sm-property input[type="number"],
         .dark-mode .gjs-sm-property select {
-          color: #e2e8f0 !important;
+          color: #e5e5e5 !important;
           background: transparent !important;
         }
 
@@ -9933,10 +14845,12 @@ setTimeout(fillAppointmentForms, 5000);
            CREATIVE & BEAUTIFUL DARK MODE BLOCKS
            ======================================== */
         
-        /* Block Category Header - Beautiful Dark Mode */
-        .dark-mode .gjs-block-category {
-          background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
-          border-bottom: 2px solid #334155 !important;
+        /* Block Category Header - Figma Style Dark Mode */
+        .dark-mode .gjs-block-category,
+        .dark-mode .gjs-block-category * {
+          background: #252525 !important;
+          background-color: #252525 !important;
+          border-bottom: 1px solid #2d2d2d !important;
           padding: 12px 16px !important;
           position: relative !important;
           overflow: hidden !important;
@@ -9949,7 +14863,7 @@ setTimeout(fillAppointmentForms, 5000);
           left: -100% !important;
           width: 100% !important;
           height: 100% !important;
-          background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.2), transparent) !important;
+          background: linear-gradient(90deg, transparent, rgba(24, 160, 251, 0.1), transparent) !important;
           animation: shimmer 3s infinite !important;
         }
 
@@ -9958,38 +14872,85 @@ setTimeout(fillAppointmentForms, 5000);
           100% { left: 100%; }
         }
 
-        .dark-mode .gjs-block-category-title {
-          color: #e2e8f0 !important;
+        .dark-mode .gjs-block-category-title,
+        .dark-mode .gjs-block-category-title * {
+          color: #e5e5e5 !important;
           font-weight: 700 !important;
           text-transform: uppercase !important;
           letter-spacing: 1px !important;
           font-size: 13px !important;
           position: relative !important;
           z-index: 1 !important;
-          text-shadow: 0 0 10px rgba(59, 130, 246, 0.3) !important;
+        }
+        
+        /* Force dark mode for all blocks panel elements */
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] *,
+        .dark-mode .gjs-pn-panel .gjs-blocks-c *,
+        .dark-mode .gjs-block-category *,
+        .dark-mode .gjs-block * {
+          background-color: transparent !important;
+        }
+        
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] {
+          background: #1e1e1e !important;
+        }
+        
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-blocks-c {
+          background: #1e1e1e !important;
+        }
+        
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-block-category {
+          background: #252525 !important;
+        }
+        
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-block {
+          background: #252525 !important;
+        }
+        
+        /* Search input in blocks panel */
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] input[type="text"],
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] input[type="search"] {
+          background: #252525 !important;
+          border: 1px solid #2d2d2d !important;
+          color: #e5e5e5 !important;
+        }
+        
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] input[type="text"]::placeholder,
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] input[type="search"]::placeholder {
+          color: #999999 !important;
         }
 
-        /* Blocks Container - Creative Dark Background */
-        .dark-mode .gjs-blocks-c {
-          background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%) !important;
-          background-size: 200% 200% !important;
-          animation: gradientShift 8s ease infinite !important;
+        /* Blocks Container - Figma Style Dark Background */
+        .dark-mode .gjs-blocks-c,
+        .dark-mode .gjs-blocks-c * {
+          background: #1e1e1e !important;
+          background-color: #1e1e1e !important;
           padding: 16px !important;
         }
-
-        @keyframes gradientShift {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
+        
+        /* Override all white backgrounds in dark mode blocks panel */
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"],
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] *,
+        .dark-mode .gjs-pn-panel .gjs-blocks-c,
+        .dark-mode .gjs-pn-panel .gjs-blocks-c * {
+          background: #1e1e1e !important;
+          background-color: #1e1e1e !important;
+        }
+        
+        /* Block category in dark mode */
+        .dark-mode .gjs-block-category,
+        .dark-mode .gjs-block-category * {
+          background: #252525 !important;
+          background-color: #252525 !important;
         }
 
-        /* Individual Blocks - Creative & Beautiful */
-        .dark-mode .gjs-block {
-          background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
-          border: 2px solid rgba(59, 130, 246, 0.3) !important;
-          box-shadow: 
-            0 4px 15px rgba(0, 0, 0, 0.3),
-            0 0 20px rgba(59, 130, 246, 0.1),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+        /* Individual Blocks - Figma Style */
+        .dark-mode .gjs-block,
+        .dark-mode .gjs-block * {
+          background: #252525 !important;
+          background-color: #252525 !important;
+          border: 1px solid #2d2d2d !important;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
           position: relative !important;
           overflow: hidden !important;
         }
@@ -10020,14 +14981,12 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         .dark-mode .gjs-block:hover {
-          transform: translateY(-8px) scale(1.05) rotate(0deg) !important;
-          border-color: rgba(59, 130, 246, 0.8) !important;
+          transform: translateY(-2px) !important;
+          border-color: #18a0fb !important;
           box-shadow: 
-            0 20px 40px rgba(59, 130, 246, 0.4),
-            0 0 30px rgba(139, 92, 246, 0.3),
-            0 0 60px rgba(59, 130, 246, 0.2),
-            inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-          background: linear-gradient(135deg, #334155 0%, #475569 100%) !important;
+            0 4px 12px rgba(24, 160, 251, 0.3),
+            0 0 20px rgba(24, 160, 251, 0.1) !important;
+          background: #2d2d2d !important;
         }
 
         .dark-mode .gjs-block:hover::before {
@@ -10038,130 +14997,53 @@ setTimeout(fillAppointmentForms, 5000);
           opacity: 1 !important;
         }
 
-        /* Block Label - Beautiful Typography */
+        /* Block Label - Figma Style Typography */
         .dark-mode .gjs-block-label {
-          color: #e2e8f0 !important;
-          text-shadow: 
-            0 0 10px rgba(59, 130, 246, 0.5),
-            0 2px 4px rgba(0, 0, 0, 0.5) !important;
-          font-weight: 700 !important;
+          color: #e5e5e5 !important;
+          font-weight: 600 !important;
           position: relative !important;
           z-index: 2 !important;
         }
 
         .dark-mode .gjs-block:hover .gjs-block-label {
           color: #ffffff !important;
-          text-shadow: 
-            0 0 15px rgba(59, 130, 246, 0.8),
-            0 0 25px rgba(139, 92, 246, 0.6),
-            0 2px 4px rgba(0, 0, 0, 0.5) !important;
-          transform: translateY(-2px) scale(1.05) !important;
         }
 
-        /* Block Media/Icons - Glowing Effect */
+        /* Block Media/Icons - Figma Style */
         .dark-mode .gjs-block__media {
-          filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4)) brightness(1.2) !important;
+          filter: brightness(1.1) !important;
           position: relative !important;
           z-index: 2 !important;
         }
 
         .dark-mode .gjs-block:hover .gjs-block__media {
-          filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.8)) 
-                  drop-shadow(0 0 25px rgba(139, 92, 246, 0.6)) 
-                  brightness(1.4) saturate(1.3) !important;
-          transform: scale(1.3) rotate(5deg) !important;
+          filter: brightness(1.2) !important;
+          transform: scale(1.05) !important;
         }
 
-        /* Specific Block Types - Creative Color Schemes in Dark Mode */
-        .dark-mode .gjs-block[data-type="text"] {
-          background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
-          border-color: rgba(245, 158, 11, 0.4) !important;
-        }
-
-        .dark-mode .gjs-block[data-type="text"]:hover {
-          border-color: rgba(245, 158, 11, 0.8) !important;
-          box-shadow: 
-            0 20px 40px rgba(245, 158, 11, 0.3),
-            0 0 30px rgba(245, 158, 11, 0.2) !important;
-        }
-
-        .dark-mode .gjs-block[data-type="link"] {
-          border-color: rgba(59, 130, 246, 0.4) !important;
-        }
-
-        .dark-mode .gjs-block[data-type="link"]:hover {
-          border-color: rgba(59, 130, 246, 0.8) !important;
-          box-shadow: 
-            0 20px 40px rgba(59, 130, 246, 0.4),
-            0 0 30px rgba(59, 130, 246, 0.3) !important;
-        }
-
-        .dark-mode .gjs-block[data-type="image"] {
-          border-color: rgba(16, 185, 129, 0.4) !important;
-        }
-
-        .dark-mode .gjs-block[data-type="image"]:hover {
-          border-color: rgba(16, 185, 129, 0.8) !important;
-          box-shadow: 
-            0 20px 40px rgba(16, 185, 129, 0.3),
-            0 0 30px rgba(16, 185, 129, 0.2) !important;
-        }
-
-        .dark-mode .gjs-block[data-type="column"] {
-          border-color: rgba(139, 92, 246, 0.4) !important;
-        }
-
-        .dark-mode .gjs-block[data-type="column"]:hover {
-          border-color: rgba(139, 92, 246, 0.8) !important;
-          box-shadow: 
-            0 20px 40px rgba(139, 92, 246, 0.4),
-            0 0 30px rgba(139, 92, 246, 0.3) !important;
-        }
-
-        .dark-mode .gjs-block[data-type="video"] {
-          border-color: rgba(239, 68, 68, 0.4) !important;
-        }
-
-        .dark-mode .gjs-block[data-type="video"]:hover {
-          border-color: rgba(239, 68, 68, 0.8) !important;
-          box-shadow: 
-            0 20px 40px rgba(239, 68, 68, 0.3),
-            0 0 30px rgba(239, 68, 68, 0.2) !important;
-        }
-
-        .dark-mode .gjs-block[data-type="quote"] {
-          border-color: rgba(20, 184, 166, 0.4) !important;
-        }
-
-        .dark-mode .gjs-block[data-type="quote"]:hover {
-          border-color: rgba(20, 184, 166, 0.8) !important;
-          box-shadow: 
-            0 20px 40px rgba(20, 184, 166, 0.3),
-            0 0 30px rgba(20, 184, 166, 0.2) !important;
-        }
-
-        .dark-mode .gjs-block[data-type="map"] {
-          border-color: rgba(234, 88, 12, 0.4) !important;
-        }
-
+        /* Specific Block Types - Figma Style */
+        .dark-mode .gjs-block[data-type="text"]:hover,
+        .dark-mode .gjs-block[data-type="link"]:hover,
+        .dark-mode .gjs-block[data-type="image"]:hover,
+        .dark-mode .gjs-block[data-type="column"]:hover,
+        .dark-mode .gjs-block[data-type="video"]:hover,
+        .dark-mode .gjs-block[data-type="quote"]:hover,
         .dark-mode .gjs-block[data-type="map"]:hover {
-          border-color: rgba(234, 88, 12, 0.8) !important;
-          box-shadow: 
-            0 20px 40px rgba(234, 88, 12, 0.3),
-            0 0 30px rgba(234, 88, 12, 0.2) !important;
+          border-color: #18a0fb !important;
+          box-shadow: 0 4px 12px rgba(24, 160, 251, 0.3) !important;
         }
 
         .dark-mode .gjs-layer {
-          color: #e2e8f0 !important;
+          color: #e5e5e5 !important;
         }
 
         .dark-mode .gjs-layer:hover {
-          background: #334155 !important;
+          background: #2d2d2d !important;
         }
 
         .dark-mode .gjs-layer.gjs-selected {
-          background: #334155 !important;
-          border-left-color: #3b82f6 !important;
+          background: #2d2d2d !important;
+          border-left-color: #18a0fb !important;
         }
 
         /* Success Popup Dark Mode */
@@ -10224,61 +15106,47 @@ setTimeout(fillAppointmentForms, 5000);
         }
 
         .dark-mode .gjs-pn-views-container::-webkit-scrollbar-track {
-          background: #0f172a !important;
+          background: #1e1e1e !important;
         }
 
         .dark-mode .gjs-pn-views-container::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
+          background: #18a0fb !important;
         }
 
-        /* Professional Enhancements for Dark Mode */
+        /* Professional Enhancements for Dark Mode - Figma Style */
         .dark-mode .portfolio-edit-container {
-          background: linear-gradient(135deg, #0a0e1a 0%, #0f172a 50%, #1e293b 100%);
-          background-size: 200% 200%;
-          animation: backgroundFlow 15s ease infinite;
-        }
-
-        @keyframes backgroundFlow {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
+          background: #1a1a1a;
         }
 
         .dark-mode .editor-main-area {
-          background: linear-gradient(135deg, #0a0e1a 0%, #0f172a 50%, #1e293b 100%);
-          background-size: 200% 200%;
-          animation: backgroundFlow 15s ease infinite;
+          background: #1a1a1a;
         }
 
-        /* Enhanced Right Panel - Blocks Panel */
+        /* Enhanced Right Panel - Blocks Panel - Figma Style */
         .dark-mode .gjs-pn-panel.gjs-pn-views-container {
-          background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%) !important;
-          border-left: 2px solid rgba(59, 130, 246, 0.3) !important;
-          box-shadow: -4px 0 30px rgba(0, 0, 0, 0.5), inset 1px 0 0 rgba(59, 130, 246, 0.1) !important;
+          background: #1e1e1e !important;
+          border-left: 1px solid #2d2d2d !important;
+          box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5) !important;
         }
 
-        /* Panel Buttons - Creative Dark Mode */
+        /* Panel Buttons - Figma Style Dark Mode */
         .dark-mode .gjs-pn-btn {
-          background: rgba(30, 41, 59, 0.5) !important;
-          border: 1px solid rgba(59, 130, 246, 0.2) !important;
-          color: #cbd5e1 !important;
-          backdrop-filter: blur(10px) !important;
+          background: #252525 !important;
+          border: 1px solid #2d2d2d !important;
+          color: #b3b3b3 !important;
         }
 
         .dark-mode .gjs-pn-btn:hover {
-          background: rgba(59, 130, 246, 0.2) !important;
-          border-color: rgba(59, 130, 246, 0.5) !important;
-          color: #ffffff !important;
-          box-shadow: 0 0 15px rgba(59, 130, 246, 0.3) !important;
-          transform: translateY(-2px) !important;
+          background: #2d2d2d !important;
+          border-color: #3a3a3a !important;
+          color: #18a0fb !important;
         }
 
         .dark-mode .gjs-pn-btn.gjs-pn-active {
-          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-          border-color: #3b82f6 !important;
-          color: white !important;
-          box-shadow: 
-            0 4px 15px rgba(59, 130, 246, 0.5),
-            0 0 20px rgba(59, 130, 246, 0.3) !important;
+          background: #18a0fb !important;
+          border-color: #18a0fb !important;
+          color: #ffffff !important;
+          box-shadow: 0 2px 8px rgba(24, 160, 251, 0.3) !important;
         }
 
         /* Smooth Transitions for All Dark Mode Elements */
@@ -10295,13 +15163,435 @@ setTimeout(fillAppointmentForms, 5000);
           right: 0 !important;
           bottom: 0 !important;
           background: 
-            radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
-            radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%) !important;
+            radial-gradient(circle at 20% 50%, rgba(24, 160, 251, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(24, 160, 251, 0.1) 0%, transparent 50%) !important;
           pointer-events: none !important;
           z-index: 0 !important;
         }
 
-      `}</style>
+        /* ========================================
+           COMPREHENSIVE BLOCKS PANEL DARK MODE OVERRIDES
+           ======================================== */
+        
+        /* Force dark background for blocks panel container */
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"],
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-pn-views,
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-pn-views-container {
+          background: #1e1e1e !important;
+          background-color: #1e1e1e !important;
+        }
+
+        /* Blocks container dark mode */
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-blocks-c,
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-blocks {
+          background: #1e1e1e !important;
+          background-color: #1e1e1e !important;
+        }
+
+        /* All child elements in blocks panel */
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] * {
+          background-color: transparent !important;
+        }
+
+        /* Block categories dark mode */
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-block-category {
+          background: #252525 !important;
+          background-color: #252525 !important;
+        }
+
+        /* Block items dark mode */
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-block {
+          background: #252525 !important;
+          background-color: #252525 !important;
+        }
+
+        /* Block labels dark mode */
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-block-label,
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-block-category-title {
+          color: #e5e5e5 !important;
+        }
+
+        /* Search input in blocks panel */
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] input,
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] input[type="text"],
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] input[type="search"] {
+          background: #252525 !important;
+          background-color: #252525 !important;
+          border: 1px solid #2d2d2d !important;
+          color: #e5e5e5 !important;
+        }
+
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] input::placeholder,
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] input[type="text"]::placeholder,
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] input[type="search"]::placeholder {
+          color: #999999 !important;
+        }
+
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"] input:focus {
+          border-color: #18a0fb !important;
+          background: #2d2d2d !important;
+        }
+
+        /* Override any remaining white backgrounds with higher specificity */
+        .dark-mode .portfolio-edit-container .gjs-pn-panel[data-pn-type="blocks"],
+        .dark-mode .portfolio-edit-container .gjs-pn-panel[data-pn-type="blocks"] *,
+        .dark-mode .portfolio-edit-container .gjs-blocks-c,
+        .dark-mode .portfolio-edit-container .gjs-blocks-c *,
+        .dark-mode .portfolio-edit-container .gjs-block-category,
+        .dark-mode .portfolio-edit-container .gjs-block-category *,
+        .dark-mode .portfolio-edit-container .gjs-block,
+        .dark-mode .portfolio-edit-container .gjs-block * {
+          background-color: transparent !important;
+        }
+
+        /* Specific backgrounds for containers */
+        .dark-mode .portfolio-edit-container .gjs-pn-panel[data-pn-type="blocks"] {
+          background: #1e1e1e !important;
+        }
+
+        .dark-mode .portfolio-edit-container .gjs-blocks-c {
+          background: #1e1e1e !important;
+        }
+
+        .dark-mode .portfolio-edit-container .gjs-block-category {
+          background: #252525 !important;
+        }
+
+        .dark-mode .portfolio-edit-container .gjs-block {
+          background: #252525 !important;
+        }
+
+        /* Right sidebar dark mode should mirror light layout (only colors differ) */
+        .dark-mode .gjs-pn-panel.gjs-pn-views-container,
+        body.dark-mode-active .gjs-pn-panel.gjs-pn-views-container,
+        .dark-mode .gjs-pn-panel[data-pn-type="views-container"],
+        body.dark-mode-active .gjs-pn-panel[data-pn-type="views-container"],
+        .dark-mode .gjs-pn-panel[data-pn-type="blocks"],
+        body.dark-mode-active .gjs-pn-panel[data-pn-type="blocks"],
+        .dark-mode .gjs-pn-panel[data-pn-type="layers"],
+        body.dark-mode-active .gjs-pn-panel[data-pn-type="layers"],
+        .dark-mode .gjs-pn-panel[data-pn-type="traits"],
+        body.dark-mode-active .gjs-pn-panel[data-pn-type="traits"],
+        .dark-mode .gjs-pn-panel[data-pn-type="style-manager"],
+        body.dark-mode-active .gjs-pn-panel[data-pn-type="style-manager"] {
+          background: #0f172a !important;
+          border-left: 1px solid #1f2937 !important;
+          border-right: 1px solid #1f2937 !important;
+          box-shadow: -6px 0 24px rgba(0, 0, 0, 0.45) !important;
+          color: #e2e8f0 !important;
+        }
+
+        .dark-mode .gjs-pn-buttons,
+        body.dark-mode-active .gjs-pn-buttons,
+        .dark-mode .gjs-pn-views,
+        body.dark-mode-active .gjs-pn-views {
+          background: transparent !important;
+          padding: 10px 8px !important;
+        }
+
+        .dark-mode .gjs-pn-btn,
+        body.dark-mode-active .gjs-pn-btn {
+          background: #111827 !important;
+          border: 1px solid #1f2937 !important;
+          color: #cbd5e1 !important;
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25) !important;
+        }
+
+        .dark-mode .gjs-pn-btn:hover,
+        body.dark-mode-active .gjs-pn-btn:hover {
+          background: #1f2937 !important;
+          border-color: #2563eb !important;
+          color: #e2e8f0 !important;
+        }
+
+        .dark-mode .gjs-pn-btn.gjs-pn-active,
+        body.dark-mode-active .gjs-pn-btn.gjs-pn-active {
+          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+          border-color: #1d4ed8 !important;
+          color: #f8fafc !important;
+          box-shadow: 0 10px 24px rgba(37, 99, 235, 0.35) !important;
+        }
+
+        .dark-mode .gjs-pn-btn.gjs-pn-active *,
+        .dark-mode .gjs-pn-btn.gjs-pn-active svg,
+        .dark-mode .gjs-pn-btn.gjs-pn-active .fa {
+          color: #f8fafc !important;
+          fill: #f8fafc !important;
+        }
+
+        /* Match light-mode spacing/structure in dark palette */
+        .dark-mode .gjs-pn-views-container,
+        body.dark-mode-active .gjs-pn-views-container,
+        .dark-mode .gjs-pn-panel .gjs-pn-views,
+        body.dark-mode-active .gjs-pn-panel .gjs-pn-views,
+        .dark-mode .gjs-pn-panel .gjs-pn-views-container,
+        body.dark-mode-active .gjs-pn-panel .gjs-pn-views-container,
+        .dark-mode .gjs-pn-panel .gjs-blocks-c,
+        body.dark-mode-active .gjs-pn-panel .gjs-blocks-c {
+          padding: 12px 10px !important;
+          background: transparent !important;
+        }
+
+        .dark-mode .gjs-blocks-c,
+        body.dark-mode-active .gjs-blocks-c,
+        .dark-mode .gjs-blocks,
+        body.dark-mode-active .gjs-blocks {
+          display: grid !important;
+          gap: 10px !important;
+        }
+
+        /* Keep block cards structured like light mode but with dark palette */
+        .dark-mode .gjs-block-category,
+        body.dark-mode-active .gjs-block-category {
+          background: #111827 !important;
+          border: 1px solid #1f2937 !important;
+          border-radius: 8px !important;
+          margin: 0 12px 16px 12px !important; /* match light spacing */
+          padding: 12px 12px 10px 12px !important;
+          box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25) !important;
+        }
+
+        .dark-mode .gjs-block,
+        body.dark-mode-active .gjs-block {
+          background: #0b1220 !important;
+          border: 1px solid #1f2937 !important;
+          border-radius: 6px !important; /* same shape as light */
+          color: #e2e8f0 !important;
+          box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35) !important;
+          padding: 8px !important; /* match light padding */
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 6px !important;
+          min-height: 60px !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          box-sizing: border-box !important;
+          justify-content: center !important;
+          align-items: center !important;
+        }
+
+        .dark-mode .gjs-block:hover,
+        body.dark-mode-active .gjs-block:hover {
+          border-color: #2563eb !important;
+          box-shadow: 0 12px 26px rgba(37, 99, 235, 0.35) !important;
+          transform: translateY(-2px);
+        }
+
+        .dark-mode .gjs-block .gjs-block-title,
+        body.dark-mode-active .gjs-block .gjs-block-title,
+        .dark-mode .gjs-block .gjs-block-label,
+        body.dark-mode-active .gjs-block .gjs-block-label {
+          color: #e2e8f0 !important;
+          font-weight: 600 !important;
+        }
+
+        .dark-mode .gjs-block__media,
+        body.dark-mode-active .gjs-block__media,
+        .dark-mode .gjs-block__media *,
+        body.dark-mode-active .gjs-block__media * {
+          color: #cbd5e1 !important;
+          width: 24px !important;
+          height: 24px !important;
+          margin-bottom: 4px !important;
+          opacity: 0.8 !important;
+        }
+
+        .dark-mode .gjs-block-content,
+        body.dark-mode-active .gjs-block-content {
+          background: transparent !important;
+        }
+
+        .dark-mode .gjs-block-category-title,
+        body.dark-mode-active .gjs-block-category-title {
+          color: #cbd5e1 !important;
+        }
+
+        /* Inputs in right sidebar panels */
+        .dark-mode .gjs-pn-panel input,
+        body.dark-mode-active .gjs-pn-panel input,
+        .dark-mode .gjs-pn-panel select,
+        body.dark-mode-active .gjs-pn-panel select,
+        .dark-mode .gjs-pn-panel textarea,
+        body.dark-mode-active .gjs-pn-panel textarea,
+        .dark-mode .gjs-pn-panel .gjs-field,
+        body.dark-mode-active .gjs-pn-panel .gjs-field {
+          background: #0b1220 !important;
+          border: 1px solid #1f2937 !important;
+          color: #e2e8f0 !important;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+        }
+
+        .dark-mode .gjs-pn-panel input::placeholder,
+        body.dark-mode-active .gjs-pn-panel input::placeholder,
+        .dark-mode .gjs-pn-panel select::placeholder,
+        body.dark-mode-active .gjs-pn-panel select::placeholder,
+        .dark-mode .gjs-pn-panel textarea::placeholder,
+        body.dark-mode-active .gjs-pn-panel textarea::placeholder,
+        .dark-mode .gjs-pn-panel .gjs-field::placeholder,
+        body.dark-mode-active .gjs-pn-panel .gjs-field::placeholder {
+          color: #94a3b8 !important;
+        }
+
+        /* Panels content spacing */
+        .dark-mode .gjs-pn-panel .gjs-pn-views-container,
+        .dark-mode .gjs-pn-panel .gjs-blocks-c,
+        .dark-mode .gjs-pn-panel .gjs-layer-wrapper,
+        body.dark-mode-active .gjs-pn-panel .gjs-layer-wrapper,
+        .dark-mode .gjs-pn-panel .gjs-sm-sectors,
+        body.dark-mode-active .gjs-pn-panel .gjs-sm-sectors,
+        .dark-mode .gjs-pn-panel .gjs-trt-traits,
+        body.dark-mode-active .gjs-pn-panel .gjs-trt-traits {
+          padding: 12px 10px !important;
+          background: transparent !important;
+        }
+
+        /* Keep blocks list padding like light mode */
+        .dark-mode .gjs-blocks-c,
+        body.dark-mode-active .gjs-blocks-c {
+          padding: 4px 8px 16px 8px !important;
+        }
+
+        /* Final high-specificity overrides so dark mode matches light layout exactly */
+        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-blocks-c,
+        body.dark-mode-active .portfolio-edit-container .gjs-pn-panel[data-pn-type="blocks"] .gjs-blocks-c {
+          display: grid !important;
+          gap: 10px !important;
+          padding: 4px 8px 16px 8px !important;
+        }
+
+        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-block-category,
+        body.dark-mode-active .portfolio-edit-container .gjs-pn-panel[data-pn-type="blocks"] .gjs-block-category {
+          background: #fafbfc !important;
+          border: 1px solid #e5e7eb !important;
+          border-radius: 8px !important;
+          margin: 0 12px 16px 12px !important;
+          padding: 12px 12px 10px 12px !important;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+        }
+
+        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-block,
+        body.dark-mode-active .portfolio-edit-container .gjs-pn-panel[data-pn-type="blocks"] .gjs-block {
+          background: #ffffff !important;
+          border: 1px solid #e5e7eb !important;
+          border-radius: 6px !important;
+          padding: 8px !important;
+          min-height: 60px !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          align-items: center !important;
+          gap: 6px !important;
+          box-sizing: border-box !important;
+        }
+
+        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-block .gjs-block-label,
+        body.dark-mode-active .portfolio-edit-container .gjs-pn-panel[data-pn-type="blocks"] .gjs-block .gjs-block-label {
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          line-height: 1.4 !important;
+          color: #475569 !important;
+          padding: 4px 6px !important;
+          text-align: center !important;
+        }
+
+        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="blocks"] .gjs-block__media,
+        body.dark-mode-active .portfolio-edit-container .gjs-pn-panel[data-pn-type="blocks"] .gjs-block__media {
+          width: 24px !important;
+          height: 24px !important;
+          margin-bottom: 4px !important;
+          opacity: 0.8 !important;
+        }
+
+        /* Make dark-mode panels reuse light-mode styling (layout + colors) */
+        .portfolio-edit-container.dark-mode .gjs-pn-panel.gjs-pn-views-container,
+        body.dark-mode-active .gjs-pn-panel.gjs-pn-views-container,
+        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="views-container"],
+        body.dark-mode-active .gjs-pn-panel[data-pn-type="views-container"],
+        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="blocks"],
+        body.dark-mode-active .gjs-pn-panel[data-pn-type="blocks"],
+        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="layers"],
+        body.dark-mode-active .gjs-pn-panel[data-pn-type="layers"],
+        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="traits"],
+        body.dark-mode-active .gjs-pn-panel[data-pn-type="traits"],
+        .portfolio-edit-container.dark-mode .gjs-pn-panel[data-pn-type="style-manager"],
+        body.dark-mode-active .gjs-pn-panel[data-pn-type="style-manager"] {
+          background: #ffffff !important;
+          border-left: 1px solid #e5e7eb !important;
+          border-right: 1px solid #e5e7eb !important;
+          box-shadow: 2px 0 10px rgba(0, 0, 0, 0.03) !important;
+          color: #1e293b !important;
+        }
+
+        .portfolio-edit-container.dark-mode .gjs-pn-buttons,
+        body.dark-mode-active .gjs-pn-buttons,
+        .portfolio-edit-container.dark-mode .gjs-pn-views,
+        body.dark-mode-active .gjs-pn-views {
+          background: transparent !important;
+          padding: 10px 8px !important;
+        }
+
+        .portfolio-edit-container.dark-mode .gjs-pn-btn,
+        body.dark-mode-active .gjs-pn-btn {
+          background: #ffffff !important;
+          border: 1px solid #e5e7eb !important;
+          color: #1e293b !important;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        }
+
+        .portfolio-edit-container.dark-mode .gjs-pn-btn:hover,
+        body.dark-mode-active .gjs-pn-btn:hover {
+          background: #f1f5f9 !important;
+          border-color: #e5e7eb !important;
+          color: #3b82f6 !important;
+        }
+
+        .portfolio-edit-container.dark-mode .gjs-pn-btn.gjs-pn-active,
+        body.dark-mode-active .gjs-pn-btn.gjs-pn-active {
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+          border-color: #2563eb !important;
+          color: #ffffff !important;
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+        }
+
+        .portfolio-edit-container.dark-mode .gjs-pn-btn.gjs-pn-active *,
+        body.dark-mode-active .gjs-pn-btn.gjs-pn-active * {
+          color: #ffffff !important;
+          fill: #ffffff !important;
+        }
+
+        /* Text colors to stay readable */
+        .dark-mode .gjs-pn-panel,
+        body.dark-mode-active .gjs-pn-panel,
+        .dark-mode .gjs-pn-panel *,
+        body.dark-mode-active .gjs-pn-panel * {
+          color: #e2e8f0 !important;
+        }
+
+        .dark-mode .gjs-pn-panel .gjs-block-label,
+        body.dark-mode-active .gjs-pn-panel .gjs-block-label,
+        .dark-mode .gjs-pn-panel .gjs-block-category-title,
+        body.dark-mode-active .gjs-pn-panel .gjs-block-category-title,
+        .dark-mode .gjs-pn-panel .gjs-sm-title,
+        body.dark-mode-active .gjs-pn-panel .gjs-sm-title,
+        .dark-mode .gjs-pn-panel .gjs-sm-label,
+        body.dark-mode-active .gjs-pn-panel .gjs-sm-label {
+          color: #e2e8f0 !important;
+        }
+
+        /* Scrollbar subtle like light mode */
+        .dark-mode .gjs-pn-views-container::-webkit-scrollbar-thumb,
+        body.dark-mode-active .gjs-pn-views-container::-webkit-scrollbar-thumb {
+          background: #2563eb !important;
+          border-radius: 8px !important;
+        }
+
+        `}
+      </style>
     </div>
   );
 };
