@@ -11,7 +11,7 @@ import { getCoachId, getToken, debugAuthState } from '../../../utils/authUtils';
 // GrapesJS Core and Plugins (100% FREE - Open Source MIT License - No payment/keys required for live server)
 // ✅ Completely free to use in production, commercial projects, and live servers
 // ✅ No API keys, no subscriptions, no payments needed
-// ✅ MIT License allows commercial use without restrictions
+// ✅ MIT License allows commercial use without restrictions jassi
 import grapesjs from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
 import gjsPresetWebpage from "grapesjs-preset-webpage";
@@ -3847,6 +3847,121 @@ const PortfolioEdit = () => {
 
     // Add CSS for Day Selector Widget
     editor.setStyle(`.day-selector-display-widget{background:linear-gradient(120deg,#312e81 0%,#7c3aed 40%,#9333ea 100%);border-radius:20px;padding:24px;margin:20px 0;box-shadow:0 25px 60px rgba(76,29,149,0.35);color:white;font-family:'Inter','Segoe UI',sans-serif;display:flex;flex-direction:column;gap:18px;border:1px solid rgba(255,255,255,0.15);position:relative}.day-selector-display-widget::after{content:'';position:absolute;inset:16px;border-radius:16px;border:1px solid rgba(255,255,255,0.1);pointer-events:none}.day-selector-display-widget.selected{border:1px solid rgba(16,185,129,0.7);box-shadow:0 0 0 1px rgba(16,185,129,0.6),0 25px 60px rgba(16,185,129,0.15)}.day-selector-header{display:flex;align-items:center;justify-content:space-between;gap:16px;z-index:1}.day-selector-title{display:flex;align-items:center;gap:12px}.calendar-icon{font-size:42px;background:rgba(255,255,255,0.12);padding:14px;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.2)}.day-selector-title h3{margin:0;font-size:26px;font-weight:700}.day-selector-title p{margin:2px 0 0 0;font-size:13px;letter-spacing:0.6px;text-transform:uppercase;color:rgba(255,255,255,0.75)}.day-refresh-btn{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:white;padding:10px 18px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .3s ease}.day-refresh-btn:hover{background:rgba(255,255,255,0.25)}.day-info-content{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;z-index:1}.selected-day-info,.recent-date-info{background:rgba(15,23,42,0.25);border-radius:16px;padding:18px;box-shadow:0 15px 30px rgba(2,6,23,0.25);border:1px solid rgba(255,255,255,0.18)}.info-label{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.65);margin-bottom:8px}.day-value,.date-value{font-size:18px;font-weight:600;color:#f8fafc;line-height:1.5}.day-selector-display-widget ::selection{background:rgba(59,130,246,0.4)}@media (max-width:640px){.day-selector-header{flex-direction:column;align-items:flex-start}.day-refresh-btn{width:100%;text-align:center}.day-info-content{grid-template-columns:1fr}}`);
+
+    // Add Switch/Toggle Button Component
+    editor.BlockManager.add('switch-button', {
+      label: 'Switch Button',
+      category: 'Interactive Components',
+      content: `
+        <div class="bss-switch-container" data-switch-id="${Date.now()}">
+          <label class="bss-switch-label">
+            <span class="switch-label-text">Enable Feature</span>
+            <div class="bss-switch-wrapper">
+              <input type="checkbox" class="bss-switch-input" checked>
+              <span class="bss-switch-slider"></span>
+            </div>
+          </label>
+        </div>
+        <style>
+          .bss-switch-container {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .bss-switch-label {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            user-select: none;
+          }
+          .switch-label-text {
+            font-size: 16px;
+            font-weight: 500;
+            color: #374151;
+          }
+          .bss-switch-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 56px;
+            height: 32px;
+          }
+          .bss-switch-input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute;
+          }
+          .bss-switch-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 34px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+          .bss-switch-slider:before {
+            position: absolute;
+            content: "";
+            height: 24px;
+            width: 24px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          }
+          .bss-switch-input:checked + .bss-switch-slider {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+          .bss-switch-input:checked + .bss-switch-slider:before {
+            transform: translateX(24px);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+          }
+          .bss-switch-input:focus + .bss-switch-slider {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+          .bss-switch-input:disabled + .bss-switch-slider {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+          .bss-switch-label:hover .bss-switch-slider:not(:disabled) {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+          @media (max-width: 640px) {
+            .bss-switch-container {
+              padding: 16px;
+            }
+            .switch-label-text {
+              font-size: 14px;
+            }
+            .bss-switch-wrapper {
+              width: 48px;
+              height: 28px;
+            }
+            .bss-switch-slider:before {
+              height: 20px;
+              width: 20px;
+              left: 4px;
+              bottom: 4px;
+            }
+            .bss-switch-input:checked + .bss-switch-slider:before {
+              transform: translateX(20px);
+            }
+          }
+        </style>
+      `,
+      attributes: { class: 'bss-switch-element' },
+      media: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M17 7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h10c2.76 0 5-2.24 5-5s-2.24-5-5-5zM7 15c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg>`,
+    });
 
     // Component selection handler - REPLACE EXISTING
     editor.on('component:selected', (component) => {
