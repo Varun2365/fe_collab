@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCoachId, getToken, isAuthenticated, debugAuthState } from '../../../utils/authUtils';
+import { API_BASE_URL } from '../../../config/apiConfig';
 import AppointmentCalendar from './calender.jsx';
 import {
   setStages,
@@ -359,6 +360,11 @@ const additionalStyles = `
 }
 
 /* Professional Animations */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 @keyframes shimmer-wave {
   0% {
     background-position: 200% 0;
@@ -908,27 +914,59 @@ const TemplatePreviewModal = ({ template, onClose }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{
-        maxWidth: '90vw',
-        maxHeight: '90vh',
-        width: '900px',
-        padding: '0',
+    <div 
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backdropFilter: 'blur(8px)',
         display: 'flex',
-        flexDirection: 'column'
-      }}>
-        <div className="modal-header" style={{ 
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10001,
+        padding: '20px'
+      }}
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          width: '90vw',
+          maxWidth: '1000px',
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          border: '1px solid #e2e8f0'
+        }}
+      >
+        <div style={{ 
           padding: '20px 24px',
           borderBottom: '1px solid #e2e8f0',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          flexShrink: 0
         }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#2d3748' }}>
+            <h3 style={{ 
+              margin: 0, 
+              fontSize: '20px', 
+              fontWeight: '700', 
+              color: '#1a202c' 
+            }}>
               {template?.name || 'Template Preview'}
             </h3>
-            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#718096' }}>
+            <p style={{ 
+              margin: '4px 0 0 0', 
+              fontSize: '12px', 
+              color: '#6b7280' 
+            }}>
               Live Template Preview
             </p>
           </div>
@@ -936,37 +974,64 @@ const TemplatePreviewModal = ({ template, onClose }) => {
             <button
               onClick={() => setIsAutoScrolling(!isAutoScrolling)}
               style={{
-                padding: '6px 12px',
-                fontSize: '12px',
-                background: isAutoScrolling ? '#10b981' : '#e2e8f0',
+                padding: '8px 16px',
+                fontSize: '13px',
+                background: isAutoScrolling ? '#10b981' : '#f3f4f6',
                 color: isAutoScrolling ? 'white' : '#4a5568',
                 border: 'none',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 cursor: 'pointer',
-                fontWeight: '500'
+                fontWeight: '500',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                if (!isAutoScrolling) {
+                  e.target.backgroundColor = '#e5e7eb';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isAutoScrolling) {
+                  e.target.backgroundColor = '#f3f4f6';
+                }
               }}
             >
               {isAutoScrolling ? 'Pause Scroll' : 'Auto Scroll'}
             </button>
-            <button className="modal-close" onClick={onClose} style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              color: '#4a5568',
-              padding: '0',
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>&times;</button>
+            <button 
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '28px',
+                cursor: 'pointer',
+                color: '#6b7280',
+                padding: '4px',
+                borderRadius: '8px',
+                transition: 'all 0.2s',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onMouseEnter={(e) => {
+                e.target.backgroundColor = '#f3f4f6';
+                e.target.color = '#1a202c';
+              }}
+              onMouseLeave={(e) => {
+                e.target.backgroundColor = 'transparent';
+                e.target.color = '#6b7280';
+              }}
+            >
+              &times;
+            </button>
           </div>
         </div>
         <div style={{
           flex: 1,
           overflow: 'hidden',
-          background: '#f8f9fa'
+          background: '#f9fafb',
+          borderRadius: '0 0 12px 12px'
         }}>
           <div
             ref={previewRef}
@@ -975,7 +1040,7 @@ const TemplatePreviewModal = ({ template, onClose }) => {
               height: '70vh',
               overflow: 'auto',
               position: 'relative',
-              background: '#f8f9fa'
+              background: '#f9fafb'
             }}
           >
             {createPreviewContent() || (
@@ -1076,13 +1141,48 @@ const TemplateSelectionModal = ({ stageType, selectedKey, onClose, onSelect, onS
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content template-selection-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+    <div 
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10000,
+        padding: '20px'
+      }}
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          width: '90vw',
+          maxWidth: '900px',
+          maxHeight: '85vh',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          border: '1px solid #e2e8f0'
+        }}
+      >
+        <div style={{
+          padding: '24px',
+          borderBottom: '1px solid #e2e8f0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexShrink: 0
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {(viewMode === 'templates' || viewMode === 'customer-coach-selection') && (
               <button 
-                className="back-button" 
                 onClick={() => {
                   if (viewMode === 'customer-coach-selection') {
                     setViewMode('options');
@@ -1097,24 +1197,68 @@ const TemplateSelectionModal = ({ stageType, selectedKey, onClose, onSelect, onS
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  padding: '4px',
+                  padding: '8px',
                   display: 'flex',
                   alignItems: 'center',
-                  color: '#4b5563'
+                  color: '#4b5563',
+                  borderRadius: '8px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.backgroundColor = '#f3f4f6';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.backgroundColor = 'transparent';
                 }}
               >
-                <FiChevronRight style={{ transform: 'rotate(180deg)' }} />
+                <FiChevronRight style={{ transform: 'rotate(180deg)', width: '20px', height: '20px' }} />
               </button>
             )}
-            <h3>
+            <h3 style={{
+              margin: 0,
+              fontSize: '20px',
+              fontWeight: '700',
+              color: '#1a202c'
+            }}>
               {viewMode === 'options' ? 'Select Template' : 
                viewMode === 'customer-coach-selection' ? 'Choose Category' : 
                'Choose a Template'}
             </h3>
           </div>
-          <button className="modal-close" onClick={onClose}>&times;</button>
+          <button 
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '28px',
+              cursor: 'pointer',
+              color: '#6b7280',
+              padding: '4px',
+              borderRadius: '8px',
+              transition: 'all 0.2s',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onMouseEnter={(e) => {
+              e.target.backgroundColor = '#f3f4f6';
+              e.target.color = '#1a202c';
+            }}
+            onMouseLeave={(e) => {
+              e.target.backgroundColor = 'transparent';
+              e.target.color = '#6b7280';
+            }}
+          >
+            &times;
+          </button>
         </div>
-        <div className="modal-body template-modal-body">
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '24px'
+        }}>
           {viewMode === 'customer-coach-selection' ? (
             <div className="template-options-grid">
               <div style={{ 
@@ -1340,11 +1484,19 @@ const TemplateSelectionModal = ({ stageType, selectedKey, onClose, onSelect, onS
               </div>
             </div>
           ) : (
-            <div className="template-grid-modal">
-              <p className="field-note" style={{ marginBottom: '24px', color: '#6b7280' }}>
+            <div>
+              <p style={{ 
+                marginBottom: '24px', 
+                color: '#6b7280',
+                fontSize: '14px'
+              }}>
                 Select a template to use as the starting point for your page design.
               </p>
-              <div className="template-grid">
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                gap: '16px'
+              }}>
                 {Object.keys(templateSet).map((templateKey) => {
                   const template = templateSet[templateKey];
                   const isSelected = selectedKey === templateKey;
@@ -1352,92 +1504,131 @@ const TemplateSelectionModal = ({ stageType, selectedKey, onClose, onSelect, onS
                   return (
                     <div 
                       key={templateKey} 
-                      className={`template-card ${isSelected ? 'selected' : ''}`} 
                       onClick={() => handleTemplateSelect(templateKey)}
-                      onMouseEnter={() => setHoveredTemplate(templateKey)}
-                      onMouseLeave={() => setHoveredTemplate(null)}
-                      style={{ position: 'relative' }}
+                      onMouseEnter={(e) => {
+                        setHoveredTemplate(templateKey);
+                        if (!isSelected) {
+                          e.currentTarget.style.borderColor = '#3b82f6';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.15)';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        setHoveredTemplate(null);
+                        if (!isSelected) {
+                          e.currentTarget.style.borderColor = '#e2e8f0';
+                          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                        }
+                      }}
+                      style={{ 
+                        position: 'relative',
+                        cursor: 'pointer',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        border: isSelected ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+                        backgroundColor: 'white',
+                        transition: 'all 0.2s',
+                        boxShadow: isSelected ? '0 4px 12px rgba(59, 130, 246, 0.2)' : '0 1px 3px rgba(0, 0, 0, 0.1)'
+                      }}
                     >
-                      <div className="template-thumbnail" style={{ position: 'relative', overflow: 'hidden' }}>
+                      <div style={{ 
+                        position: 'relative', 
+                        overflow: 'hidden',
+                        aspectRatio: '1',
+                        backgroundColor: '#f3f4f6'
+                      }}>
                         {isHovered ? (
                           <TemplatePreview template={template} isHovered={isHovered} />
                         ) : (
                           <>
                             <img 
                               src={template.thumbnail} 
-                              alt={template.name} 
+                              alt={template.name}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                display: 'block'
+                              }}
                               onError={(e) => { 
                                 e.target.onerror = null; 
-                                e.target.src='https://placehold.co/400x300/ccc/ffffff?text=Error'; 
+                                e.target.src='https://placehold.co/200x200/ccc/ffffff?text=Template'; 
                               }} 
                             />
                             {isSelected && (
-                              <div className="template-selected-overlay">
-                                <span className="selected-badge">Selected</span>
+                              <div style={{
+                                position: 'absolute',
+                                top: '8px',
+                                right: '8px',
+                                background: '#3b82f6',
+                                color: 'white',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '10px',
+                                fontWeight: '600',
+                                zIndex: 10
+                              }}>
+                                Selected
                               </div>
                             )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewTemplate(template);
+                              }}
+                              style={{
+                                position: 'absolute',
+                                top: '8px',
+                                left: '8px',
+                                background: 'rgba(255, 255, 255, 0.9)',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#3b82f6',
+                                zIndex: 15,
+                                transition: 'all 0.2s',
+                                width: '28px',
+                                height: '28px',
+                                opacity: isHovered ? 1 : 0.8
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.transform = 'scale(1.1)';
+                                e.target.style.opacity = '1';
+                                e.target.style.background = 'white';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.transform = 'scale(1)';
+                                e.target.style.opacity = '0.8';
+                                e.target.style.background = 'rgba(255, 255, 255, 0.9)';
+                              }}
+                              title="View Template Preview"
+                            >
+                              <FiEye style={{ width: '16px', height: '16px' }} />
+                            </button>
                           </>
                         )}
-                        {isHovered && (
-                          <div style={{
-                            position: 'absolute',
-                            bottom: '8px',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            background: 'rgba(0,0,0,0.7)',
-                            color: 'white',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            fontSize: '10px',
-                            zIndex: 10
-                          }}>
-                            Hover to preview
-                          </div>
-                        )}
-                        {/* View Icon Button - Always visible */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPreviewTemplate(template);
-                          }}
-                          style={{
-                            position: 'absolute',
-                            top: '8px',
-                            right: '8px',
-                            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                            border: 'none',
-                            borderRadius: '8px',
-                            padding: '8px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            zIndex: 15,
-                            boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)',
-                            transition: 'all 0.2s',
-                            width: '36px',
-                            height: '36px',
-                            opacity: isHovered ? 1 : 0.9
-                          }}
-                          onMouseEnter={(e) => {
-                            e.target.style.transform = 'scale(1.1)';
-                            e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.6)';
-                            e.target.style.opacity = '1';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.transform = 'scale(1)';
-                            e.target.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.4)';
-                            e.target.style.opacity = '0.9';
-                          }}
-                          title="View Template Preview"
-                        >
-                          <FiEye style={{ width: '18px', height: '18px' }} />
-                        </button>
                       </div>
-                      <div className="template-info">
-                        <h4>{template.name}</h4>
-                        <p>{template.description}</p>
+                      <div style={{
+                        padding: '12px',
+                        backgroundColor: 'white'
+                      }}>
+                        <h4 style={{
+                          margin: '0 0 4px 0',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#1a202c'
+                        }}>{template.name}</h4>
+                        <p style={{
+                          margin: 0,
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          lineHeight: '1.4'
+                        }}>{template.description}</p>
                       </div>
                     </div>
                   );
@@ -1604,7 +1795,7 @@ const BasicInfoForm = ({ stage, stageConfig, onUpdate }) => {
     formData.append('assets', file); // Assuming backend handles single file as well
 
     try {
-      const response = await fetch(`https://api.funnelseye.com/api/assets?coachId=${coachID}`, { // Adjust endpoint if needed
+      const response = await fetch(`${API_BASE_URL}/api/assets?coachId=${coachID}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1631,154 +1822,604 @@ const BasicInfoForm = ({ stage, stageConfig, onUpdate }) => {
   };
 
   return (
-    <div className="content-section animate-fadeIn">
-      <div className="section-header" onClick={() => setExpanded(!expanded)}>
-        <h3 className="section-title" style={{border: 'none', paddingBottom: 0, marginBottom: 0}}>
+    <div style={{
+      background: 'white',
+      borderRadius: '12px',
+      border: '1px solid #e2e8f0',
+      padding: '24px',
+      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
+    }}>
+      <div 
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: 'pointer',
+          marginBottom: expanded ? '20px' : '0',
+          paddingBottom: expanded ? '16px' : '0',
+          borderBottom: expanded ? '1px solid #e2e8f0' : 'none',
+          transition: 'all 0.2s'
+        }}
+      >
+        <h3 style={{
+          margin: 0,
+          fontSize: '18px',
+          fontWeight: '600',
+          color: '#1a202c'
+        }}>
           Basic Details
         </h3>
-        <span className="expand-icon">
-          {expanded ? <FiChevronDown /> : <FiChevronRight />}
+        <span style={{
+          color: '#718096',
+          transition: 'transform 0.2s',
+          transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)'
+        }}>
+          <FiChevronDown />
         </span>
       </div>
       
       {expanded && (
-        <div className="form-grid animate-fadeIn">
-          <div className="form-field">
-            <label>Name</label>
-            <input
-              type="text"
-              className="styled-input"
-              value={formData.name}
-              onChange={(e) => handleChange('name', e.target.value)}
-              placeholder="Page name"
-            />
-          </div>
-          
-          <div className="form-field">
-            <label>Update page name should be unique</label>
-            <input
-              type="text"
-              className="styled-input"
-              value={formData.slug}
-              onChange={(e) => handleChange('slug', e.target.value)}
-              placeholder="url-friendly-name"
-            />
-            <p className="field-note">URL-friendly version of the name (e.g., my-awesome-page).</p>
-          </div>
-          
-          <div className="form-field">
-            <label>Title</label>
-            <input
-              type="text"
-              className="styled-input"
-              value={formData.title}
-              onChange={(e) => handleChange('title', e.target.value)}
-              placeholder="Page title for browser tab"
-            />
-          </div>
-          
-          <div className="form-field">
-            <label>Keywords</label>
-            <input
-              type="text"
-              className="styled-input"
-              value={formData.keywords}
-              onChange={(e) => handleChange('keywords', e.target.value)}
-              placeholder="Comma-separated keywords"
-            />
-          </div>
-
-          <div className="form-field full-width">
-            <label>Description</label>
-            <textarea
-              className="styled-textarea"
-              value={formData.description}
-              onChange={(e) => handleChange('description', e.target.value)}
-              placeholder="Short summary of page content for SEO"
-              rows="3"
-            />
-          </div>
-          
-          <div className="form-field">
-            <label>Favicon</label>
-            <div className="file-upload">
-              <input
-                id={`favicon-upload-${stage.id}`}
-                type="file"
-                onChange={(e) => handleFileChange('favicon', e)}
-                accept="image/*"
-              />
-              <label htmlFor={`favicon-upload-${stage.id}`} className="button-secondary">
-                Select image
-              </label>
-              {formData.favicon && (
-                <span className="file-name">{typeof formData.favicon === 'string' ? formData.favicon : 'Selected'}</span>
-              )}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '32px',
+          animation: 'fadeIn 0.3s ease'
+        }}>
+          {/* Basic Information Section */}
+          <div>
+            <h4 style={{
+              fontSize: '14px',
+              fontWeight: '700',
+              color: '#1a202c',
+              marginBottom: '16px',
+              paddingBottom: '12px',
+              borderBottom: '2px solid #e2e8f0',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              Basic Information
+            </h4>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '20px'
+            }}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#4b5563',
+                  marginBottom: '10px'
+                }}>Page Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => handleChange('name', e.target.value)}
+                  placeholder="Enter page name"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    backgroundColor: '#ffffff',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}
+                  onFocus={(e) => {
+                    e.target.borderColor = '#3b82f6';
+                    e.target.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.borderColor = '#d1d5db';
+                    e.target.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                  }}
+                />
+              </div>
+              
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#4b5563',
+                  marginBottom: '10px'
+                }}>URL Slug</label>
+                <input
+                  type="text"
+                  value={formData.slug}
+                  onChange={(e) => handleChange('slug', e.target.value)}
+                  placeholder="url-friendly-name"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    backgroundColor: '#ffffff',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}
+                  onFocus={(e) => {
+                    e.target.borderColor = '#3b82f6';
+                    e.target.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.borderColor = '#d1d5db';
+                    e.target.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                  }}
+                />
+                <p style={{
+                  margin: '8px 0 0 0',
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4'
+                }}>URL-friendly version (e.g., my-awesome-page)</p>
+              </div>
             </div>
           </div>
 
-          <div className="form-field">
-            <label>Social Share Image</label>
-            <div className="file-upload">
-              <input
-                id={`social-image-upload-${stage.id}`}
-                type="file"
-                onChange={(e) => handleFileChange('socialImage', e)}
-                accept="image/*"
-              />
-              <label htmlFor={`social-image-upload-${stage.id}`} className="button-secondary">
-                Select image
-              </label>
-              {formData.socialImage && (
-                <span className="file-name">{typeof formData.socialImage === 'string' ? formData.socialImage : 'Selected'}</span>
-              )}
+          {/* SEO Settings Section */}
+          <div>
+            <h4 style={{
+              fontSize: '14px',
+              fontWeight: '700',
+              color: '#1a202c',
+              marginBottom: '16px',
+              paddingBottom: '12px',
+              borderBottom: '2px solid #e2e8f0',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              SEO Settings
+            </h4>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '20px'
+            }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#4b5563',
+                  marginBottom: '10px'
+                }}>Page Title</label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => handleChange('title', e.target.value)}
+                  placeholder="Page title for browser tab"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    backgroundColor: '#ffffff',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}
+                  onFocus={(e) => {
+                    e.target.borderColor = '#3b82f6';
+                    e.target.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.borderColor = '#d1d5db';
+                    e.target.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                  }}
+                />
+              </div>
+              
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#4b5563',
+                  marginBottom: '10px'
+                }}>Keywords</label>
+                <input
+                  type="text"
+                  value={formData.keywords}
+                  onChange={(e) => handleChange('keywords', e.target.value)}
+                  placeholder="Comma-separated keywords"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    backgroundColor: '#ffffff',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}
+                  onFocus={(e) => {
+                    e.target.borderColor = '#3b82f6';
+                    e.target.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.borderColor = '#d1d5db';
+                    e.target.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                  }}
+                />
+              </div>
+
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#4b5563',
+                  marginBottom: '10px'
+                }}>Meta Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => handleChange('description', e.target.value)}
+                  placeholder="Short summary of page content for SEO"
+                  rows="3"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    backgroundColor: '#ffffff',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    resize: 'vertical',
+                    fontFamily: 'inherit',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}
+                  onFocus={(e) => {
+                    e.target.borderColor = '#3b82f6';
+                    e.target.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.borderColor = '#d1d5db';
+                    e.target.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Assets & Media Section */}
+          <div>
+            <h4 style={{
+              fontSize: '14px',
+              fontWeight: '700',
+              color: '#1a202c',
+              marginBottom: '16px',
+              paddingBottom: '12px',
+              borderBottom: '2px solid #e2e8f0',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              Assets & Media
+            </h4>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '20px'
+            }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#4b5563',
+                  marginBottom: '10px'
+                }}>Favicon</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <input
+                    id={`favicon-upload-${stage.id}`}
+                    type="file"
+                    onChange={(e) => handleFileChange('favicon', e)}
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                  />
+                  <label 
+                    htmlFor={`favicon-upload-${stage.id}`}
+                    style={{
+                      padding: '11px 18px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'inline-block',
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#f1f5f9';
+                      e.target.style.borderColor = '#cbd5e0';
+                      e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.08)';
+                      e.target.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = '#f8fafc';
+                      e.target.style.borderColor = '#e2e8f0';
+                      e.target.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                      e.target.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    Select Image
+                  </label>
+                  {formData.favicon && (
+                    <span style={{
+                      fontSize: '12px',
+                      color: '#6b7280',
+                      fontStyle: 'italic'
+                    }}>{typeof formData.favicon === 'string' ? formData.favicon : 'Selected'}</span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#4b5563',
+                  marginBottom: '10px'
+                }}>Social Share Image</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <input
+                    id={`social-image-upload-${stage.id}`}
+                    type="file"
+                    onChange={(e) => handleFileChange('socialImage', e)}
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                  />
+                  <label 
+                    htmlFor={`social-image-upload-${stage.id}`}
+                    style={{
+                      padding: '11px 18px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'inline-block',
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#f1f5f9';
+                      e.target.style.borderColor = '#cbd5e0';
+                      e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.08)';
+                      e.target.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = '#f8fafc';
+                      e.target.style.borderColor = '#e2e8f0';
+                      e.target.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                      e.target.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    Select Image
+                  </label>
+                  {formData.socialImage && (
+                    <span style={{
+                      fontSize: '12px',
+                      color: '#6b7280',
+                      fontStyle: 'italic'
+                    }}>{typeof formData.socialImage === 'string' ? formData.socialImage : 'Selected'}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Social Media Settings Section */}
+          <div>
+            <h4 style={{
+              fontSize: '14px',
+              fontWeight: '700',
+              color: '#1a202c',
+              marginBottom: '16px',
+              paddingBottom: '12px',
+              borderBottom: '2px solid #e2e8f0',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              Social Media Settings
+            </h4>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '20px'
+            }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#4b5563',
+                  marginBottom: '10px'
+                }}>Social Title</label>
+                <input
+                  type="text"
+                  value={formData.socialTitle}
+                  onChange={(e) => handleChange('socialTitle', e.target.value)}
+                  placeholder="Title for social sharing"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    backgroundColor: '#ffffff',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}
+                  onFocus={(e) => {
+                    e.target.borderColor = '#3b82f6';
+                    e.target.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.borderColor = '#d1d5db';
+                    e.target.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                  }}
+                />
+              </div>
+              
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#4b5563',
+                  marginBottom: '10px'
+                }}>Social Description</label>
+                <textarea
+                  value={formData.socialDescription}
+                  onChange={(e) => handleChange('socialDescription', e.target.value)}
+                  placeholder="Description for social sharing"
+                  rows="2"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    backgroundColor: '#ffffff',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    resize: 'vertical',
+                    fontFamily: 'inherit',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}
+                  onFocus={(e) => {
+                    e.target.borderColor = '#3b82f6';
+                    e.target.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.borderColor = '#d1d5db';
+                    e.target.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                  }}
+                />
+              </div>
             </div>
           </div>
           
-          <div className="form-field">
-            <label>Social Title</label>
-            <input
-              type="text"
-              className="styled-input"
-              value={formData.socialTitle}
-              onChange={(e) => handleChange('socialTitle', e.target.value)}
-              placeholder="Title for social sharing"
-            />
-          </div>
-          
-          <div className="form-field">
-            <label>Social Description</label>
-            <textarea
-              className="styled-textarea"
-              value={formData.socialDescription}
-              onChange={(e) => handleChange('socialDescription', e.target.value)}
-              placeholder="Description for social sharing"
-              rows="2"
-            />
-          </div>
-          
-          <div className="form-field full-width">
-            <label>Custom HTML head</label>
-            <textarea
-              className="styled-textarea code"
-              value={formData.customHtmlHead}
-              onChange={(e) => handleChange('customHtmlHead', e.target.value)}
-              placeholder="<meta>, <link>, <style>, <script> tags"
-              rows="4"
-            />
-            <p className="field-note">Add custom HTML to be included in the &lt;head&gt; section.</p>
-          </div>
-          
-          <div className="form-field full-width">
-            <label>Custom HTML body</label>
-            <textarea
-              className="styled-textarea code"
-              value={formData.customHtmlBody}
-              onChange={(e) => handleChange('customHtmlBody', e.target.value)}
-              placeholder="Tracking codes, scripts"
-              rows="4"
-            />
-            <p className="field-note">Add custom HTML to be included just before the closing &lt;/body&gt; tag.</p>
+          {/* Custom HTML Section */}
+          <div>
+            <h4 style={{
+              fontSize: '14px',
+              fontWeight: '700',
+              color: '#1a202c',
+              marginBottom: '16px',
+              paddingBottom: '12px',
+              borderBottom: '2px solid #e2e8f0',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              Custom HTML
+            </h4>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px'
+            }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#4b5563',
+                  marginBottom: '10px'
+                }}>Custom HTML Head</label>
+                <textarea
+                  value={formData.customHtmlHead}
+                  onChange={(e) => handleChange('customHtmlHead', e.target.value)}
+                  placeholder="<meta>, <link>, <style>, <script> tags"
+                  rows="4"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    fontFamily: 'monospace',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    backgroundColor: '#f9fafb',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    resize: 'vertical',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}
+                  onFocus={(e) => {
+                    e.target.borderColor = '#3b82f6';
+                    e.target.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.borderColor = '#d1d5db';
+                    e.target.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                  }}
+                />
+                <p style={{
+                  margin: '8px 0 0 0',
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4'
+                }}>Add custom HTML to be included in the &lt;head&gt; section.</p>
+              </div>
+              
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#4b5563',
+                  marginBottom: '10px'
+                }}>Custom HTML Body</label>
+                <textarea
+                  value={formData.customHtmlBody}
+                  onChange={(e) => handleChange('customHtmlBody', e.target.value)}
+                  placeholder="Tracking codes, scripts"
+                  rows="4"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    fontFamily: 'monospace',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    backgroundColor: '#f9fafb',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    resize: 'vertical',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}
+                  onFocus={(e) => {
+                    e.target.borderColor = '#3b82f6';
+                    e.target.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.borderColor = '#d1d5db';
+                    e.target.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                  }}
+                />
+                <p style={{
+                  margin: '8px 0 0 0',
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  lineHeight: '1.4'
+                }}>Add custom HTML to be included just before the closing &lt;/body&gt; tag.</p>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1953,6 +2594,15 @@ const FunnelEditorIndex = () => {
   const [dragOverStageId, setDragOverStageId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 767);
+  const [isFunnelActive, setIsFunnelActive] = useState(contentData?.isActive ?? true);
+  const [isStatusLoading, setIsStatusLoading] = useState(false);
+
+  // Update funnel active state when contentData changes
+  useEffect(() => {
+    if (contentData?.isActive !== undefined) {
+      setIsFunnelActive(contentData.isActive);
+    }
+  }, [contentData?.isActive]);
 
   // Handle window resize for responsive behavior
   useEffect(() => {
@@ -2070,7 +2720,7 @@ const FunnelEditorIndex = () => {
       }
 
       // Fetch funnel to get funnelUrl and indexPageId
-      const response = await fetch(`https://api.funnelseye.com/api/funnels/coach/${coachID}/funnels/${slug}`, {
+      const response = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachID}/funnels/${slug}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -2081,7 +2731,7 @@ const FunnelEditorIndex = () => {
 
       const { data: funnel } = await response.json();
       
-      if (!funnel.funnelUrl) {
+      if (!funnel.funnelUrl || !funnel.stages || funnel.stages.length === 0) {
         alert('Funnel URL not available. Please publish the funnel first.');
         return;
       }
@@ -2089,7 +2739,7 @@ const FunnelEditorIndex = () => {
       // Use specificPageId if provided, otherwise use indexPageId or first stage's pageId
       let pageId = specificPageId;
       if (!pageId) {
-        pageId = funnel.indexPageId || (funnel.stages && funnel.stages.length > 0 ? funnel.stages[0].pageId : null);
+        pageId = funnel.indexPageId || funnel.stages[0]?.pageId;
       }
       
       if (!pageId) {
@@ -2097,7 +2747,7 @@ const FunnelEditorIndex = () => {
         return;
       }
 
-      const previewUrl = `https://api.funnelseye.com/funnels/${funnel.funnelUrl}/${pageId}`;
+      const previewUrl = `${API_BASE_URL}/funnels/${funnel.funnelUrl}/${pageId}`;
       window.open(previewUrl, '_blank');
     } catch (err) {
       console.error('Error previewing funnel:', err);
@@ -2115,7 +2765,7 @@ const FunnelEditorIndex = () => {
       }
 
       // Fetch funnel to get funnelUrl
-      const response = await fetch(`https://api.funnelseye.com/api/funnels/coach/${coachID}/funnels/${slug}`, {
+      const response = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachID}/funnels/${slug}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -2125,7 +2775,7 @@ const FunnelEditorIndex = () => {
 
       const { data: funnel } = await response.json();
       
-      if (!funnel.funnelUrl) {
+      if (!funnel.funnelUrl || !funnel.stages || funnel.stages.length === 0) {
         return null;
       }
 
@@ -2142,7 +2792,7 @@ const FunnelEditorIndex = () => {
         return null;
       }
 
-      const previewUrl = `https://api.funnelseye.com/funnels/${funnel.funnelUrl}/${pageId}`;
+      const previewUrl = `${API_BASE_URL}/funnels/${funnel.funnelUrl}/${pageId}`;
       return previewUrl;
     } catch (err) {
       console.error('Error getting page URL:', err);
@@ -2178,7 +2828,7 @@ const FunnelEditorIndex = () => {
         return null;
       }
 
-      const response = await fetch(`https://api.funnelseye.com/api/funnels/coach/${coachID}/funnels/${slug}`, {
+      const response = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachID}/funnels/${slug}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -2198,7 +2848,7 @@ const FunnelEditorIndex = () => {
         return null;
       }
 
-      return `https://api.funnelseye.com/funnels/${funnel.funnelUrl}/${pageId}`;
+      return `${API_BASE_URL}/funnels/${funnel.funnelUrl}/${pageId}`;
     } catch (err) {
       console.error('Error getting funnel URL:', err);
       return null;
@@ -2260,7 +2910,7 @@ const FunnelEditorIndex = () => {
       }
 
       // Fetch current funnel to get full stage data
-      const fetchRes = await fetch(`https://api.funnelseye.com/api/funnels/coach/${coachID}/funnels/${slug}`, {
+      const fetchRes = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachID}/funnels/${slug}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -2361,7 +3011,7 @@ const FunnelEditorIndex = () => {
         stages: updatedStages
       };
 
-      const saveRes = await fetch(`https://api.funnelseye.com/api/funnels/coach/${coachID}/funnels/${slug}`, {
+      const saveRes = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachID}/funnels/${slug}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json', 
@@ -2403,7 +3053,7 @@ const FunnelEditorIndex = () => {
     
     try {
       // Fetch current funnel to get full data
-      const fetchRes = await fetch(`https://api.funnelseye.com/api/funnels/coach/${coachID}/funnels/${slug}`, {
+      const fetchRes = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachID}/funnels/${slug}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -2426,7 +3076,7 @@ const FunnelEditorIndex = () => {
           };
           
           // Save to backend
-          await fetch(`https://api.funnelseye.com/api/funnels/coach/${coachID}/funnels/${slug}`, {
+          await fetch(`${API_BASE_URL}/api/funnels/coach/${coachID}/funnels/${slug}`, {
             method: 'PUT',
             headers: { 
               'Content-Type': 'application/json', 
@@ -2575,7 +3225,7 @@ const FunnelEditorIndex = () => {
       // Use passed category if available, otherwise detect from templateKey
       let detectedCategory = category;
       if (!detectedCategory) {
-        const isCoachTemplate = templateKey.includes('couch') || templateKey.includes('coach');
+        const isCoachTemplate = templateKey.includes('coach');
         detectedCategory = isCoachTemplate ? 'coach' : 'customer';
       }
       
@@ -2750,111 +3400,32 @@ const FunnelEditorIndex = () => {
             flexWrap: 'wrap',
             width: isMobile ? '100%' : 'auto'
           }}>
-            {pageUrl && (
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px', 
-                padding: isMobile ? '6px 10px' : '8px 12px', 
-                backgroundColor: '#f7fafc', 
-                borderRadius: '6px', 
-                border: '1px solid #e2e8f0',
-                width: isMobile ? '100%' : 'auto',
-                maxWidth: isMobile ? '100%' : '300px',
-                overflow: 'hidden'
-              }}>
-                <span style={{ 
-                  fontSize: isMobile ? '11px' : '12px', 
-                  color: '#4a5568', 
-                  maxWidth: isMobile ? 'calc(100% - 30px)' : '300px', 
-                  overflow: 'hidden', 
-                  textOverflow: 'ellipsis', 
-                  whiteSpace: 'nowrap' 
-                }}>
-                  {pageUrl}
-                </span>
-                <button
-                  onClick={() => copyToClipboard(pageUrl)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    color: '#3182ce'
-                  }}
-                  title="Copy link"
-                >
-                  <FiCopy />
-                </button>
-              </div>
-            )}
-            <button 
-              className="button-primary"
-              onClick={() => handlePreviewStage(id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: isMobile ? '6px' : '8px',
-                padding: isMobile ? '8px 16px' : '10px 20px',
-                fontSize: isMobile ? '12px' : '14px',
-                fontWeight: '500',
-                whiteSpace: 'nowrap',
-                flexShrink: 0
-              }}
-            >
-              <FiEye /> {isMobile ? 'View' : 'View this page'}
-            </button>
           </div>
         </div>
         
-        <div className="sub-nav-container" ref={tabsRef}>
-          {TABS.map(tab => (
-            <button 
-              key={tab} 
-              ref={el => tabRefs.current[tab] = el} 
-              className={`sub-nav-button ${activeTab === tab ? 'active' : ''}`} 
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
-          <div className="sub-nav-indicator" style={indicatorStyle}></div>
-        </div>
-        
         <div className="content-body" key={id}>
-          {activeTab === 'Basic' && (
-            <BasicInfoForm 
-              stage={activeStage} 
-              stageConfig={stageConfig} 
-              onUpdate={handleUpdateBasicInfo} 
-            />
-          )}
-          
-          {activeTab === 'Template' && (
-            <div className="content-section animate-fadeIn">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Template Section */}
+            <div className="content-section animate-fadeIn" style={{ width: '100%', marginBottom: '32px' }}>
               <div style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                borderRadius: '12px',
-                padding: '24px',
-                marginBottom: '24px',
-                color: 'white',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                marginBottom: '28px'
               }}>
-                <h3 style={{ 
+                <h2 style={{ 
                   margin: '0 0 8px 0', 
-                  fontSize: '24px', 
+                  fontSize: '28px', 
                   fontWeight: '700',
-                  color: 'white'
+                  color: '#111827',
+                  letterSpacing: '-0.02em',
+                  lineHeight: '1.2'
                 }}>
                   Template Selection
-                </h3>
+                </h2>
                 <p style={{ 
                   margin: 0, 
-                  fontSize: '14px', 
-                  opacity: 0.95,
-                  lineHeight: '1.5'
+                  fontSize: '15px', 
+                  color: '#6b7280',
+                  lineHeight: '1.5',
+                  fontWeight: '400'
                 }}>
                   Choose how you want to start building your page. Select a template or start from scratch.
                 </p>
@@ -2880,322 +3451,260 @@ const FunnelEditorIndex = () => {
                 
                 return (
                   <div style={{
-                    background: 'white',
+                    background: 'linear-gradient(to bottom, #ffffff 0%, #fafbfc 100%)',
                     borderRadius: '12px',
-                    border: '2px solid #e2e8f0',
-                    padding: '24px',
+                    border: '1px solid #e5e7eb',
+                    padding: '28px 32px',
                     marginBottom: '24px',
-                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
+                    width: '100%',
+                    position: 'relative',
+                    overflow: 'hidden'
                   }}>
                     <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '4px',
+                      height: '100%',
+                      background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
+                      borderRadius: '0 2px 2px 0'
+                    }} />
+                    <div style={{
                       display: 'flex',
-                      alignItems: 'center',
+                      alignItems: 'flex-start',
                       justifyContent: 'space-between',
                       flexWrap: 'wrap',
-                      gap: '16px',
-                      marginBottom: '20px'
+                      gap: '24px',
+                      paddingLeft: '4px'
                     }}>
-                      <div style={{ flex: 1, minWidth: '200px' }}>
+                      <div style={{ flex: 1, minWidth: '280px' }}>
                         <div style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '12px',
-                          marginBottom: '8px'
+                          gap: '10px',
+                          marginBottom: '12px'
                         }}>
                           <div style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '10px',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontSize: '18px',
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            background: '#10b981',
+                            flexShrink: 0
+                          }} />
+                          <div style={{
+                            fontSize: '11px',
+                            color: '#6b7280',
                             fontWeight: '600',
-                            boxShadow: '0 4px 6px -1px rgba(102, 126, 234, 0.3)'
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.8px'
                           }}>
-                            ✓
+                            Current Template
                           </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{
-                              fontSize: '12px',
-                              color: '#718096',
-                              fontWeight: '500',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.5px',
-                              marginBottom: '4px'
-                            }}>
-                              Current Template
-                            </div>
-                            <div style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '12px'
-                            }}>
-                              <div style={{
-                                fontSize: '18px',
-                                fontWeight: '700',
-                                color: '#2d3748',
-                                lineHeight: '1.2'
-                              }}>
-                                {templateName}
-                              </div>
-                              {currentTemplate && (
-                                <button
-                                  onClick={() => setShowTemplatePreviewModal(true)}
-                                  style={{
-                                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    padding: '6px 12px',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    color: 'white',
-                                    fontSize: '12px',
-                                    fontWeight: '600',
-                                    transition: 'all 0.2s',
-                                    boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.target.style.transform = 'translateY(-2px)';
-                                    e.target.style.boxShadow = '0 4px 8px rgba(59, 130, 246, 0.4)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.target.style.transform = 'translateY(0)';
-                                    e.target.style.boxShadow = '0 2px 4px rgba(59, 130, 246, 0.3)';
-                                  }}
-                                  title="View Template Preview"
-                                >
-                                  <FiEye style={{ width: '14px', height: '14px' }} />
-                                  <span>View</span>
-                                </button>
-                              )}
-                            </div>
-                          </div>
+                        </div>
+                        <div style={{
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: '#111827',
+                          lineHeight: '1.4',
+                          marginBottom: '6px'
+                        }}>
+                          {templateName}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          marginTop: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}>
+                          <span style={{ color: '#10b981' }}>✓</span>
+                          <span>Template is configured and ready to use</span>
                         </div>
                       </div>
                       <div style={{
                         display: 'flex',
-                        gap: '12px',
-                        flexWrap: 'wrap'
+                        gap: '10px',
+                        flexWrap: 'wrap',
+                        alignItems: 'flex-start'
                       }}>
                         <button
-                          className="button-primary"
                           onClick={() => setShowTemplateModal(true)}
                           style={{
-                            padding: '10px 20px',
-                            fontSize: '14px',
-                            fontWeight: '600',
+                            padding: '10px 18px',
+                            fontSize: '13px',
+                            fontWeight: '500',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            border: 'none',
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #d1d5db',
                             borderRadius: '8px',
-                            color: 'white',
+                            color: '#374151',
                             cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            boxShadow: '0 2px 4px rgba(102, 126, 234, 0.3)'
+                            transition: 'all 0.2s ease',
+                            whiteSpace: 'nowrap'
                           }}
                           onMouseEnter={(e) => {
-                            e.target.style.transform = 'translateY(-2px)';
-                            e.target.style.boxShadow = '0 4px 8px rgba(102, 126, 234, 0.4)';
+                            e.target.style.backgroundColor = '#f3f4f6';
+                            e.target.style.borderColor = '#9ca3af';
+                            e.target.style.color = '#111827';
                           }}
                           onMouseLeave={(e) => {
-                            e.target.style.transform = 'translateY(0)';
-                            e.target.style.boxShadow = '0 2px 4px rgba(102, 126, 234, 0.3)';
+                            e.target.style.backgroundColor = '#ffffff';
+                            e.target.style.borderColor = '#d1d5db';
+                            e.target.style.color = '#374151';
                           }}
                         >
-                          <FiEdit style={{ width: '16px', height: '16px' }} /> Change Template
+                          <FiEdit style={{ width: '14px', height: '14px' }} /> Change Template
                         </button>
                         {canBeBuilt && (
                           <button
-                            className="button-primary"
                             onClick={() => handleBuildPage(id)}
                             style={{
-                              padding: '10px 20px',
-                              fontSize: '14px',
-                              fontWeight: '600',
+                              padding: '10px 18px',
+                              fontSize: '13px',
+                              fontWeight: '500',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '8px',
-                              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
                               border: 'none',
                               borderRadius: '8px',
-                              color: 'white',
+                              color: '#ffffff',
                               cursor: 'pointer',
-                              transition: 'all 0.2s',
-                              boxShadow: '0 2px 4px rgba(16, 185, 129, 0.3)'
+                              transition: 'all 0.2s ease',
+                              whiteSpace: 'nowrap',
+                              boxShadow: '0 2px 4px rgba(99, 102, 241, 0.2)'
                             }}
                             onMouseEnter={(e) => {
-                              e.target.style.transform = 'translateY(-2px)';
-                              e.target.style.boxShadow = '0 4px 8px rgba(16, 185, 129, 0.4)';
+                              e.target.style.background = 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)';
+                              e.target.style.boxShadow = '0 4px 8px rgba(99, 102, 241, 0.3)';
+                              e.target.style.transform = 'translateY(-1px)';
                             }}
                             onMouseLeave={(e) => {
+                              e.target.style.background = 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)';
+                              e.target.style.boxShadow = '0 2px 4px rgba(99, 102, 241, 0.2)';
                               e.target.style.transform = 'translateY(0)';
-                              e.target.style.boxShadow = '0 2px 4px rgba(16, 185, 129, 0.3)';
                             }}
                           >
-                            <FiEdit style={{ width: '16px', height: '16px' }} /> Build Page
+                            <FiEdit style={{ width: '14px', height: '14px' }} /> Build Page
                           </button>
                         )}
                       </div>
                     </div>
-                    
-                    {/* Live Preview Section with Auto-scroll */}
-                    {currentTemplate && (
-                      <div style={{
-                        marginTop: '20px',
-                        paddingTop: '20px',
-                        borderTop: '1px solid #e2e8f0'
-                      }}>
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          marginBottom: '12px'
-                        }}>
-                          <div style={{
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            color: '#4a5568'
-                          }}>
-                            Live Preview
-                          </div>
-                          <div style={{
-                            fontSize: '11px',
-                            color: '#718096',
-                            fontStyle: 'italic'
-                          }}>
-                            Hover to see auto-scroll
-                          </div>
-                        </div>
-                        <div
-                          onMouseEnter={(e) => {
-                            setPreviewHovered(true);
-                            e.currentTarget.style.borderColor = '#667eea';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.15)';
-                          }}
-                          onMouseLeave={(e) => {
-                            setPreviewHovered(false);
-                            e.currentTarget.style.borderColor = '#e2e8f0';
-                            e.currentTarget.style.boxShadow = 'none';
-                          }}
-                          style={{
-                            borderRadius: '10px',
-                            border: '2px solid #e2e8f0',
-                            overflow: 'hidden',
-                            transition: 'all 0.3s',
-                            background: '#f8f9fa'
-                          }}
-                        >
-                          <TemplatePreview 
-                            template={currentTemplate} 
-                            isHovered={previewHovered}
-                          />
-                        </div>
-                      </div>
-                    )}
                   </div>
                 );
               })() : (
                 <div style={{
-                  background: 'white',
+                  background: 'linear-gradient(to bottom, #ffffff 0%, #fafbfc 100%)',
                   borderRadius: '12px',
-                  border: '2px dashed #cbd5e0',
-                  padding: '32px',
+                  border: '1px dashed #d1d5db',
+                  padding: '48px 32px',
                   textAlign: 'center',
-                  marginBottom: '24px'
+                  marginBottom: '24px',
+                  width: '100%',
+                  position: 'relative'
                 }}>
                   <div style={{
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '16px',
-                    background: 'linear-gradient(135deg, #f0f4ff 0%, #e9d5ff 100%)',
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '12px',
+                    background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    margin: '0 auto 16px',
-                    color: '#667eea',
-                    fontSize: '28px'
+                    margin: '0 auto 20px',
+                    color: '#f59e0b',
+                    boxShadow: '0 2px 4px rgba(245, 158, 11, 0.15)'
                   }}>
-                    <FiEdit style={{ width: '32px', height: '32px' }} />
+                    <FiEdit style={{ width: '24px', height: '24px' }} />
                   </div>
                   <h4 style={{
                     margin: '0 0 8px 0',
-                    fontSize: '18px',
-                    fontWeight: '700',
-                    color: '#2d3748'
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#111827',
+                    letterSpacing: '-0.01em'
                   }}>
                     No Template Selected
                   </h4>
                   <p style={{
                     margin: '0 0 24px 0',
-                    fontSize: '14px',
-                    color: '#718096',
-                    maxWidth: '400px',
+                    fontSize: '13px',
+                    color: '#6b7280',
+                    maxWidth: '420px',
                     marginLeft: 'auto',
-                    marginRight: 'auto'
+                    marginRight: 'auto',
+                    lineHeight: '1.5'
                   }}>
                     Select a template to get started with your page design, or start from scratch with a blank canvas.
                   </p>
                   <button
-                    className="button-primary"
                     onClick={() => setShowTemplateModal(true)}
                     style={{
-                      padding: '12px 28px',
-                      fontSize: '16px',
-                      fontWeight: '600',
+                      padding: '10px 20px',
+                      fontSize: '13px',
+                      fontWeight: '500',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '10px',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      gap: '8px',
+                      background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
                       border: 'none',
-                      borderRadius: '10px',
-                      color: 'white',
+                      borderRadius: '8px',
+                      color: '#ffffff',
                       cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: '0 4px 6px rgba(102, 126, 234, 0.3)'
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 2px 4px rgba(99, 102, 241, 0.2)'
                     }}
                     onMouseEnter={(e) => {
-                      e.target.style.transform = 'translateY(-2px)';
-                      e.target.style.boxShadow = '0 6px 12px rgba(102, 126, 234, 0.4)';
+                      e.target.style.background = 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)';
+                      e.target.style.boxShadow = '0 4px 8px rgba(99, 102, 241, 0.3)';
+                      e.target.style.transform = 'translateY(-1px)';
                     }}
                     onMouseLeave={(e) => {
+                      e.target.style.background = 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)';
+                      e.target.style.boxShadow = '0 2px 4px rgba(99, 102, 241, 0.2)';
                       e.target.style.transform = 'translateY(0)';
-                      e.target.style.boxShadow = '0 4px 6px rgba(102, 126, 234, 0.3)';
                     }}
                   >
-                    <FiEdit style={{ width: '18px', height: '18px' }} /> Select Template
+                    <FiEdit style={{ width: '14px', height: '14px' }} /> Select Template
                   </button>
                 </div>
               )}
             </div>
-          )}
-          
-          {activeTab === 'Settings' && type === 'appointment-page' && (
-            <div className="content-section animate-fadeIn">
-              <h3 className="section-title">Appointment Settings</h3>
-              <AppointmentCalendar
-                availabilityRange={contentData.generalSettings.appointment.settings.availabilityRange}
-                onUpdate={(range) => handleUpdateBasicInfo(
-                  'appointment-page', 
-                  'settings.availabilityRange', 
-                  range
-                )}
-              />
-            </div>
-          )}
-          
-          {activeTab === 'Settings' && type === 'payment-page' && (
-            <PaymentSettings
-              settings={contentData.generalSettings.payment.settings}
-              onUpdate={handleUpdatePaymentSettings}
+            
+            {/* Basic Settings Section */}
+            <BasicInfoForm 
+              stage={activeStage} 
+              stageConfig={stageConfig} 
+              onUpdate={handleUpdateBasicInfo} 
             />
-          )}
+            
+            {/* Appointment Settings */}
+            {type === 'appointment-page' && (
+              <div className="content-section animate-fadeIn">
+                <h3 className="section-title">Appointment Settings</h3>
+                <AppointmentCalendar
+                  availabilityRange={contentData.generalSettings.appointment.settings.availabilityRange}
+                  onUpdate={(range) => handleUpdateBasicInfo(
+                    'appointment-page', 
+                    'settings.availabilityRange', 
+                    range
+                  )}
+                />
+              </div>
+            )}
+            
+            {/* Payment Settings */}
+            {type === 'payment-page' && (
+              <PaymentSettings
+                settings={contentData.generalSettings.payment.settings}
+                onUpdate={handleUpdatePaymentSettings}
+              />
+            )}
+          </div>
         </div>
       </>
     );
@@ -3292,7 +3801,6 @@ const FunnelEditorIndex = () => {
             }}>
               Funnel: {contentData.name || 'Untitled Funnel'}
             </span>
-            {!isMobile && <span className="editor-mode-pill">GrapesJS Builder</span>}
           </h1>
             <p style={{ 
               fontSize: isMobile ? '12px' : '14px',
@@ -3312,6 +3820,146 @@ const FunnelEditorIndex = () => {
           flexWrap: 'wrap',
           width: isMobile ? '100%' : 'auto'
         }}>
+          {/* Funnel Active Switch */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px'
+          }}>
+            <span style={{
+              fontSize: isMobile ? '12px' : '13px',
+              fontWeight: '500',
+              color: '#4b5563'
+            }}>
+              {isFunnelActive ? 'Active' : 'Inactive'}
+            </span>
+            {isStatusLoading ? (
+              <div style={{
+                width: '48px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <div style={{
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid #e2e8f0',
+                  borderTop: '2px solid #3b82f6',
+                  borderRadius: '50%',
+                  animation: 'spin 0.6s linear infinite'
+                }} />
+              </div>
+            ) : (
+              <label style={{
+                position: 'relative',
+                display: 'inline-block',
+                width: '48px',
+                height: '24px',
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={isFunnelActive}
+                  onChange={async (e) => {
+                    const newStatus = e.target.checked;
+                    setIsStatusLoading(true);
+                    setIsFunnelActive(newStatus);
+                    try {
+                      const coachID = getCoachId(authState);
+                      const token = getToken(authState);
+                      
+                      if (!coachID || !token) {
+                        throw new Error('Authentication required. Please log in again.');
+                      }
+                      
+                      // First fetch the full funnel data
+                      const fetchRes = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachID}/funnels/${slug}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                      });
+                      
+                      if (!fetchRes.ok) {
+                        if (fetchRes.status === 401) {
+                          throw new Error('Authentication failed. Please log in again.');
+                        } else if (fetchRes.status === 404) {
+                          throw new Error('Funnel not found.');
+                        } else {
+                          throw new Error(`Failed to fetch funnel details (${fetchRes.status})`);
+                        }
+                      }
+                      
+                      const { data: fullFunnel } = await fetchRes.json();
+                      
+                      // Prepare payload with full funnel data
+                      const payload = { 
+                        ...fullFunnel, 
+                        isActive: newStatus,
+                        isPublished: newStatus
+                      };
+                      
+                      // Update using PUT with full payload
+                      const updateRes = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachID}/funnels/${slug}`, {
+                        method: 'PUT',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(payload)
+                      });
+                      
+                      if (!updateRes.ok) {
+                        if (updateRes.status === 401) {
+                          throw new Error('Authentication failed. Please log in again.');
+                        } else if (updateRes.status === 403) {
+                          throw new Error('You do not have permission to update this funnel.');
+                        } else {
+                          throw new Error(`Failed to update funnel status (${updateRes.status})`);
+                        }
+                      }
+                      
+                      // Success - update Redux state
+                      dispatch(setFunnelData({ isActive: newStatus, isPublished: newStatus }));
+                      
+                    } catch (err) {
+                      setIsFunnelActive(!newStatus); // Revert on error
+                      console.error('Error updating funnel status:', err);
+                      alert(err.message || 'Failed to update funnel status');
+                    } finally {
+                      setIsStatusLoading(false);
+                    }
+                  }}
+                  style={{
+                    opacity: 0,
+                    width: 0,
+                    height: 0
+                  }}
+                />
+                <span style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: isFunnelActive ? '#10b981' : '#d1d5db',
+                  borderRadius: '24px',
+                  transition: 'all 0.3s',
+                  cursor: 'pointer'
+                }}>
+                  <span style={{
+                    position: 'absolute',
+                    top: '2px',
+                    left: isFunnelActive ? '26px' : '2px',
+                    width: '20px',
+                    height: '20px',
+                    backgroundColor: 'white',
+                    borderRadius: '50%',
+                    transition: 'all 0.3s',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                  }} />
+                </span>
+              </label>
+            )}
+          </div>
           {funnelUrl && (
             <div style={{ 
               display: 'flex', 

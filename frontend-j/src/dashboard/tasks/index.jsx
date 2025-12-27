@@ -81,7 +81,7 @@ import {
 // Using a simpler approach without drag-and-drop library for now
 // Can be enhanced with @hello-pangea/dnd later if needed
 
-const API_BASE_URL = 'https://api.funnelseye.com';
+import { API_BASE_URL } from '../../config/apiConfig';
 
 const TasksAndActivities = () => {
   const navigate = useNavigate();

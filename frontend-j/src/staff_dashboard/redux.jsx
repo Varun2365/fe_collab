@@ -2,7 +2,7 @@ import { configureStore, createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import axios from 'axios';
 import { staffAPI } from '../services/staffAPI';
 
-const BASE_URL = 'https://api.funnelseye.com';
+import { API_BASE_URL as BASE_URL } from '../config/apiConfig';
 
 // Utility function to clean up invalid localStorage entries
 export const cleanupInvalidStorage = () => {

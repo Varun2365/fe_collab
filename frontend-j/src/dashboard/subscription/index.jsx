@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../config/apiConfig';
 import {
   Box,
   VStack,
@@ -209,9 +210,9 @@ const SubscriptionManagement = () => {
       // Redirect to subscription plans page for payment
       const token = localStorage.getItem('token');
       if (token) {
-        window.location.href = `https://api.funnelseye.com/subscription-plans?token=${encodeURIComponent(token)}`;
+        window.location.href = `${API_BASE_URL}/subscription-plans?token=${encodeURIComponent(token)}`;
       } else {
-        window.location.href = 'https://api.funnelseye.com/subscription-plans';
+        window.location.href = `${API_BASE_URL}/subscription-plans`;
       }
       
     } catch (err) {
@@ -262,9 +263,9 @@ const SubscriptionManagement = () => {
       // Redirect to subscription plans page for payment
       const token = localStorage.getItem('token');
       if (token) {
-        window.location.href = `https://api.funnelseye.com/subscription-plans?token=${encodeURIComponent(token)}`;
+        window.location.href = `${API_BASE_URL}/subscription-plans?token=${encodeURIComponent(token)}`;
       } else {
-        window.location.href = 'https://api.funnelseye.com/subscription-plans';
+        window.location.href = `${API_BASE_URL}/subscription-plans`;
       }
       
     } catch (err) {
@@ -786,9 +787,9 @@ const SubscriptionManagement = () => {
                             onClick={() => {
                               const token = localStorage.getItem('token');
                               if (token) {
-                                window.location.href = `https://api.funnelseye.com/subscription-plans?token=${encodeURIComponent(token)}`;
+                                window.location.href = `${API_BASE_URL}/subscription-plans?token=${encodeURIComponent(token)}`;
                               } else {
-                                window.location.href = 'https://api.funnelseye.com/subscription-plans';
+                                window.location.href = `${API_BASE_URL}/subscription-plans`;
                               }
                             }}
                           >

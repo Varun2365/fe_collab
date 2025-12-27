@@ -168,12 +168,14 @@ const GlobalPaymentSettingsSchema = new mongoose.Schema({
         keyId: {
             type: String,
             trim: true,
-            required: true
+            required: false, // Made optional - can be added later via admin panel
+            default: null
         },
         keySecret: {
             type: String,
             trim: true,
-            required: true
+            required: false, // Made optional - can be added later via admin panel
+            default: null
         },
         accountNumber: {
             type: String,
@@ -182,7 +184,7 @@ const GlobalPaymentSettingsSchema = new mongoose.Schema({
         },
         isActive: {
             type: Boolean,
-            default: true
+            default: false // Default to false until credentials are added
         },
         webhookSecret: {
             type: String,

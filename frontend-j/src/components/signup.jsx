@@ -69,8 +69,10 @@ import {
 } from 'react-icons/fa';
 import { MdAdminPanelSettings } from 'react-icons/md';
 
-const BASE_API_URL = 'https://api.funnelseye.com';
-const SUBSCRIPTION_PORTAL_URL = `${BASE_API_URL}/subscription-plans`;
+import { API_BASE_URL as BASE_API_URL } from '../config/apiConfig';
+
+// Function to get subscription portal URL dynamically based on environment
+const getSubscriptionPortalURL = () => `${BASE_API_URL}/subscription-plans`;
 
 const CustomOtpInput = ({ length = 6, onOtpSubmit }) => {
     const [otp, setOtp] = useState('');
@@ -577,7 +579,7 @@ const Signup = () => {
             return;
         }
         const redirectTimer = setTimeout(() => {
-            window.location.href = SUBSCRIPTION_PORTAL_URL;
+            window.location.href = getSubscriptionPortalURL();
         }, 1000);
         return () => clearTimeout(redirectTimer);
     }, [location.search, location.state]);
@@ -618,7 +620,7 @@ const Signup = () => {
                                     color="white"
                                     rightIcon={<Icon as={FaArrowRight} />}
                                     _hover={{ bg: "gray.800" }}
-                                    onClick={() => (window.location.href = SUBSCRIPTION_PORTAL_URL)}
+                                    onClick={() => (window.location.href = getSubscriptionPortalURL())}
                                 >
                                     Go to Subscription Plans
                                 </Button>

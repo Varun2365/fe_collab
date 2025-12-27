@@ -106,7 +106,7 @@ import {
   FiCreditCard,
 } from 'react-icons/fi';
 
-const BASE_URL = 'https://api.funnelseye.com';
+import { API_BASE_URL as BASE_URL } from '../../config/apiConfig';
 
 // Mock Data Service for when APIs are not available
 const MockDataService = {

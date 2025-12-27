@@ -126,7 +126,7 @@ import { useSelector } from 'react-redux';
 import { getCoachId, getToken, isAuthenticated, debugAuthState } from '../../utils/authUtils';
 
 // --- API CONFIGURATION ---
-const API_BASE_URL = 'https://api.funnelseye.com/api';
+import { API_BASE_URL } from '../../config/apiConfig';
 
 // --- BEAUTIFUL SKELETON COMPONENTS ---
 // Professional Loading Skeleton Component with Smooth Animations

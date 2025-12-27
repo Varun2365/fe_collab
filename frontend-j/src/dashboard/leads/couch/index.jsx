@@ -25,7 +25,8 @@ import {
 import { 
   FiFileText, FiUser, FiMail, FiPhone, FiCalendar, FiFilter, FiUpload,
   FiEye, FiEdit, FiTrash2, FiCopy, FiUsers, FiMoreVertical, 
-  FiPlay, FiPause, FiBarChart2, FiTrendingUp, FiTarget, FiGlobe, FiWifi
+  FiPlay, FiPause, FiBarChart2, FiTrendingUp, FiTarget, FiGlobe, FiWifi,
+  FiChevronLeft, FiChevronRight
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
@@ -33,9 +34,9 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import { getCoachId, getToken, isAuthenticated, debugAuthState } from '../../../utils/authUtils';
+import { API_BASE_URL } from '../../../config/apiConfig';
 
 // --- API CONFIGURATION ---
-const API_BASE_URL = 'https://api.funnelseye.com/api';
 const ALL_LEADS_FUNNEL = { id: 'all', name: 'All Coach Leads', stages: [] };
 
 // --- UTILITY FUNCTIONS ---
@@ -375,105 +376,96 @@ const StatsCard = ({ title, value, icon, color = "blue", trend, isLoading = fals
   );
 };
 
-// --- LEAD SCORE CALCULATION FUNCTION ---
-const calculateLeadScore = (lead) => {
-  let score = 0;
-  
-  // Base score for having contact info
-  if (lead.email) score += 10;
-  if (lead.phone) score += 10;
-  
-  // Location completeness
-  if (lead.city) score += 5;
-  if (lead.country) score += 5;
-  
-  // Temperature scoring
-  switch (lead.leadTemperature?.toLowerCase()) {
-    case 'hot': score += 30; break;
-    case 'warm': score += 20; break;
-    case 'cold': score += 10; break;
-    default: score += 5;
+// --- LEAD SCORE GETTER FUNCTION ---
+// Use backend-calculated score (lead.score) which follows backend scoring rules
+// Backend calculates score based on: temperature, source, contact info, VSL watch %, 
+// lead magnet interactions, progress tracking, follow-ups, etc.
+const getLeadScore = (lead) => {
+  // Always use the backend-calculated score if available
+  // The backend calculates score according to its rules when lead is created/updated
+  if (lead.score !== undefined && lead.score !== null) {
+    return Math.min(Math.max(lead.score, 0), 100); // Ensure score is between 0-100
   }
-  
-  // Source scoring
-  switch (lead.source?.toLowerCase()) {
-    case 'referral': score += 25; break;
-    case 'event': score += 20; break;
-    case 'social media': score += 15; break;
-    case 'web form': score += 10; break;
-    case 'email campaign': score += 10; break;
-    case 'cold call': score += 5; break;
-    default: score += 5;
-  }
-  
-  // Follow-up activity
-  if (lead.followUpHistory && lead.followUpHistory.length > 0) {
-    score += Math.min(lead.followUpHistory.length * 5, 25);
-  }
-  
-  // Assignment status
-  if (lead.assignedTo) score += 10;
-  
-  // Recent activity bonus
-  if (lead.lastFollowUpAt) {
-    const lastFollowUp = new Date(lead.lastFollowUpAt);
-    const daysSince = (new Date() - lastFollowUp) / (1000 * 60 * 60 * 24);
-    if (daysSince <= 7) score += 15;
-    else if (daysSince <= 30) score += 10;
-  }
-  
-  // Cap at 100
-  return Math.min(score, 100);
+  // Fallback to 0 if score is not available (shouldn't happen in normal flow)
+  return 0;
 };
 
-// --- BEAUTIFUL LEAD SCORE BADGE ---
+// --- MINIMAL LEAD SCORE BADGE ---
 const LeadScoreBadge = ({ score }) => {
-  const getScoreProps = (score) => {
-    if (score >= 80) return { colorScheme: 'green', icon: '🏆', label: 'Excellent' };
-    if (score >= 60) return { colorScheme: 'blue', icon: '⭐', label: 'Good' };
-    if (score >= 40) return { colorScheme: 'orange', icon: '📈', label: 'Fair' };
-    if (score >= 20) return { colorScheme: 'yellow', icon: '📊', label: 'Poor' };
-    return { colorScheme: 'red', icon: '⚠️', label: 'Critical' };
+  const getScoreColor = (score) => {
+    if (score >= 80) return 'green.500';
+    if (score >= 60) return 'blue.500';
+    if (score >= 40) return 'orange.500';
+    if (score >= 20) return 'yellow.500';
+    return 'red.500';
   };
 
-  const { colorScheme, icon, label } = getScoreProps(score);
+  const color = getScoreColor(score);
   
   return (
-    <Badge colorScheme={colorScheme} variant="subtle" px={2} py={1} borderRadius="md">
-      <HStack spacing={1}>
-        <Text fontSize="xs">{icon}</Text>
-        <Text fontSize="xs" fontWeight="bold">{score}</Text>
-        <Text fontSize="xs" fontWeight="medium">{label}</Text>
+    <HStack spacing={1.5}>
+      <Box w="8px" h="8px" borderRadius="full" bg={color} />
+      <Text fontSize="xs" fontWeight="600" color="gray.700">{score}</Text>
       </HStack>
-    </Badge>
   );
 };
 
-// --- BEAUTIFUL LEAD TEMPERATURE BADGE ---
-const LeadTemperatureBadge = ({ temperature }) => {
-  const getTemperatureProps = (temp) => {
+// --- MINIMAL LEAD TEMPERATURE BADGE ---
+// Calculate temperature based on score according to backend rules:
+// Hot: score >= 80
+// Warm: score >= 50
+// Cold: score < 50
+const getLeadTemperature = (score) => {
+  if (score >= 80) return 'Hot';
+  if (score >= 50) return 'Warm';
+  return 'Cold';
+};
+
+const LeadTemperatureBadge = ({ lead, temperature }) => {
+  // Calculate temperature from score if lead object is provided
+  // Otherwise use the provided temperature (for backward compatibility)
+  let calculatedTemperature;
+  if (lead) {
+    const score = getLeadScore(lead);
+    calculatedTemperature = getLeadTemperature(score);
+  } else {
+    calculatedTemperature = temperature;
+  }
+
+  const getTemperatureColor = (temp) => {
     switch (temp?.toLowerCase()) {
       case 'hot':
-        return { colorScheme: 'red', icon: '🔥' };
+        return { color: 'red.500', bg: 'red.50' };
       case 'warm':
-        return { colorScheme: 'orange', icon: '🌡️' };
+        return { color: 'orange.500', bg: 'orange.50' };
       case 'cold':
-        return { colorScheme: 'blue', icon: '❄️' };
+        return { color: 'blue.500', bg: 'blue.50' };
       default:
-        return { colorScheme: 'gray', icon: '📊' };
+        return { color: 'gray.500', bg: 'gray.50' };
     }
   };
 
-  const { colorScheme, icon } = getTemperatureProps(temperature);
+  const { color, bg } = getTemperatureColor(calculatedTemperature);
   
   return (
-    <Badge colorScheme={colorScheme} variant="subtle" px={2} py={1} borderRadius="md">
-      <HStack spacing={1}>
-        <Text fontSize="xs">{icon}</Text>
-        <Text fontSize="xs" fontWeight="medium">{temperature}</Text>
-      </HStack>
+    <Badge 
+      bg={bg} 
+      color={color} 
+      px={2} 
+      py={0.5} 
+      borderRadius="6px" 
+      fontSize="xs" 
+      fontWeight="500"
+      textTransform="capitalize"
+    >
+      {calculatedTemperature || 'N/A'}
     </Badge>
   );
+};
+
+// Legacy function for backward compatibility
+const calculateLeadScore = (lead) => {
+  return getLeadScore(lead);
 };
 
 // --- STATUS BADGE COMPONENT ---
@@ -1040,57 +1032,223 @@ const CreateLeadModal = ({ isOpen, onClose, onSave, leadToEdit, funnels, staff }
     }
   };
 
+  const handleClose = () => {
+    // Reset form data when modal closes
+    const resetData = { 
+      name: '', email: '', phone: '', city: '', country: '', status: '', 
+      funnelId: '', notes: '', source: 'Web Form', leadTemperature: 'Warm', 
+      nextFollowUpAt: '', targetAudience: 'coach', assignedTo: ''
+    };
+    setFormData(resetData);
+    setSelectedFunnel(null);
+    onClose();
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="2xl">
-      <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
-      <ModalContent maxH="90vh" overflowY="auto" borderRadius="2xl">
-        <ModalHeader>
-          <HStack>
-            <Text>{isEditMode ? 'Edit Coach Lead' : 'Create New Coach Lead'}</Text>
-            <Badge colorScheme="blue" variant="subtle">Coach</Badge>
-          </HStack>
+    <Modal isOpen={isOpen} onClose={handleClose} size="4xl" isCentered>
+      <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(8px)" />
+      <ModalContent 
+        maxH="90vh" 
+        display="flex"
+        flexDirection="column"
+        borderRadius="16px"
+        boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+        border="1px solid"
+        borderColor="gray.200"
+        overflow="hidden"
+      >
+        {/* Minimal Header - Sticky */}
+        <ModalHeader 
+          pb={4} 
+          pt={6} 
+          px={8}
+          borderBottom="1px solid"
+          borderColor="gray.100"
+          bg="white"
+          position="sticky"
+          top={0}
+          zIndex={10}
+          flexShrink={0}
+        >
+          <Flex justify="space-between" align="center">
+            <VStack align="start" spacing={0}>
+              <Text fontSize="xl" fontWeight="600" color="gray.900" letterSpacing="-0.5px">
+                {isEditMode ? 'Edit Lead' : 'New Lead'}
+              </Text>
+              <Text fontSize="xs" color="gray.500" fontWeight="400">
+                {isEditMode ? 'Update coach lead information' : 'Create a new coach lead'}
+              </Text>
+            </VStack>
+            <ModalCloseButton 
+              position="relative"
+              top={0}
+              right={0}
+              size="sm"
+              borderRadius="8px"
+              _hover={{ bg: 'gray.100' }}
+            />
+          </Flex>
         </ModalHeader>
-        <ModalCloseButton />
         
-        <ModalBody>
+        <ModalBody 
+          px={8} 
+          py={6}
+          flex="1"
+          overflowY="auto"
+          css={{
+            '&::-webkit-scrollbar': {
+              width: '6px',
+            },
+            '&::-webkit-scrollbar-track': {
+              background: 'transparent',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: '#CBD5E0',
+              borderRadius: '10px',
+              transition: 'background 0.2s ease',
+            },
+            '&::-webkit-scrollbar-thumb:hover': {
+              background: '#A0AEC0',
+            },
+            // Elegant Select Dropdown Styling
+            '& select': {
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 12px center',
+              backgroundSize: '16px',
+              paddingRight: '40px',
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              MozAppearance: 'none',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            },
+            '& select:hover': {
+              transform: 'translateY(-1px)',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+            },
+            '& select:focus': {
+              transform: 'translateY(0)',
+            },
+            '& select option': {
+              padding: '10px 12px',
+              fontSize: '14px',
+              backgroundColor: 'white',
+              color: '#1F2937',
+            },
+            '& select option:hover': {
+              backgroundColor: '#F3F4F6',
+            },
+            '& select option:checked': {
+              backgroundColor: '#EBF4FF',
+              color: '#2563EB',
+              fontWeight: '500',
+            },
+          }}
+        >
           <VStack spacing={6} align="stretch">
             {/* Contact Information */}
             <Box>
-              <Text fontSize="lg" fontWeight="semibold" mb={4} color="gray.700">
+              <Text fontSize="sm" fontWeight="600" mb={3} color="gray.700" textTransform="uppercase" letterSpacing="0.5px">
                 Contact Information
               </Text>
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                 <FormControl isRequired>
-                  <FormLabel>Name</FormLabel>
+                  <FormLabel fontSize="sm" fontWeight="500" color="gray.700" mb={1.5}>
+                    Full Name
+                  </FormLabel>
                   <Input
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    placeholder="Enter full name"
+                    placeholder="John Doe"
+                    borderRadius="8px"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    bg="white"
+                    _focus={{ 
+                      borderColor: 'blue.400', 
+                      boxShadow: '0 0 0 1px rgba(66, 153, 225, 0.1)' 
+                    }}
+                    _hover={{ borderColor: 'gray.300' }}
+                    fontSize="sm"
+                    h="40px"
                   />
                 </FormControl>
                 <FormControl isRequired>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel fontSize="sm" fontWeight="500" color="gray.700" mb={1.5}>
+                    Email Address
+                  </FormLabel>
                   <Input
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    placeholder="Enter email address"
+                    placeholder="john@example.com"
+                    borderRadius="8px"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    bg="white"
+                    _focus={{ 
+                      borderColor: 'blue.400', 
+                      boxShadow: '0 0 0 1px rgba(66, 153, 225, 0.1)' 
+                    }}
+                    _hover={{ borderColor: 'gray.300' }}
+                    fontSize="sm"
+                    h="40px"
                   />
                 </FormControl>
                 <FormControl isRequired>
-                  <FormLabel>Phone</FormLabel>
+                  <FormLabel fontSize="sm" fontWeight="500" color="gray.700" mb={1.5}>
+                    Phone Number
+                  </FormLabel>
                   <Input
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
-                    placeholder="Enter phone number"
+                    placeholder="+1 234 567 8900"
+                    borderRadius="8px"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    bg="white"
+                    _focus={{ 
+                      borderColor: 'blue.400', 
+                      boxShadow: '0 0 0 1px rgba(66, 153, 225, 0.1)' 
+                    }}
+                    _hover={{ borderColor: 'gray.300' }}
+                    fontSize="sm"
+                    h="40px"
                   />
                 </FormControl>
                 <FormControl>
-                  <FormLabel>Source</FormLabel>
+                  <FormLabel fontSize="sm" fontWeight="500" color="gray.700" mb={1.5}>
+                    Source
+                  </FormLabel>
+                  <Box position="relative">
                   <Select
                     value={formData.source}
                     onChange={(e) => handleInputChange('source', e.target.value)}
+                      borderRadius="8px"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      bg="white"
+                      _focus={{ 
+                        borderColor: 'blue.400', 
+                        boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
+                        bg: 'blue.50'
+                      }}
+                      _hover={{ 
+                        borderColor: 'blue.300',
+                        bg: 'gray.50'
+                      }}
+                      _active={{
+                        borderColor: 'blue.400',
+                        bg: 'white'
+                      }}
+                      fontSize="sm"
+                      h="40px"
+                      fontWeight="500"
+                      color="gray.700"
+                      transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                      cursor="pointer"
+                      boxShadow="0 1px 2px 0 rgba(0, 0, 0, 0.05)"
                   >
                     <option value="Web Form">Web Form</option>
                     <option value="Referral">Referral</option>
@@ -1100,51 +1258,101 @@ const CreateLeadModal = ({ isOpen, onClose, onSave, leadToEdit, funnels, staff }
                     <option value="Email Campaign">Email Campaign</option>
                     <option value="Other">Other</option>
                   </Select>
+                  </Box>
                 </FormControl>
               </SimpleGrid>
             </Box>
 
-            <Divider />
-
             {/* Location */}
             <Box>
-              <Text fontSize="lg" fontWeight="semibold" mb={4} color="gray.700">
+              <Text fontSize="sm" fontWeight="600" mb={3} color="gray.700" textTransform="uppercase" letterSpacing="0.5px">
                 Location
               </Text>
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                 <FormControl>
-                  <FormLabel>City</FormLabel>
+                  <FormLabel fontSize="sm" fontWeight="500" color="gray.700" mb={1.5}>
+                    City
+                  </FormLabel>
                   <Input
                     value={formData.city}
                     onChange={(e) => handleInputChange('city', e.target.value)}
-                    placeholder="Enter city"
+                    placeholder="New York"
+                    borderRadius="8px"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    bg="white"
+                    _focus={{ 
+                      borderColor: 'blue.400', 
+                      boxShadow: '0 0 0 1px rgba(66, 153, 225, 0.1)' 
+                    }}
+                    _hover={{ borderColor: 'gray.300' }}
+                    fontSize="sm"
+                    h="40px"
                   />
                 </FormControl>
                 <FormControl>
-                  <FormLabel>Country</FormLabel>
+                  <FormLabel fontSize="sm" fontWeight="500" color="gray.700" mb={1.5}>
+                    Country
+                  </FormLabel>
                   <Input
                     value={formData.country}
                     onChange={(e) => handleInputChange('country', e.target.value)}
-                    placeholder="Enter country"
+                    placeholder="United States"
+                    borderRadius="8px"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    bg="white"
+                    _focus={{ 
+                      borderColor: 'blue.400', 
+                      boxShadow: '0 0 0 1px rgba(66, 153, 225, 0.1)' 
+                    }}
+                    _hover={{ borderColor: 'gray.300' }}
+                    fontSize="sm"
+                    h="40px"
                   />
                 </FormControl>
               </SimpleGrid>
             </Box>
 
-            <Divider />
-
             {/* Sales Information */}
             <Box>
-              <Text fontSize="lg" fontWeight="semibold" mb={4} color="gray.700">
+              <Text fontSize="sm" fontWeight="600" mb={3} color="gray.700" textTransform="uppercase" letterSpacing="0.5px">
                 Sales Information
               </Text>
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                 <FormControl isRequired>
-                  <FormLabel>Coach Funnel</FormLabel>
+                  <FormLabel fontSize="sm" fontWeight="500" color="gray.700" mb={1.5}>
+                    Coach Funnel
+                  </FormLabel>
+                  <Box position="relative">
                   <Select
                     value={formData.funnelId}
                     onChange={(e) => handleFunnelChange(e.target.value)}
-                    placeholder="Select Coach Funnel"
+                      placeholder="Select a funnel"
+                      borderRadius="8px"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      bg="white"
+                      _focus={{ 
+                        borderColor: 'blue.400', 
+                        boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
+                        bg: 'blue.50'
+                      }}
+                      _hover={{ 
+                        borderColor: 'blue.300',
+                        bg: 'gray.50'
+                      }}
+                      _active={{
+                        borderColor: 'blue.400',
+                        bg: 'white'
+                      }}
+                      fontSize="sm"
+                      h="40px"
+                      fontWeight="500"
+                      color="gray.700"
+                      transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                      cursor="pointer"
+                      boxShadow="0 1px 2px 0 rgba(0, 0, 0, 0.05)"
                   >
                     {coachFunnels.map(funnel => (
                       <option key={funnel.id} value={funnel.id}>
@@ -1152,14 +1360,47 @@ const CreateLeadModal = ({ isOpen, onClose, onSave, leadToEdit, funnels, staff }
                       </option>
                     ))}
                   </Select>
+                  </Box>
                 </FormControl>
                 <FormControl isRequired>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel fontSize="sm" fontWeight="500" color="gray.700" mb={1.5}>
+                    Status
+                  </FormLabel>
+                  <Box position="relative">
                   <Select
                     value={formData.status}
                     onChange={(e) => handleInputChange('status', e.target.value)}
                     disabled={!formData.funnelId}
-                    placeholder="Select Status"
+                      placeholder="Select status"
+                      borderRadius="8px"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      bg="white"
+                      _focus={{ 
+                        borderColor: 'blue.400', 
+                        boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
+                        bg: 'blue.50'
+                      }}
+                      _hover={{ 
+                        borderColor: 'blue.300',
+                        bg: 'gray.50'
+                      }}
+                      _active={{
+                        borderColor: 'blue.400',
+                        bg: 'white'
+                      }}
+                      _disabled={{
+                        opacity: 0.6,
+                        cursor: 'not-allowed',
+                        bg: 'gray.50'
+                      }}
+                      fontSize="sm"
+                      h="40px"
+                      fontWeight="500"
+                      color="gray.700"
+                      transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                      cursor="pointer"
+                      boxShadow="0 1px 2px 0 rgba(0, 0, 0, 0.05)"
                   >
                     {selectedFunnel?.stages.map(stage => (
                       <option key={stage.name} value={stage.name}>
@@ -1167,32 +1408,101 @@ const CreateLeadModal = ({ isOpen, onClose, onSave, leadToEdit, funnels, staff }
                       </option>
                     ))}
                   </Select>
+                  </Box>
                 </FormControl>
                 <FormControl>
-                  <FormLabel>Lead Temperature</FormLabel>
+                  <FormLabel fontSize="sm" fontWeight="500" color="gray.700" mb={1.5}>
+                    Lead Temperature
+                  </FormLabel>
+                  <Box position="relative">
                   <Select
                     value={formData.leadTemperature}
                     onChange={(e) => handleInputChange('leadTemperature', e.target.value)}
-                  >
-                    <option value="Hot">🔥 Hot</option>
-                    <option value="Warm">🌡️ Warm</option>
-                    <option value="Cold">❄️ Cold</option>
+                      borderRadius="8px"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      bg="white"
+                      _focus={{ 
+                        borderColor: 'blue.400', 
+                        boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
+                        bg: 'blue.50'
+                      }}
+                      _hover={{ 
+                        borderColor: 'blue.300',
+                        bg: 'gray.50'
+                      }}
+                      _active={{
+                        borderColor: 'blue.400',
+                        bg: 'white'
+                      }}
+                      fontSize="sm"
+                      h="40px"
+                      fontWeight="500"
+                      color="gray.700"
+                      transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                      cursor="pointer"
+                      boxShadow="0 1px 2px 0 rgba(0, 0, 0, 0.05)"
+                    >
+                    <option value="Hot">Hot</option>
+                    <option value="Warm">Warm</option>
+                      <option value="Cold">Cold</option>
                   </Select>
+                  </Box>
                 </FormControl>
                 <FormControl>
-                  <FormLabel>Next Follow-up</FormLabel>
+                  <FormLabel fontSize="sm" fontWeight="500" color="gray.700" mb={1.5}>
+                    Next Follow-up
+                  </FormLabel>
                   <Input
                     type="datetime-local"
                     value={formData.nextFollowUpAt}
                     onChange={(e) => handleInputChange('nextFollowUpAt', e.target.value)}
+                    borderRadius="8px"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    bg="white"
+                    _focus={{ 
+                      borderColor: 'blue.400', 
+                      boxShadow: '0 0 0 1px rgba(66, 153, 225, 0.1)' 
+                    }}
+                    _hover={{ borderColor: 'gray.300' }}
+                    fontSize="sm"
+                    h="40px"
                   />
                 </FormControl>
                 <FormControl>
-                  <FormLabel>Assign to Staff</FormLabel>
+                  <FormLabel fontSize="sm" fontWeight="500" color="gray.700" mb={1.5}>
+                    Assign to Staff
+                  </FormLabel>
+                  <Box position="relative">
                   <Select
                     value={formData.assignedTo}
                     onChange={(e) => handleInputChange('assignedTo', e.target.value)}
                     placeholder="Select staff member"
+                      borderRadius="8px"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      bg="white"
+                      _focus={{ 
+                        borderColor: 'blue.400', 
+                        boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
+                        bg: 'blue.50'
+                      }}
+                      _hover={{ 
+                        borderColor: 'blue.300',
+                        bg: 'gray.50'
+                      }}
+                      _active={{
+                        borderColor: 'blue.400',
+                        bg: 'white'
+                      }}
+                      fontSize="sm"
+                      h="40px"
+                      fontWeight="500"
+                      color="gray.700"
+                      transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                      cursor="pointer"
+                      boxShadow="0 1px 2px 0 rgba(0, 0, 0, 0.05)"
                   >
                     <option value="">Unassigned</option>
                     {staff && staff.length > 0 ? (
@@ -1213,15 +1523,14 @@ const CreateLeadModal = ({ isOpen, onClose, onSave, leadToEdit, funnels, staff }
                       <option value="" disabled>No staff members available</option>
                     )}
                   </Select>
+                  </Box>
                 </FormControl>
               </SimpleGrid>
             </Box>
 
-            <Divider />
-
             {/* Additional Notes */}
             <Box>
-              <Text fontSize="lg" fontWeight="semibold" mb={4} color="gray.700">
+              <Text fontSize="sm" fontWeight="600" mb={3} color="gray.700" textTransform="uppercase" letterSpacing="0.5px">
                 Additional Notes
               </Text>
               <FormControl>
@@ -1231,14 +1540,38 @@ const CreateLeadModal = ({ isOpen, onClose, onSave, leadToEdit, funnels, staff }
                   rows={4}
                   placeholder="Add any additional notes about this coach lead..."
                   resize="vertical"
+                  borderRadius="8px"
+                  border="1px solid"
+                  borderColor="gray.200"
+                  bg="white"
+                  _focus={{ 
+                    borderColor: 'blue.400', 
+                    boxShadow: '0 0 0 1px rgba(66, 153, 225, 0.1)' 
+                  }}
+                  _hover={{ borderColor: 'gray.300' }}
+                  fontSize="sm"
                 />
               </FormControl>
             </Box>
           </VStack>
         </ModalBody>
         
-        <ModalFooter>
-          <Button variant="ghost" mr={3} onClick={onClose} disabled={isLoading}>
+        <ModalFooter 
+          px={8} 
+          py={4}
+          borderTop="1px solid"
+          borderColor="gray.100"
+          bg="white"
+          flexShrink={0}
+        >
+          <Button 
+            variant="ghost" 
+            mr={3} 
+            onClick={handleClose} 
+            disabled={isLoading}
+            borderRadius="8px"
+            fontWeight="500"
+          >
             Cancel
           </Button>
           <Button
@@ -1250,8 +1583,10 @@ const CreateLeadModal = ({ isOpen, onClose, onSave, leadToEdit, funnels, staff }
             leftIcon={<AddIcon />}
             _hover={{ bg: 'blue.600' }}
             _active={{ bg: 'blue.700' }}
+            borderRadius="8px"
+            fontWeight="600"
           >
-            {isEditMode ? 'Update Coach Lead' : 'Create Coach Lead'}
+            {isEditMode ? 'Update Lead' : 'Create Lead'}
           </Button>
         </ModalFooter>
       </ModalContent>
@@ -1291,8 +1626,8 @@ const LeadDetailsModal = ({
                 <Badge colorScheme="blue" variant="subtle">Coach Lead</Badge>
               </HStack>
               <HStack spacing={3}>
-                <LeadScoreBadge score={calculateLeadScore(lead)} />
-                <LeadTemperatureBadge temperature={lead.leadTemperature} />
+                <LeadScoreBadge score={getLeadScore(lead)} />
+                <LeadTemperatureBadge lead={lead} />
                 <Badge colorScheme="green" variant="outline">
                   {getStatusLabel(lead.status, getFunnelId(lead))}
                 </Badge>
@@ -1723,6 +2058,7 @@ const LeadsTableView = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
+  const toast = useToast();
 
   const requestSort = (key) => {
     let direction = 'ascending';
@@ -1747,7 +2083,7 @@ const LeadsTableView = ({
           case 'country': valA = a.country || ''; valB = b.country || ''; break;
           case 'status': valA = getStatusLabel(a.status, getFunnelId(a)) || ''; valB = getStatusLabel(b.status, getFunnelId(b)) || ''; break;
           case 'funnel': valA = getFunnelName(a.funnelId) || ''; valB = getFunnelName(b.funnelId) || ''; break;
-          case 'score': valA = calculateLeadScore(a); valB = calculateLeadScore(b); break;
+          case 'score': valA = getLeadScore(a); valB = getLeadScore(b); break;
           case 'temperature': valA = a.leadTemperature || ''; valB = b.leadTemperature || ''; break;
           case 'next_follow-up': valA = a.nextFollowUpAt ? new Date(a.nextFollowUpAt).getTime() : 0; valB = b.nextFollowUpAt ? new Date(b.nextFollowUpAt).getTime() : 0; break;
           case 'created': valA = a.createdAt ? new Date(a.createdAt).getTime() : 0; valB = b.createdAt ? new Date(b.createdAt).getTime() : 0; break;
@@ -1781,34 +2117,51 @@ const LeadsTableView = ({
     dateString ? new Date(dateString).toLocaleDateString() : '';
 
   return (
-    <Card bg="white" borderRadius="xl" boxShadow="lg" border="1px" borderColor="gray.200">
-      <CardHeader py={6}>
-        <VStack spacing={3} align="stretch">
-          <HStack justify="space-between">
-            <InputGroup maxW="400px">
-              <InputLeftElement>
-                <SearchIcon color="gray.400" />
+    <Card bg="white" borderRadius="xl" boxShadow="lg" border="1px" borderColor="gray.200" overflow="visible">
+      <CardHeader py={4} px={6}>
+        <Flex justify="space-between" align="center" direction={{ base: 'column', md: 'row' }} gap={4}>
+          <InputGroup maxW={{ base: 'full', md: '400px' }}>
+            <InputLeftElement pointerEvents="none">
+              <SearchIcon color="gray.400" boxSize={4} />
               </InputLeftElement>
               <Input
-                placeholder="Search coach leads..."
+                placeholder="Search leads..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                bg="white"
-                borderRadius="lg"
-                border="2px"
+                bg="gray.50"
+                borderRadius="7px"
+                border="1px"
                 borderColor="gray.200"
-                _focus={{ borderColor: 'gray.500', boxShadow: '0 0 0 1px #9ca3af' }}
-                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ 
+                  borderColor: 'blue.400', 
+                  bg: 'white',
+                  boxShadow: '0 0 0 1px rgba(66, 153, 225, 0.1)' 
+                }}
+                _hover={{ borderColor: 'gray.300', bg: 'white' }}
+                fontSize="sm"
+                pl={10}
               />
             </InputGroup>
-            <ButtonGroup size="sm" variant="outline">
-              {canExport && (
-                <Button leftIcon={<DownloadIcon />} onClick={onExport}>
+          <HStack spacing={2}>
+            <Button 
+              size="sm"
+              variant="ghost"
+              leftIcon={<DownloadIcon />} 
+              onClick={onExport}
+              borderRadius="7px"
+              _hover={{ bg: 'gray.100' }}
+            >
                   Export
                 </Button>
-              )}
-              {/* Import remains visible for now; hide if needed by permission later */}
-              <Button as="label" leftIcon={<Box as={FiUpload} />}>
+            <Button 
+              size="sm"
+              variant="ghost"
+              as="label" 
+              leftIcon={<Box as={FiUpload} />}
+              borderRadius="7px"
+              _hover={{ bg: 'gray.100' }}
+              cursor="pointer"
+            >
                 Import
                 <input
                   type="file"
@@ -1817,49 +2170,36 @@ const LeadsTableView = ({
                   style={{ display: 'none' }}
                 />
               </Button>
-            </ButtonGroup>
           </HStack>
-          <HStack justify="space-between" align="center">
-            <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600">
-              {showCompleteData ? 
-                'Showing all coach lead information' : 
-                'Showing essential information: Name, Email, Phone, Status, Temperature, Next Follow-up, Contact & Actions'
-              }
-            </Text>
-            <Badge colorScheme={showCompleteData ? 'green' : 'orange'} variant="subtle">
-              {showCompleteData ? 'Complete View' : 'Essential View'}
-            </Badge>
-          </HStack>
-        </VStack>
+        </Flex>
       </CardHeader>
       
-      <CardBody pt={0} px={0}>
+      <CardBody pt={0} px={0} overflow="visible">
         {filteredLeads.length === 0 ? (
-          <Center py={20}>
-            <VStack spacing={6}>
+          <Box py={16} px={6}>
+            <VStack spacing={5} align="center">
               <Box
-                w="120px"
-                h="120px"
-                bg="blue.50"
-                borderRadius="lg"
+                w="64px"
+                h="64px"
+                borderRadius="full"
+                bg="gray.50"
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
-                color="blue.500"
-                boxShadow="lg"
+                color="gray.400"
               >
-                <Box as={FiUsers} size="48px" />
+                <Box as={FiUsers} size="28px" />
               </Box>
-              <VStack spacing={3}>
-                <Heading size="lg" color="gray.600">
-                  No coach leads found
-                </Heading>
-                <Text color="gray.500">
-                  No coach leads match your current filters.
+              <VStack spacing={2} align="center">
+                <Text fontSize="md" fontWeight="500" color="gray.700">
+                  No leads found
+                </Text>
+                <Text fontSize="sm" color="gray.500" textAlign="center" maxW="300px">
+                  No coach leads match your current search or filters.
                 </Text>
               </VStack>
             </VStack>
-          </Center>
+          </Box>
         ) : (
           <TableContainer 
             w="full" 
@@ -1880,29 +2220,112 @@ const LeadsTableView = ({
                     />
                   </Th>
                   {(showCompleteData ? 
-                    ['Name', 'Email', 'Phone', 'City', 'Country', 'Status', 'Funnel', 'Score', 'Temperature', 'Assigned To', 'Next Follow-up', 'Created', 'Contact', 'Actions'] :
-                    ['Name', 'Email', 'Phone', 'Status', 'Score', 'Temperature', 'Assigned To', 'Next Follow-up', 'Contact', 'Actions']
+                    ['Contact', 'Source', 'Score & Temperature', 'Funnel & Stage', 'Assigned & Follow-up', 'Created', 'Actions'] :
+                    ['Contact', 'Source', 'Score & Temperature', 'Funnel & Stage', 'Assigned & Follow-up', 'Actions']
                   ).map(header => {
-                    const sortKey = header.toLowerCase().replace(/ /g, '_');
+                    let sortKey = header.toLowerCase().replace(/ /g, '_').replace('&', '');
+                    // Map column headers to sort keys
+                    if (header === 'Score & Temperature') sortKey = 'score';
+                    if (header === 'Assigned & Follow-up') sortKey = 'assigned_to';
+                    if (header === 'Funnel & Stage') sortKey = 'funnel';
                     const canSort = !['Contact', 'Actions'].includes(header);
+                    const isActionsHeader = header === 'Actions';
                     return (
                       <Th 
                         key={header}
-                        px={{ base: 3, md: 6 }} 
-                        py={{ base: 3, md: 5 }} 
-                        color="gray.800" 
-                        fontWeight="bold" 
-                        fontSize={{ base: "xs", md: "sm" }} 
-                        textAlign="left"
+                        px={4} 
+                        py={3} 
+                        color="gray.700" 
+                        fontWeight="600" 
+                        fontSize="xs" 
+                        textAlign={isActionsHeader ? "right" : "left"}
                         cursor={canSort ? 'pointer' : 'default'}
                         onClick={() => canSort && requestSort(sortKey)}
                         _hover={canSort ? { bg: 'gray.100' } : {}}
-                        minW={{ base: "80px", md: "auto" }}
+                        textTransform="none"
+                        letterSpacing="0"
                       >
-                        <HStack spacing={1}>
+                        <HStack spacing={1} justify={isActionsHeader ? "flex-end" : "flex-start"}>
                           <Text>{header}</Text>
+                          {header === 'Score & Temperature' && (
+                            <Popover trigger="hover" placement="top">
+                              <PopoverTrigger>
+                                <IconButton
+                                  icon={<InfoIcon />}
+                                  size="xs"
+                                  variant="ghost"
+                                  aria-label="Score actions info"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                  }}
+                                  _hover={{ bg: 'blue.50', color: 'blue.600' }}
+                                  color="gray.500"
+                                />
+                              </PopoverTrigger>
+                              <PopoverContent
+                                w="320px"
+                                borderRadius="12px"
+                                border="1px solid"
+                                borderColor="gray.200"
+                                boxShadow="0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <PopoverArrow />
+                                <PopoverCloseButton />
+                                <PopoverHeader fontWeight="600" fontSize="sm" pb={2}>
+                                  Actions Affecting Lead Score
+                                </PopoverHeader>
+                                <PopoverBody>
+                                  <VStack align="stretch" spacing={2}>
+                                    <HStack justify="space-between" fontSize="xs">
+                                      <Text fontWeight="500" color="gray.700">Call Booked</Text>
+                                      <Badge colorScheme="green" variant="subtle" fontSize="xs">+30</Badge>
+                                    </HStack>
+                                    <HStack justify="space-between" fontSize="xs">
+                                      <Text fontWeight="500" color="gray.700">Form Submitted</Text>
+                                      <Badge colorScheme="blue" variant="subtle" fontSize="xs">+15</Badge>
+                                    </HStack>
+                                    <HStack justify="space-between" fontSize="xs">
+                                      <Text fontWeight="500" color="gray.700">Link Clicked</Text>
+                                      <Badge colorScheme="blue" variant="subtle" fontSize="xs">+10</Badge>
+                                    </HStack>
+                                    <HStack justify="space-between" fontSize="xs">
+                                      <Text fontWeight="500" color="gray.700">Profile Completed</Text>
+                                      <Badge colorScheme="blue" variant="subtle" fontSize="xs">+10</Badge>
+                                    </HStack>
+                                    <HStack justify="space-between" fontSize="xs">
+                                      <Text fontWeight="500" color="gray.700">WhatsApp Replied</Text>
+                                      <Badge colorScheme="green" variant="subtle" fontSize="xs">+8</Badge>
+                                    </HStack>
+                                    <HStack justify="space-between" fontSize="xs">
+                                      <Text fontWeight="500" color="gray.700">Email Opened</Text>
+                                      <Badge colorScheme="blue" variant="subtle" fontSize="xs">+5</Badge>
+                                    </HStack>
+                                    <Divider borderColor="gray.200" my={2} />
+                                    <VStack align="stretch" spacing={1.5} mt={1} pt={2} borderTop="1px" borderColor="gray.100">
+                                      <Text fontSize="xs" fontWeight="600" color="gray.700">
+                                        Lead Temperature Ranges:
+                                      </Text>
+                                      <HStack justify="space-between" fontSize="xs">
+                                        <Text fontWeight="500" color="gray.700">Hot</Text>
+                                        <Badge colorScheme="red" variant="subtle" fontSize="xs">Score ≥ 80</Badge>
+                                      </HStack>
+                                      <HStack justify="space-between" fontSize="xs">
+                                        <Text fontWeight="500" color="gray.700">Warm</Text>
+                                        <Badge colorScheme="orange" variant="subtle" fontSize="xs">Score ≥ 50</Badge>
+                                      </HStack>
+                                      <HStack justify="space-between" fontSize="xs">
+                                        <Text fontWeight="500" color="gray.700">Cold</Text>
+                                        <Badge colorScheme="blue" variant="subtle" fontSize="xs">Score &lt; 50</Badge>
+                                      </HStack>
+                                    </VStack>
+                                  </VStack>
+                                </PopoverBody>
+                              </PopoverContent>
+                            </Popover>
+                          )}
                           {sortConfig.key === sortKey && (
-                            <Text fontSize="xs">
+                            <Text fontSize="xs" color="blue.500">
                               {sortConfig.direction === 'ascending' ? '↑' : '↓'}
                             </Text>
                           )}
@@ -1931,20 +2354,15 @@ const LeadsTableView = ({
                         onClick={(e) => e.stopPropagation()}
                       />
                     </Td>
-                    <Td px={{ base: 3, md: 6 }} py={{ base: 3, md: 4 }}>
-                      <VStack align="start" spacing={{ base: 1, md: 2 }}>
-                        <Text fontWeight="bold" fontSize={{ base: "sm", md: "lg" }} color="gray.800">
+                    {/* Contact Column - Stacked Name, Email, Phone */}
+                    <Td px={{ base: 4, md: 6 }} py={{ base: 4, md: 5 }}>
+                      <VStack align="start" spacing={2}>
+                        <Text fontWeight="600" fontSize="md" color="gray.900">
                           {lead.name || 'N/A'}
                         </Text>
-                        <Badge colorScheme="blue" variant="subtle" size={{ base: "xs", md: "sm" }} px={{ base: 2, md: 3 }} py={{ base: 0.5, md: 1 }} borderRadius="full">
-                          Coach
-                        </Badge>
-                      </VStack>
-                    </Td>
-                    <Td px={{ base: 3, md: 6 }} py={{ base: 3, md: 4 }} fontWeight={!showCompleteData ? 'medium' : 'normal'}>
-                      <HStack spacing={2}>
-                        <Text fontSize={{ base: "xs", md: "sm" }}>{lead.email || 'N/A'}</Text>
                         {lead.email && (
+                          <HStack spacing={1.5}>
+                            <Text fontSize="xs" color="gray.600">{lead.email}</Text>
                           <Tooltip label="Copy Email">
                             <IconButton
                               size="xs"
@@ -1953,20 +2371,25 @@ const LeadsTableView = ({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigator.clipboard.writeText(lead.email);
-                                toast('Email copied to clipboard!', 'success');
+                                toast({
+                                  title: 'Copied!',
+                                  description: 'Email copied to clipboard',
+                                  status: 'success',
+                                  duration: 2000,
+                                });
                               }}
                               colorScheme="blue"
                               aria-label="Copy email"
-                              _hover={{ bg: 'blue.100' }}
+                                h="16px"
+                                minW="16px"
+                                _hover={{ bg: 'blue.50' }}
                             />
                           </Tooltip>
-                        )}
                       </HStack>
-                    </Td>
-                    <Td px={{ base: 3, md: 6 }} py={{ base: 3, md: 4 }} fontWeight={!showCompleteData ? 'medium' : 'normal'}>
-                      <HStack spacing={2}>
-                        <Text>{lead.phone || 'N/A'}</Text>
+                        )}
                         {lead.phone && (
+                          <HStack spacing={1.5}>
+                            <Text fontSize="xs" color="gray.600">{lead.phone}</Text>
                           <Tooltip label="Copy Phone">
                             <IconButton
                               size="xs"
@@ -1975,68 +2398,97 @@ const LeadsTableView = ({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigator.clipboard.writeText(lead.phone);
-                                toast('Phone number copied to clipboard!', 'success');
+                                toast({
+                                  title: 'Copied!',
+                                  description: 'Phone number copied to clipboard',
+                                  status: 'success',
+                                  duration: 2000,
+                                });
                               }}
                               colorScheme="green"
                               aria-label="Copy phone"
-                              _hover={{ bg: 'green.100' }}
+                                h="16px"
+                                minW="16px"
+                                _hover={{ bg: 'green.50' }}
                             />
                           </Tooltip>
-                        )}
                       </HStack>
+                        )}
+                      </VStack>
                     </Td>
-                    {showCompleteData && (
-                      <>
-                        <Td px={{ base: 3, md: 6 }} py={{ base: 3, md: 4 }}>{lead.city || 'N/A'}</Td>
-                        <Td px={{ base: 3, md: 6 }} py={{ base: 3, md: 4 }}>{lead.country || 'N/A'}</Td>
-                      </>
-                    )}
-                    <Td px={{ base: 3, md: 6 }} py={{ base: 3, md: 4 }}>
-                      <Badge colorScheme="green" variant="solid" size={!showCompleteData ? 'md' : 'sm'} px={3} py={1} borderRadius="full">
-                        {getStatusLabel(lead.status, getFunnelId(lead))}
-                      </Badge>
-                    </Td>
-                    {showCompleteData && (
-                      <Td px={{ base: 3, md: 6 }} py={{ base: 3, md: 4 }}>
-                        <Badge colorScheme="purple" variant="subtle">
-                          {getFunnelName(lead.funnelId)}
+                    {/* Source Column */}
+                    <Td px={{ base: 3, md: 4 }} py={{ base: 3, md: 4 }}>
+                      {lead.source ? (
+                        <Badge 
+                          colorScheme="purple" 
+                          variant="subtle" 
+                          size="sm" 
+                          px={2.5} 
+                          py={1} 
+                          borderRadius="6px" 
+                          fontSize="xs"
+                          fontWeight="500"
+                          textTransform="capitalize"
+                        >
+                          {lead.source}
                         </Badge>
-                      </Td>
+                      ) : (
+                        <Text fontSize="xs" color="gray.400">N/A</Text>
                     )}
-                    <Td px={{ base: 3, md: 6 }} py={{ base: 3, md: 4 }}>
-                      <LeadScoreBadge score={calculateLeadScore(lead)} />
                     </Td>
-                    <Td px={{ base: 3, md: 6 }} py={{ base: 3, md: 4 }}>
-                      <LeadTemperatureBadge temperature={lead.leadTemperature} />
+                    
+                    {/* Score & Temperature Column */}
+                    <Td px={{ base: 3, md: 4 }} py={{ base: 3, md: 4 }}>
+                      <VStack align="start" spacing={1.5}>
+                        <LeadScoreBadge score={getLeadScore(lead)} />
+                        <LeadTemperatureBadge lead={lead} />
+                      </VStack>
                     </Td>
-                    <Td px={{ base: 3, md: 6 }} py={{ base: 3, md: 4 }}>
-                      <Badge 
-                        colorScheme={lead.assignedTo ? 'green' : 'gray'} 
-                        variant={lead.assignedTo ? 'solid' : 'outline'}
-                        borderRadius="full"
-                        px={3}
-                        py={1}
-                      >
-                        {getStaffDisplayName(lead.assignedTo)}
-                      </Badge>
-                    </Td>
-                    <Td px={{ base: 3, md: 6 }} py={{ base: 3, md: 4 }} fontWeight={!showCompleteData ? 'medium' : 'normal'}>
-                      <VStack spacing={1} align="start">
-                        <Text fontSize={{ base: "xs", md: "sm" }} fontWeight="semibold" color="gray.700">
-                          {lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt).toLocaleDateString() : 'N/A'}
+                    
+                    {/* Funnel & Stage Column */}
+                    <Td px={{ base: 3, md: 4 }} py={{ base: 3, md: 4 }}>
+                      <VStack align="start" spacing={1}>
+                        <Text fontSize="sm" fontWeight="500" color="gray.900">
+                          {getFunnelName(lead.funnelId) || 'N/A'}
                         </Text>
-                        <Text fontSize="xs" color="gray.500">
-                          {lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A'}
+                        <Text fontSize="xs" color="gray.600">
+                          {getStatusLabel(lead.status, getFunnelId(lead)) || 'N/A'}
                         </Text>
                       </VStack>
                     </Td>
+                    
+                    {/* Assigned & Follow-up Column */}
+                    <Td px={{ base: 3, md: 4 }} py={{ base: 3, md: 4 }}>
+                      <VStack align="start" spacing={2}>
+                      <Badge 
+                          colorScheme={lead.assignedTo ? 'blue' : 'gray'} 
+                        variant={lead.assignedTo ? 'solid' : 'outline'}
+                          borderRadius="6px"
+                          px={2}
+                          py={0.5}
+                          fontSize="xs"
+                      >
+                        {getStaffDisplayName(lead.assignedTo)}
+                      </Badge>
+                      {lead.nextFollowUpAt ? (
+                          <Text fontSize="xs" color="gray.600">
+                            {new Date(lead.nextFollowUpAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </Text>
+                        ) : (
+                          <Text fontSize="xs" color="gray.400">No follow-up</Text>
+                        )}
+                      </VStack>
+                    </Td>
+                    
                     {showCompleteData && (
-                      <Td px={{ base: 3, md: 6 }} py={{ base: 3, md: 4 }}>{formatDate(lead.createdAt)}</Td>
+                      <Td px={{ base: 3, md: 4 }} py={{ base: 3, md: 4 }}>
+                        <Text fontSize="xs" color="gray.600">{formatDate(lead.createdAt)}</Text>
+                      </Td>
                     )}
-                    <Td px={{ base: 3, md: 6 }} py={{ base: 3, md: 4 }}>
-                      <Center>
-                        <HStack spacing={1} justify="center">
-                          <Tooltip label={`Call ${lead.phone || 'N/A'}`}>
+                    {/* Actions Column */}
+                    <Td px={{ base: 3, md: 4 }} py={{ base: 3, md: 4 }}>
+                      <HStack spacing={1} justify="flex-end">
+                          <Tooltip label="Call">
                             <IconButton
                               size="sm"
                               variant="ghost"
@@ -2048,9 +2500,9 @@ const LeadsTableView = ({
                                 }
                               }}
                               colorScheme="green"
-                              aria-label="Call lead"
-                              _hover={{ bg: 'green.100', transform: 'scale(1.05)' }}
+                              aria-label="Call"
                               isDisabled={!lead.phone}
+                            _hover={{ bg: 'green.50' }}
                             />
                           </Tooltip>
                           <Tooltip label="Send Email">
@@ -2064,31 +2516,10 @@ const LeadsTableView = ({
                               }}
                               colorScheme="blue"
                               aria-label="Send email"
-                              _hover={{ bg: 'blue.100', transform: 'scale(1.05)' }}
+                            _hover={{ bg: 'blue.50' }}
                             />
                           </Tooltip>
-                          <Tooltip label="Send WhatsApp">
-                            <IconButton
-                              size="sm"
-                              variant="ghost"
-                              icon={<Box as={FaWhatsapp} />}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSendMessage(lead, 'whatsapp');
-                              }}
-                              colorScheme="green"
-                              aria-label="Send WhatsApp"
-                              _hover={{ bg: 'green.100', transform: 'scale(1.05)' }}
-                              isDisabled={!lead.phone}
-                            />
-                          </Tooltip>
-                        </HStack>
-                      </Center>
-                    </Td>
-                    <Td px={{ base: 3, md: 6 }} py={{ base: 3, md: 4 }}>
-                      <Center>
-                        <HStack spacing={1} justify="center">
-                          <Tooltip label="Edit Lead">
+                        <Tooltip label="Edit">
                             <IconButton
                               size="sm"
                               variant="ghost"
@@ -2099,146 +2530,109 @@ const LeadsTableView = ({
                               }}
                               colorScheme="orange"
                               aria-label="Edit lead"
-                              _hover={{ bg: 'orange.100', transform: 'scale(1.05)' }}
+                            _hover={{ bg: 'orange.50' }}
                             />
                           </Tooltip>
-                          <Box position="relative">
-                            <IconButton
+                        <Menu 
+                          isOpen={actionMenuOpen && selectedFunnel?._id === lead._id} 
+                          onOpen={() => {
+                            setSelectedFunnel(lead);
+                            setActionMenuOpen(true);
+                          }}
+                          onClose={() => {
+                            setActionMenuOpen(false);
+                            setSelectedFunnel(null);
+                          }}
+                          placement="bottom-end"
+                          closeOnBlur={true}
+                        >
+                          <MenuButton
+                            as={IconButton}
                               icon={<Box as={FiMoreVertical} />}
                               variant="ghost"
                               size="sm"
                               aria-label="More actions"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedFunnel(lead);
-                                setActionMenuOpen(!actionMenuOpen);
-                              }}
-                              _hover={{ bg: 'gray.100', transform: 'scale(1.05)' }}
-                            />
-                            {actionMenuOpen && selectedFunnel?._id === lead._id && (
-                              <Box
-                                position="absolute"
-                                top="100%"
-                                right="0"
-                                mt={2}
-                                bg="white"
-                                boxShadow="0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+                            }}
+                            _hover={{ bg: 'gray.50' }}
+                          />
+                          <MenuList
+                            minW="200px"
                                 borderRadius="12px"
                                 border="1px solid"
                                 borderColor="gray.200"
-                                minW="200px"
-                                py={{ base: 1, md: 2 }}
+                            boxShadow="0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+                            py={2}
                                 zIndex={9999}
-                                _before={{
-                                  content: '""',
-                                  position: 'absolute',
-                                  top: '-8px',
-                                  right: '12px',
-                                  width: '0',
-                                  height: '0',
-                                  borderLeft: '8px solid transparent',
-                                  borderRight: '8px solid transparent',
-                                  borderBottom: '8px solid white',
-                                  zIndex: 1
-                                }}
-                                _after={{
-                                  content: '""',
-                                  position: 'absolute',
-                                  top: '-9px',
-                                  right: '11px',
-                                  width: '0',
-                                  height: '0',
-                                  borderLeft: '9px solid transparent',
-                                  borderRight: '9px solid transparent',
-                                  borderBottom: '9px solid #e2e8f0',
-                                  zIndex: 0
-                                }}
-                              >
-                                <VStack spacing={0} align="stretch">
-                                  <Button
-                                    variant="ghost"
-                                    justifyContent="flex-start"
-                                    leftIcon={<Box as={FiEye} size={16} />}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MenuItem
+                              icon={<Box as={FiEye} size={16} />}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setActionMenuOpen(false);
+                                setSelectedFunnel(null);
                                     }}
                                     _hover={{ 
                                       bg: 'blue.50', 
                                       color: 'blue.600',
-                                      transform: 'translateX(4px)'
                                     }}
-                                    py={4}
-                                    px={5}
-                                    fontSize={{ base: "xs", md: "sm" }}
+                              py={3}
+                              px={4}
+                                    fontSize="sm"
                                     fontWeight="medium"
                                     borderRadius="8px"
-                                    mx={2}
-                                    my={1}
-                                    h="auto"
                                     transition="all 0.2s ease"
                                   >
                                     View Details
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    justifyContent="flex-start"
-                                    leftIcon={<Box as={FiCopy} size={16} />}
+                            </MenuItem>
+                            <MenuItem
+                              icon={<Box as={FiCopy} size={16} />}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setActionMenuOpen(false);
+                                setSelectedFunnel(null);
                                     }}
                                     _hover={{ 
                                       bg: 'green.50', 
                                       color: 'green.600',
-                                      transform: 'translateX(4px)'
                                     }}
-                                    py={4}
-                                    px={5}
-                                    fontSize={{ base: "xs", md: "sm" }}
+                              py={3}
+                              px={4}
+                                    fontSize="sm"
                                     fontWeight="medium"
                                     borderRadius="8px"
-                                    mx={2}
-                                    my={1}
-                                    h="auto"
                                     transition="all 0.2s ease"
                                   >
                                     Duplicate Lead
-                                  </Button>
-                                  <Divider borderColor="gray.200" my={2} />
-                                  <Button
-                                    variant="ghost"
-                                    justifyContent="flex-start"
-                                    leftIcon={<Box as={FiTrash2} size={16} />}
+                            </MenuItem>
+                            <MenuDivider borderColor="gray.200" />
+                            <MenuItem
+                              icon={<Box as={FiTrash2} size={16} />}
                                     color="red.500"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      onDeleteLead(lead._id);
                                       setActionMenuOpen(false);
+                                setSelectedFunnel(null);
+                                onDeleteLead(lead);
                                     }}
                                     _hover={{ 
                                       bg: 'red.50', 
                                       color: 'red.600',
-                                      transform: 'translateX(4px)'
-                                    }}
-                                    py={4}
-                                    px={5}
-                                    fontSize={{ base: "xs", md: "sm" }}
+                              }}
+                              py={3}
+                              px={4}
+                              fontSize="sm"
                                     fontWeight="medium"
                                     borderRadius="8px"
-                                    mx={2}
-                                    my={1}
-                                    h="auto"
                                     transition="all 0.2s ease"
                                   >
                                     Delete Lead
-                                  </Button>
-                                </VStack>
-                              </Box>
-                            )}
-                          </Box>
+                            </MenuItem>
+                          </MenuList>
+                        </Menu>
                         </HStack>
-                      </Center>
                     </Td>
                   </Tr>
                 ))}
@@ -2431,13 +2825,13 @@ const LeadsView = () => {
       setLoading(true); 
       setError(null);
       try {
-        // Step 1: Funnels fetch karna
-        const funnelsResponse = await axios.get(`${API_BASE_URL}/funnels/coach/${coachId}/funnels`, { 
+        // Step 1: Fetch funnels
+        const funnelsResponse = await axios.get(`${API_BASE_URL}/api/funnels/coach/${coachId}/funnels`, { 
           headers: { 'Authorization': `Bearer ${token}` } 
         });
         const allFunnels = funnelsResponse.data.data;
 
-        // Step 2: Sirf 'coach' audience waale funnels ko filter karna
+        // Step 2: Filter funnels with 'coach' audience only
         const coachFunnels = allFunnels
           .filter(f => f.targetAudience === 'coach')
           .map(f => ({ 
@@ -2448,21 +2842,21 @@ const LeadsView = () => {
           }));
         setFunnels(coachFunnels);
 
-        // Coach funnels ke IDs ka ek Set banaana for quick lookup
+        // Create a Set of coach funnel IDs for quick lookup
         const coachFunnelIds = new Set(coachFunnels.map(f => f.id));
 
-        // Step 3: Staff fetch karna for assignment
+        // Step 3: Fetch staff for assignment
         console.log('Fetching staff for coachId:', coachId);
         try {
           // Try different API endpoints
           let staffResponse;
           try {
-            staffResponse = await axios.get(`${API_BASE_URL}/staff?coachId=${coachId}`, { 
+            staffResponse = await axios.get(`${API_BASE_URL}/api/staff?coachId=${coachId}`, { 
               headers: { 'Authorization': `Bearer ${token}` } 
             });
           } catch (err) {
             console.log('First staff API failed, trying without query param:', err.response?.data);
-            staffResponse = await axios.get(`${API_BASE_URL}/staff`, { 
+            staffResponse = await axios.get(`${API_BASE_URL}/api/staff`, { 
               headers: { 'Authorization': `Bearer ${token}` } 
             });
           }
@@ -2490,12 +2884,12 @@ const LeadsView = () => {
           setStaff(mockStaff);
         }
 
-        // Step 4: Saare leads fetch karna
-        const leadsResponse = await axios.get(`${API_BASE_URL}/leads`, { 
+        // Step 4: Fetch all leads
+        const leadsResponse = await axios.get(`${API_BASE_URL}/api/leads`, { 
           headers: { 'Authorization': `Bearer ${token}` } 
         });
         
-        // Step 5: Leads ko filter karna jo coach funnels se belong karte hain
+        // Step 5: Filter leads that belong to coach funnels
         const coachLeads = (leadsResponse.data.data || []).filter(lead => {
           const funnelId = getFunnelId(lead);
           return coachFunnelIds.has(funnelId);
@@ -2513,8 +2907,8 @@ const LeadsView = () => {
         }
 
       } catch (err) {
-        console.error("Data fetch karte waqt error:", err);
-        const errorMsg = err.response?.data?.message || "Data fetch nahi ho paaya. Kripya dobara try karein.";
+        console.error("Error fetching data:", err);
+        const errorMsg = err.response?.data?.message || "Failed to fetch data. Please try again.";
         setError(errorMsg);
         toast(errorMsg, 'error');
       } finally {
@@ -2542,7 +2936,7 @@ const LeadsView = () => {
 
   const handleSendMessageSubmit = async (messageData) => {
     try {
-      await axios.post(`${API_BASE_URL}/messages/send`, messageData, { 
+      await axios.post(`${API_BASE_URL}/api/messages/send`, messageData, { 
         headers: { 'Authorization': `Bearer ${token}` } 
       });
       toast(`${messageData.type === 'email' ? 'Email' : 'SMS'} sent successfully!`);
@@ -2584,7 +2978,7 @@ const LeadsView = () => {
             };
           }
           
-          const response = await axios.put(`${API_BASE_URL}/leads/${payload._id}`, updatePayload, { 
+          const response = await axios.put(`${API_BASE_URL}/api/leads/${payload._id}`, updatePayload, { 
             headers: { 'Authorization': `Bearer ${token}` } 
           });
           console.log('Update response:', response.data);
@@ -2605,7 +2999,7 @@ const LeadsView = () => {
             };
           }
           
-          const patchResponse = await axios.patch(`${API_BASE_URL}/leads/${payload._id}`, patchPayload, { 
+          const patchResponse = await axios.patch(`${API_BASE_URL}/api/leads/${payload._id}`, patchPayload, { 
             headers: { 'Authorization': `Bearer ${token}` } 
           });
           console.log('PATCH response:', patchResponse.data);
@@ -2615,7 +3009,7 @@ const LeadsView = () => {
         }
       } else {
         console.log('Creating new lead');
-        const response = await axios.post(`${API_BASE_URL}/leads`, payload, { 
+        const response = await axios.post(`${API_BASE_URL}/api/leads`, payload, { 
           headers: { 'Authorization': `Bearer ${token}` } 
         });
         console.log('Create response:', response.data);
@@ -2661,7 +3055,7 @@ const LeadsView = () => {
   const confirmDeleteLead = async () => {
     if (confirmAction?.type === 'single' && confirmAction.id) {
       try {
-        await axios.delete(`${API_BASE_URL}/leads/${confirmAction.id}`, { 
+        await axios.delete(`${API_BASE_URL}/api/leads/${confirmAction.id}`, { 
           headers: { 'Authorization': `Bearer ${token}` } 
         });
         setLeads(leads.filter(lead => lead._id !== confirmAction.id));
@@ -2684,7 +3078,7 @@ const LeadsView = () => {
     ));
     
     try {
-      await axios.put(`${API_BASE_URL}/leads/${leadId}`, { status: newStatus, funnelId: funnelId }, { 
+      await axios.put(`${API_BASE_URL}/api/leads/${leadId}`, { status: newStatus, funnelId: funnelId }, { 
         headers: { 'Authorization': `Bearer ${token}` } 
       });
       toast("Coach lead status updated!");
@@ -2698,7 +3092,7 @@ const LeadsView = () => {
   const handleAddFollowUp = async (leadId, note) => {
     const newFollowUp = { note: note, followUpDate: new Date().toISOString(), createdBy: coachId };
     try {
-      await axios.post(`${API_BASE_URL}/leads/${leadId}/followup`, newFollowUp, { 
+      await axios.post(`${API_BASE_URL}/api/leads/${leadId}/followup`, newFollowUp, { 
         headers: { 'Authorization': `Bearer ${token}` } 
       });
       setLeads(prevLeads => prevLeads.map(lead => {
@@ -2764,7 +3158,7 @@ const LeadsView = () => {
         fullData: taskData
       });
       
-      const response = await axios.post(`${API_BASE_URL}/workflow/tasks`, taskData, {
+      const response = await axios.post(`${API_BASE_URL}/api/workflow/tasks`, taskData, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -2816,7 +3210,7 @@ const LeadsView = () => {
         
         // Try POST first
         try {
-          const response = await axios.post(`${API_BASE_URL}/leads/bulk-assign`, bulkPayload, {
+          const response = await axios.post(`${API_BASE_URL}/api/leads/bulk-assign`, bulkPayload, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           console.log('✅ Bulk POST assignment successful:', response.data);
@@ -2824,7 +3218,7 @@ const LeadsView = () => {
         } catch (postError) {
           console.log('❌ Bulk POST failed, trying PUT...', postError.response?.data);
           // Try PUT if POST fails
-          const putResponse = await axios.put(`${API_BASE_URL}/leads/bulk-assign`, bulkPayload, {
+          const putResponse = await axios.put(`${API_BASE_URL}/api/leads/bulk-assign`, bulkPayload, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           console.log('✅ Bulk PUT assignment successful:', putResponse.data);
@@ -2851,14 +3245,14 @@ const LeadsView = () => {
             console.log(`📝 Updating lead ${lead._id}...`);
             
             try {
-              await axios.put(`${API_BASE_URL}/leads/${lead._id}`, updatePayload, {
+              await axios.put(`${API_BASE_URL}/api/leads/${lead._id}`, updatePayload, {
                 headers: { 'Authorization': `Bearer ${token}` }
               });
               successCount++;
             } catch (putError) {
               // Try PATCH if PUT fails
               console.log(`⚠️ PUT failed for ${lead._id}, trying PATCH...`);
-              await axios.patch(`${API_BASE_URL}/leads/${lead._id}`, updatePayload, {
+              await axios.patch(`${API_BASE_URL}/api/leads/${lead._id}`, updatePayload, {
                 headers: { 'Authorization': `Bearer ${token}` }
               });
               successCount++;
@@ -2928,7 +3322,7 @@ const LeadsView = () => {
 
   const confirmBulkDelete = async () => {
     try {
-      await axios.delete(`${API_BASE_URL}/leads/bulk`, { 
+      await axios.delete(`${API_BASE_URL}/api/leads/bulk`, { 
         data: { leadIds: Array.from(selectedLeads) }, 
         headers: { 'Authorization': `Bearer ${token}` } 
       });
@@ -2965,7 +3359,7 @@ const LeadsView = () => {
   const testApiConnection = async () => {
     try {
       console.log('Testing API connection...');
-      const response = await axios.get(`${API_BASE_URL}/health`, {
+      const response = await axios.get(`${API_BASE_URL}/api/health`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       console.log('API health check:', response.data);
@@ -2980,7 +3374,7 @@ const LeadsView = () => {
   const refreshStaffData = async () => {
     try {
       console.log('Manually refreshing staff data...');
-      const staffResponse = await axios.get(`${API_BASE_URL}/staff`, { 
+      const staffResponse = await axios.get(`${API_BASE_URL}/api/staff`, { 
         headers: { 'Authorization': `Bearer ${token}` } 
       });
       console.log('Manual staff refresh response:', staffResponse.data);
@@ -3011,7 +3405,7 @@ const LeadsView = () => {
           console.log(`Trying assignment with field: ${approach.field}`);
           const payload = { [approach.field]: approach.value };
           
-          const response = await axios.put(`${API_BASE_URL}/leads/${leadId}`, payload, {
+          const response = await axios.put(`${API_BASE_URL}/api/leads/${leadId}`, payload, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           
@@ -3036,7 +3430,7 @@ const LeadsView = () => {
       leads.map(lead => [
         lead.name || '', lead.email || '', lead.phone || '', lead.city || '', 
         lead.country || '', lead.status || '', getFunnelName(lead.funnelId), 
-        calculateLeadScore(lead), lead.leadTemperature || '', getStaffDisplayName(lead.assignedTo), lead.source || '', 
+        getLeadScore(lead), lead.leadTemperature || '', getStaffDisplayName(lead.assignedTo), lead.source || '', 
         lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : ''
       ].join(',')).join('\n');
     
@@ -3186,12 +3580,22 @@ const LeadsView = () => {
   // Stats calculation
   const stats = useMemo(() => {
     const totalLeads = displayedLeads.length;
-    const hotLeads = displayedLeads.filter(lead => lead.leadTemperature === 'Hot').length;
-    const warmLeads = displayedLeads.filter(lead => lead.leadTemperature === 'Warm').length;
-    const coldLeads = displayedLeads.filter(lead => lead.leadTemperature === 'Cold').length;
+    // Calculate temperature counts based on score (not stored leadTemperature field)
+    const hotLeads = displayedLeads.filter(lead => {
+      const score = getLeadScore(lead);
+      return getLeadTemperature(score) === 'Hot';
+    }).length;
+    const warmLeads = displayedLeads.filter(lead => {
+      const score = getLeadScore(lead);
+      return getLeadTemperature(score) === 'Warm';
+    }).length;
+    const coldLeads = displayedLeads.filter(lead => {
+      const score = getLeadScore(lead);
+      return getLeadTemperature(score) === 'Cold';
+    }).length;
     
     // Score statistics
-    const scores = displayedLeads.map(lead => calculateLeadScore(lead));
+    const scores = displayedLeads.map(lead => getLeadScore(lead));
     const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
     
     // Staff assignment statistics
@@ -3220,307 +3624,349 @@ const LeadsView = () => {
   if (loading) return <ProfessionalLoader />;
   
   if (error) return (
-    <Box bg="gray.100" minH="100vh" py={6} px={6}>
-      <Center py={20}>
+    <Box 
+      bg={useColorModeValue('white', 'gray.900')} 
+      h="100vh"
+      w="100vw"
+      position="fixed"
+      top={0}
+      left={0}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      px={4}
+      overflow="hidden"
+    >
+      <Box maxW="500px" w="auto" mx="auto" textAlign="center">
         <VStack spacing={6}>
+          {/* Minimal Icon */}
           <Box
-            w="120px"
-            h="120px"
-            bg="red.50"
-            borderRadius="lg"
+            w="64px"
+            h="64px"
+            borderRadius="full"
+            bg={useColorModeValue('red.50', 'red.900')}
             display="flex"
             alignItems="center"
             justifyContent="center"
-            color="red.500"
-            boxShadow="lg"
+            mx="auto"
           >
-            <WarningIcon boxSize="48px" />
+            <WarningIcon 
+              boxSize="32px" 
+              color={useColorModeValue('red.500', 'red.300')}
+            />
           </Box>
+
+          {/* Error Content */}
           <VStack spacing={3}>
-            <Heading size="xl" color="gray.600">
-              Error Loading Coach Leads
+            <Heading 
+              size="md" 
+              fontWeight="600"
+              color={useColorModeValue('gray.900', 'white')}
+              letterSpacing="-0.3px"
+            >
+              Unable to Load Leads
             </Heading>
-            <Text color="gray.500" textAlign="center" maxW="md">
+            <Text 
+              color={useColorModeValue('gray.600', 'gray.400')} 
+              fontSize="sm"
+              lineHeight="1.5"
+              maxW="400px"
+              mx="auto"
+              noOfLines={3}
+            >
               {error}
             </Text>
           </VStack>
+
+          {/* Action Button */}
           <Button 
-            bg="blue.500"
-            color="white"
-            size="lg"
+            size="md"
+            colorScheme="blue"
+            borderRadius="lg"
+            px={6}
+            fontWeight="500"
             onClick={() => window.location.reload()}
-            _hover={{ bg: 'blue.600' }}
+            _hover={{ 
+              transform: 'translateY(-2px)',
+              boxShadow: 'lg'
+            }}
+            transition="all 0.2s"
           >
-            Try Again
+            Retry
           </Button>
         </VStack>
-      </Center>
+      </Box>
     </Box>
   );
 
   // Main component render
   return (
-    <Box bg="gray.100" minH="100vh" py={{ base: 4, md: 6 }} px={{ base: 4, md: 6 }}>
-      <Box maxW="full" mx="auto">
-        <VStack spacing={8} align="stretch" w="full">
-          {/* Beautiful Header */}
-          <Card bg="white" borderRadius="xl" boxShadow="lg" border="1px" borderColor="gray.200">
-            <CardHeader py={{ base: 4, md: 6 }}>
-              <VStack spacing={{ base: 4, md: 6 }} align="stretch">
-                {/* Main Header Section */}
-                <Flex justify="space-between" align="start" direction={{ base: 'column', lg: 'row' }} gap={6}>
-                  {/* Left Side - Title and Description */}
-                  <VStack align={{ base: 'center', lg: 'start' }} spacing={3} flex="1">
-                    <HStack spacing={3} justify={{ base: 'center', lg: 'start' }}>
-                      <Heading size={{ base: "md", md: "lg" }} color="gray.800" fontWeight="bold">
-                        Coach Leads Management
+    <Box bg="gray.100" h="100vh" overflow="hidden" display="flex" flexDirection="column">
+      <Box flex="1" overflowY="auto">
+        <Box maxW="full" mx="auto" px={{ base: 4, md: 6 }}>
+          <VStack spacing={8} align="stretch" w="full" pt={{ base: 4, md: 6 }} pb={{ base: 4, md: 6 }}>
+            {/* Combined Header & Stats Section - Sticky */}
+            <Card 
+              bg="white" 
+              borderRadius="8px" 
+              boxShadow="none" 
+              border="1px" 
+              borderColor="gray.200"
+              position="sticky"
+              top={{ base: 4, md: 6 }}
+              zIndex={10}
+            >
+            <CardHeader py={4} px={6} borderBottom="1px" borderColor="gray.100">
+              <Flex justify="space-between" align="center" direction={{ base: 'column', lg: 'row' }} gap={4}>
+                {/* Left Side - Title */}
+                <VStack align={{ base: 'center', lg: 'start' }} spacing={0.5}>
+                  <Heading size="lg" color="gray.900" fontWeight="700" letterSpacing="-0.5px">
+                    Coach Leads
                       </Heading>
-                      <Badge colorScheme="blue" variant="subtle" px={{ base: 2, md: 3 }} py={{ base: 0.5, md: 1 }} borderRadius="full" fontSize={{ base: "xs", md: "sm" }}>
-                        Coach Focus
-                      </Badge>
-                    </HStack>
-                    <Text color="gray.500" fontSize={{ base: "xs", md: "sm" }} fontWeight="medium" textAlign={{ base: 'center', lg: 'start' }}>
-                      Manage and track your coach leads effectively for maximum conversions
+                  <Text color="gray.500" fontSize="xs" textAlign={{ base: 'center', lg: 'start' }}>
+                    Manage and track coach leads
                     </Text>
-                    <HStack spacing={2} justify={{ base: 'center', lg: 'start' }}>
-                      <Badge colorScheme={showCompleteData ? 'green' : 'orange'} variant="subtle" borderRadius="full">
-                        {showCompleteData ? 'Complete Data View' : 'Important Data View'}
-                      </Badge>
-                      <Text fontSize="xs" color="gray.500">
-                        {showCompleteData ? 'Showing all columns' : 'Showing essential columns only'}
-                      </Text>
-                    </HStack>
                   </VStack>
                   
-                  {/* Right Side - Toggle Buttons and Actions */}
-                  <VStack spacing={4} align={{ base: 'stretch', lg: 'end' }} minW={{ base: 'full', lg: 'auto' }}>
-                    {/* Toggle Buttons - View Mode */}
-                    <ButtonGroup size={{ base: "xs", md: "sm" }} variant="outline" spacing={0} borderRadius="lg" overflow="hidden" shadow="sm">
+                {/* Right Side - Actions */}
+                <HStack spacing={2} justify={{ base: 'center', lg: 'end' }}>
+                  <Button
+                    leftIcon={showCompleteData ? <ViewIcon /> : <InfoIcon />}
+                    colorScheme="gray"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const newMode = !showCompleteData;
+                      setShowCompleteData(newMode);
+                      if (newMode) {
+                        toast('Switched to Complete Data View', 'success');
+                      } else {
+                        toast('Switched to Important Data View', 'success');
+                      }
+                    }}
+                    borderRadius="8px"
+                    _hover={{ bg: 'gray.100' }}
+                    fontWeight="500"
+                  >
+                    {showCompleteData ? 'Important' : 'Complete'}
+                  </Button>
+                  
+                  <ButtonGroup size="sm" variant="ghost" spacing={1} borderRadius="8px">
                       <Button
                         leftIcon={viewMode === 'table' ? <CheckCircleIcon /> : <ViewIcon />}
                         colorScheme={viewMode === 'table' ? 'blue' : 'gray'}
                         onClick={() => handleViewChange('table')}
-                        borderRadius="0"
-                        borderRightRadius={viewMode === 'pipeline' ? '0' : 'lg'}
-                        borderLeftRadius="lg"
-                        _hover={{ 
-                          transform: 'translateY(-1px)', 
-                          shadow: 'md',
-                          bg: viewMode === 'table' ? 'blue.50' : 'gray.50'
-                        }}
-                        _active={{ transform: 'translateY(0px)' }}
-                        transition="all 0.2s"
-                        fontWeight="medium"
-                        px={{ base: 2, md: 4 }}
-                        py={{ base: 1, md: 2 }}
-                        borderRight="1px solid"
-                        borderRightColor="gray.200"
-                      >
-                        Table View
+                      borderRadius="8px"
+                      _hover={{ bg: viewMode === 'table' ? 'blue.50' : 'gray.100' }}
+                      bg={viewMode === 'table' ? 'blue.50' : 'transparent'}
+                      fontWeight="500"
+                    >
+                      Table
                       </Button>
                       <Button
                         leftIcon={viewMode === 'pipeline' ? <CheckCircleIcon /> : <ViewIcon />}
                         colorScheme={viewMode === 'pipeline' ? 'blue' : 'gray'}
                         onClick={() => handleViewChange('pipeline')}
-                        borderRadius="0"
-                        borderLeftRadius={viewMode === 'table' ? '0' : 'lg'}
-                        borderRightRadius="lg"
-                        _hover={{ 
-                          transform: 'translateY(-1px)', 
-                          shadow: 'md',
-                          bg: viewMode === 'pipeline' ? 'blue.50' : 'gray.50'
-                        }}
-                        _active={{ transform: 'translateY(0px)' }}
-                        transition="all 0.2s"
-                        fontWeight="medium"
-                        px={{ base: 2, md: 4 }}
-                        py={{ base: 1, md: 2 }}
-                      >
-                        Pipeline View
+                      borderRadius="8px"
+                      _hover={{ bg: viewMode === 'pipeline' ? 'blue.50' : 'gray.100' }}
+                      bg={viewMode === 'pipeline' ? 'blue.50' : 'transparent'}
+                      fontWeight="500"
+                    >
+                      Pipeline
                       </Button>
                     </ButtonGroup>
-                    
-                    {/* Action Buttons */}
-                    <HStack spacing={3} justify={{ base: 'center', lg: 'end' }}>
-                      <Button
-                        leftIcon={showCompleteData ? <ViewIcon /> : <InfoIcon />}
-                        colorScheme={showCompleteData ? 'green' : 'orange'}
-                        variant="outline"
-                        size="md"
-                        onClick={() => {
-                          const newMode = !showCompleteData;
-                          setShowCompleteData(newMode);
-                          
-                          if (newMode) {
-                            toast('Switched to Complete Data View - Showing all coach lead information', 'success');
-                          } else {
-                            toast('Switched to Important Data View - Showing essential information only', 'success');
-                          }
-                        }}
-                        _hover={{
-                          transform: 'translateY(-1px)',
-                          shadow: 'md',
-                          bg: showCompleteData ? 'green.50' : 'orange.50'
-                        }}
-                        transition="all 0.2s"
-                        borderRadius="lg"
-                      >
-                        {showCompleteData ? 'Show Important Data' : 'Show Complete Data'}
-                      </Button>
                       
                       <Button
                         leftIcon={<AddIcon />}
                         bg="blue.500"
                         color="white"
-                        size="lg"
-                        onClick={() => openCreateModal()}
-                        borderRadius="xl"
-                        px={8}
-                        py={3}
-                        _hover={{ 
-                          bg: "blue.600",
-                          transform: 'translateY(-2px)', 
-                          boxShadow: 'xl',
-                          filter: 'brightness(1.05)'
-                        }}
-                        _active={{ 
-                          bg: "blue.700",
-                          transform: 'translateY(0px)',
-                          boxShadow: 'lg'
-                        }}
-                        transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-                        fontWeight="bold"
-                        fontSize="md"
-                      >
-                        New Coach Lead
+                    size="sm"
+                    onClick={openCreateModal}
+                    _hover={{ bg: 'blue.600' }}
+                    borderRadius="8px"
+                    fontWeight="600"
+                  >
+                    New Lead
                       </Button>
                     </HStack>
-                  </VStack>
                 </Flex>
+            </CardHeader>
                 
 
                  
-                 {/* Stats Cards - Professional Design */}
+            <CardBody py={5} px={6}>
                  <Box>
-                   <Flex justify="space-between" align="center" mb={4} direction={{ base: 'column', md: 'row' }} gap={4} wrap="wrap">
-                     {/* Left Side - Title */}
-                     <Text fontSize={{ base: "md", md: "lg" }} fontWeight="semibold" color="gray.700" textAlign={{ base: 'center', md: 'left' }}>
+                <Flex justify="space-between" align="center" mb={5} direction={{ base: 'column', md: 'row' }} gap={4} wrap="wrap">
+                  <VStack align={{ base: 'center', md: 'start' }} spacing={0.5}>
+                    <Text fontSize="md" fontWeight="600" color="gray.900" textAlign={{ base: 'center', md: 'left' }}>
                        Lead Performance Overview
                      </Text>
+                    <Text fontSize="xs" color="gray.500" textAlign={{ base: 'center', md: 'left' }}>
+                      Track your lead metrics and performance
+                    </Text>
+                  </VStack>
                      
-                     {/* Right Side - Staff Overview Button & Funnel Selection */}
-                     <HStack spacing={3} flexWrap="wrap" justify={{ base: 'center', md: 'flex-end' }}>
-                       {/* View Staff Overview Button */}
+                  <HStack spacing={2} flexWrap="wrap" justify={{ base: 'center', md: 'flex-end' }}>
                        {staff.length > 0 && (
                          <Button
                            size="sm"
-                           colorScheme="purple"
+                        colorScheme="gray"
                            onClick={onStaffOverviewModalOpen}
                            leftIcon={<Box as={FiUsers} />}
-                           _hover={{ 
-                             transform: 'translateY(-2px)', 
-                             shadow: 'lg',
-                             bg: 'purple.600'
-                           }}
-                           transition="all 0.2s"
-                           borderRadius="lg"
-                           variant="solid"
+                        _hover={{ bg: 'gray.100' }}
+                        borderRadius="8px"
+                        variant="ghost"
+                        fontWeight="500"
                          >
                            Staff Overview
                          </Button>
                        )}
                        
-                       {/* Funnel Selection */}
-                       <HStack spacing={{ base: 1, md: 2 }} align="center" bg="blue.50" px={{ base: 2, md: 3 }} py={{ base: 1, md: 2 }} borderRadius="md" border="1px solid" borderColor="blue.200">
-                         <Box w="2" h="2" bg="blue.500" borderRadius="full" />
-                         <Text fontSize={{ base: "xs", md: "sm" }} color="blue.700" fontWeight="medium">
+                    <HStack spacing={2} align="center" flexWrap="wrap">
+                      <HStack spacing={2} align="center" bg="gray.50" px={3} py={1.5} borderRadius="8px" border="1px solid" borderColor="gray.200">
+                        <Box w="6px" h="6px" bg="blue.500" borderRadius="full" />
+                        <Text fontSize="xs" color="gray.700" fontWeight="500">
                            {displayedLeads ? displayedLeads.length : 0} Leads
+                        </Text>
+                      </HStack>
                            {activeFunnel && activeFunnel.id !== 'all' && (
-                             <Text as="span" color="blue.600"> in {activeFunnel.name || 'Unknown Funnel'}</Text>
-                           )}
-                         </Text>
+                        <Badge
+                          colorScheme="blue"
+                          variant="subtle"
+                          px={3}
+                          py={1.5}
+                          borderRadius="8px"
+                          fontSize="xs"
+                          fontWeight="600"
+                          display="flex"
+                          alignItems="center"
+                          gap={1.5}
+                        >
+                          <Box as={FiFilter} size="12px" />
+                          {activeFunnel.name || 'Unknown Funnel'}
+                        </Badge>
+                      )}
                          <Button
                            variant="ghost"
-                           leftIcon={<Box as={FiFilter} />}
                            onClick={onFunnelModalOpen}
-                           size="xs"
-                           colorScheme="blue"
-                           _hover={{ bg: 'blue.100' }}
-                           transition="all 0.2s"
-                           borderRadius="sm"
-                         >
-                           {activeFunnel && activeFunnel.name ? activeFunnel.name : 'Select Funnel'}
-                           <ChevronDownIcon ml={1} />
+                        size="sm"
+                        colorScheme="gray"
+                        _hover={{ bg: 'gray.100' }}
+                        borderRadius="8px"
+                        leftIcon={<Box as={FiFilter} />}
+                        fontWeight="500"
+                      >
+                        {activeFunnel && activeFunnel.id !== 'all' ? 'Change' : 'Select Funnel'}
                          </Button>
                        </HStack>
                      </HStack>
                    </Flex>
-                   <SimpleGrid columns={{ base: 1, sm: 2, md: 5 }} spacing={4}>
+                <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={3}>
                      <StatsCard
                        title="Total Leads"
                        value={stats.totalLeads}
-                       icon={<Box as={FiUsers} size="24px" />}
+                    icon={<Box as={FiUsers} size="20px" />}
                        color="blue"
                        trend={12}
                        isLoading={loading}
                      />
+                  <Card 
+                    bg={useColorModeValue('purple.50', 'purple.900')} 
+                    border="1px" 
+                    borderColor={useColorModeValue('purple.200', 'purple.700')}
+                    borderRadius="8px"
+                    _hover={{ borderColor: 'purple.300', boxShadow: 'sm' }}
+                    transition="all 0.2s"
+                    boxShadow="none"
+                  >
+                    <CardBody p={4}>
+                      <VStack align="start" spacing={3} w="full">
+                        <HStack justify="space-between" w="full" align="center">
+                          <Box
+                            p={2.5}
+                            bg={useColorModeValue('purple.100', 'purple.800')}
+                            borderRadius="8px"
+                            color={useColorModeValue('purple.600', 'purple.300')}
+                          >
+                            <Box as={FiTarget} size="20px" />
+                          </Box>
+                        </HStack>
+                        <VStack align="start" spacing={0.5} w="full">
+                          <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} fontWeight="500" textTransform="uppercase" letterSpacing="0.5px">
+                            Lead Temperature
+                          </Text>
+                          {loading ? (
+                            <Skeleton height="60px" width="full" borderRadius="4px" />
+                          ) : (
+                            <VStack align="start" spacing={1.5} w="full">
+                              <HStack spacing={2} w="full" justify="space-between">
+                                <Text fontSize="sm" color={useColorModeValue('gray.700', 'gray.300')} fontWeight="500">
+                                  Hot
+                                </Text>
+                                <Text fontSize="lg" fontWeight="700" color={useColorModeValue('red.600', 'red.300')} letterSpacing="-0.5px">
+                                  {stats.hotLeads}
+                                </Text>
+                              </HStack>
+                              <HStack spacing={2} w="full" justify="space-between">
+                                <Text fontSize="sm" color={useColorModeValue('gray.700', 'gray.300')} fontWeight="500">
+                                  Warm
+                                </Text>
+                                <Text fontSize="lg" fontWeight="700" color={useColorModeValue('orange.600', 'orange.300')} letterSpacing="-0.5px">
+                                  {stats.warmLeads}
+                                </Text>
+                              </HStack>
+                              <HStack spacing={2} w="full" justify="space-between">
+                                <Text fontSize="sm" color={useColorModeValue('gray.700', 'gray.300')} fontWeight="500">
+                                  Cold
+                                </Text>
+                                <Text fontSize="lg" fontWeight="700" color={useColorModeValue('blue.600', 'blue.300')} letterSpacing="-0.5px">
+                                  {stats.coldLeads}
+                                </Text>
+                              </HStack>
+                            </VStack>
+                          )}
+                        </VStack>
+                      </VStack>
+                    </CardBody>
+                  </Card>
                      <StatsCard
-                       title="Hot Leads"
-                       value={stats.hotLeads}
-                       icon={<StarIcon />}
-                       color="red"
-                       trend={8}
+                    title="Assigned Leads"
+                    value={stats.totalLeads - stats.unassignedLeads}
+                    icon={<Box as={FiUser} size="20px" />}
+                    color="yellow"
                        isLoading={loading}
                      />
                      <StatsCard
-                       title="Warm Leads"
-                       value={stats.warmLeads}
-                       icon={<TimeIcon />}
+                    title="Average Score"
+                    value={stats.avgScore}
+                    icon={<Box as={FiBarChart2} size="20px" />}
                        color="orange"
-                       trend={15}
-                       isLoading={loading}
-                     />
-                     <StatsCard
-                       title="Cold Leads"
-                       value={stats.coldLeads}
-                       icon={<InfoIcon />}
-                       color="blue"
-                       trend={5}
-                       isLoading={loading}
-                     />
-                     <StatsCard
-                       title="Avg Score"
-                       value={stats.avgScore}
-                       icon={<Box as={FiBarChart2} size="24px" />}
-                       color="green"
-                       trend={10}
                        isLoading={loading}
                      />
                    </SimpleGrid>
                  </Box>
-              </VStack>
-            </CardHeader>
+            </CardBody>
           </Card>
 
           {/* Active Staff Filter Badge */}
           {selectedStaffFilter && (
-            <Card bg="purple.50" border="1px solid" borderColor="purple.200" borderRadius="lg" shadow="md">
-              <CardBody py={3}>
+            <Card bg="blue.50" border="1px solid" borderColor="blue.200" borderRadius="8px" boxShadow="none">
+              <CardBody py={3} px={4}>
                 <HStack justify="space-between" align="center">
                   <HStack spacing={3}>
                     <Box 
                       p={2} 
-                      bg="purple.100" 
-                      borderRadius="lg" 
-                      color="purple.600"
+                      bg="blue.100" 
+                      borderRadius="8px" 
+                      color="blue.600"
                     >
-                      <Box as={FiFilter} size="20px" />
+                      <Box as={FiFilter} size="16px" />
                     </Box>
-                    <VStack align="start" spacing={0}>
-                      <Text fontSize="sm" fontWeight="bold" color="purple.800">
+                    <VStack align="start" spacing={0.5}>
+                      <Text fontSize="sm" fontWeight="600" color="blue.900">
                         Active Filter
                       </Text>
-                      <Text fontSize="xs" color="purple.700">
+                      <Text fontSize="xs" color="blue.700">
                         {selectedStaffFilter === 'unassigned' 
                           ? 'Showing unassigned leads' 
                           : `Showing leads assigned to ${getStaffName(selectedStaffFilter)}`}
@@ -3530,17 +3976,14 @@ const LeadsView = () => {
                   
                   <Button
                     size="sm"
-                    variant="solid"
-                    colorScheme="purple"
+                    variant="ghost"
+                    colorScheme="blue"
                     onClick={() => handleStaffCardClick(null)}
-                    leftIcon={<Box as={FiFilter} />}
-                    _hover={{ 
-                      transform: 'translateY(-1px)', 
-                      shadow: 'md' 
-                    }}
-                    transition="all 0.2s"
+                    _hover={{ bg: 'blue.100' }}
+                    borderRadius="8px"
+                    fontWeight="500"
                   >
-                    Clear Filter
+                    Clear
                   </Button>
                 </HStack>
               </CardBody>
@@ -3549,8 +3992,8 @@ const LeadsView = () => {
 
           {/* Bulk Actions Toolbar */}
           {selectedLeads.size > 0 && viewMode === 'table' && (
-            <Card bg="blue.50" border="1px solid" borderColor="blue.200" borderRadius="lg" shadow="md">
-              <CardBody py={4}>
+            <Card bg="blue.50" border="1px solid" borderColor="blue.200" borderRadius="8px" boxShadow="none">
+              <CardBody py={3} px={4}>
                 <HStack justify="space-between" align="center">
                   <HStack spacing={3} align="center">
                     <Box
@@ -3788,50 +4231,45 @@ const LeadsView = () => {
           )}
 
           {/* Pagination Component */}
+          {viewMode === 'table' && (
           <Box mt={6} px={6} pb={6}>
             <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
               {/* Items per page selector */}
-              <HStack spacing={3}>
-                <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600">Show:</Text>
+                <HStack spacing={2}>
+                  <Text fontSize="sm" color="gray.600" fontWeight="500">Rows per page:</Text>
                 <Select
                   value={itemsPerPage}
                   onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
                   size="sm"
                   width="80px"
+                    borderRadius="7px"
+                    borderColor="gray.200"
+                    _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px rgba(66, 153, 225, 0.1)' }}
                 >
                   <option value={5}>5</option>
                   <option value={10}>10</option>
                   <option value={20}>20</option>
                   <option value={50}>50</option>
                 </Select>
-                <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600">per page</Text>
               </HStack>
               
               {/* Pagination info */}
-              <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600">
-                Showing {Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} results
+                <Text fontSize="sm" color="gray.600" fontWeight="500">
+                  {Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)}-{Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}
               </Text>
               
               {/* Pagination buttons */}
-              <HStack spacing={2}>
-                <Button
+                <HStack spacing={1}>
+                  <IconButton
                   size="sm"
-                  variant="outline"
-                  onClick={() => handlePageChange(1)}
-                  isDisabled={currentPage === 1}
-                  leftIcon={<ChevronDownIcon transform="rotate(90deg)" />}
-                >
-                  First
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
+                    variant="ghost"
+                    icon={<Box as={FiChevronLeft} />}
                   onClick={() => handlePageChange(currentPage - 1)}
                   isDisabled={currentPage === 1}
-                  leftIcon={<ChevronDownIcon transform="rotate(90deg)" />}
-                >
-                  Previous
-                </Button>
+                    borderRadius="7px"
+                    _hover={{ bg: 'gray.100' }}
+                    aria-label="Previous page"
+                  />
                 
                 {/* Page numbers */}
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -3850,36 +4288,33 @@ const LeadsView = () => {
                     <Button
                       key={pageNum}
                       size="sm"
-                      variant={currentPage === pageNum ? "solid" : "outline"}
+                        variant={currentPage === pageNum ? "solid" : "ghost"}
                       colorScheme={currentPage === pageNum ? "blue" : "gray"}
                       onClick={() => handlePageChange(pageNum)}
+                        borderRadius="7px"
+                        minW="36px"
+                        h="32px"
+                        _hover={{ bg: currentPage === pageNum ? 'blue.600' : 'gray.100' }}
                     >
                       {pageNum}
                     </Button>
                   );
                 })}
                 
-                <Button
+                  <IconButton
                   size="sm"
-                  variant="outline"
+                    variant="ghost"
+                    icon={<Box as={FiChevronRight} />}
                   onClick={() => handlePageChange(currentPage + 1)}
                   isDisabled={currentPage === totalPages}
-                  rightIcon={<ChevronDownIcon transform="rotate(-90deg)" />}
-                >
-                  Next
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handlePageChange(totalPages)}
-                  isDisabled={currentPage === totalPages}
-                  rightIcon={<ChevronDownIcon transform="rotate(-90deg)" />}
-                >
-                  Last
-                </Button>
+                    borderRadius="7px"
+                    _hover={{ bg: 'gray.100' }}
+                    aria-label="Next page"
+                  />
               </HStack>
             </Flex>
           </Box>
+          )}
 
           {/* Modals */}
           <FunnelSelectionModal
@@ -3942,6 +4377,7 @@ const LeadsView = () => {
             onStaffCardClick={handleStaffCardClick}
           />
         </VStack>
+      </Box>
       </Box>
     </Box>
   );

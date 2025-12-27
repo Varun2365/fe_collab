@@ -1,6 +1,7 @@
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getCoachId, getToken } from '../utils/authUtils';
+import { API_BASE_URL } from '../config/apiConfig';
 
 function generateFunnelUrl() {
   const url = `funnel-${Math.random().toString(36).substring(2, 8)}-${Date.now().toString(36)}`;
@@ -31,7 +32,7 @@ export const fetchFunnelBySlug = createAsyncThunk(
         return rejectWithValue('Authentication required');
       }
 
-      const response = await fetch(`https://api.funnelseye.com/api/funnels/coach/${coachId}/funnels/${funnelId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachId}/funnels/${funnelId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +124,7 @@ export const saveFunnelToBackend = createAsyncThunk(
 
       console.log('Optimized payload to backend:', JSON.stringify(payload, null, 2));
 
-      const response = await fetch(`https://api.funnelseye.com/api/funnels/coach/${coachId}/funnels/${funnelId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachId}/funnels/${funnelId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

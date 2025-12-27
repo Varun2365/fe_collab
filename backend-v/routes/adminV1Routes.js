@@ -200,34 +200,6 @@ router.post('/subscription-plans',
     adminV1Controller.createSubscriptionPlan
 );
 
-/**
- * @route PUT /api/admin/v1/subscription-plans/:id
- * @desc Update subscription plan
- * @access Private (Admin)
- * @param id: Plan ID
- * @body name, description, price, currency, billingCycle, duration, features, limits
- * @example PUT /api/admin/v1/subscription-plans/64a1b2c3d4e5f6789012345
- */
-router.put('/subscription-plans/:id', 
-    verifyAdminToken, 
-    checkAdminPermission('planManagement'), 
-    adminRateLimit(5, 60 * 1000), // 5 requests per minute
-    adminV1Controller.updateSubscriptionPlan
-);
-
-/**
- * @route DELETE /api/admin/v1/subscription-plans/:id
- * @desc Delete subscription plan
- * @access Private (Admin)
- * @param id: Plan ID
- * @example DELETE /api/admin/v1/subscription-plans/64a1b2c3d4e5f6789012345
- */
-router.delete('/subscription-plans/:id', 
-    verifyAdminToken, 
-    checkAdminPermission('planManagement'), 
-    adminRateLimit(3, 60 * 1000), // 3 requests per minute
-    adminV1Controller.deleteSubscriptionPlan
-);
 
 /**
  * @route GET /api/admin/v1/subscriptions

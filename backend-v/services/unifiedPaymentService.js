@@ -27,7 +27,8 @@ class UnifiedPaymentService {
             
             if (!this.settings) {
                 // Create default settings if none exist
-                this.settings = await GlobalPaymentSettings.create({
+                // Razorpay fields are optional and can be added later via admin panel
+                const defaultSettings = {
                     commission: {
                         mlmLevels: [
                             { level: 1, percentage: 10, isActive: true },
@@ -42,7 +43,33 @@ class UnifiedPaymentService {
                         instantPayout: { isEnabled: true, fee: 50 },
                         monthlyPayout: { isEnabled: true, dayOfMonth: 5 }
                     }
-                });
+                };
+                
+                // Add razorpay config from environment variables if available
+                if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+                    defaultSettings.razorpay = {
+                        keyId: process.env.RAZORPAY_KEY_ID,
+                        keySecret: process.env.RAZORPAY_KEY_SECRET,
+                        isActive: true
+                    };
+                }
+                
+                this.settings = await GlobalPaymentSettings.create(defaultSettings);
+            } else {
+                // Check if existing settings are missing razorpay fields but env vars are available
+                if ((!this.settings.razorpay || !this.settings.razorpay.keyId || !this.settings.razorpay.keySecret) 
+                    && process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+                    // Update with environment variables if available
+                    if (!this.settings.razorpay) {
+                        this.settings.razorpay = {};
+                    }
+                    this.settings.razorpay.keyId = process.env.RAZORPAY_KEY_ID;
+                    this.settings.razorpay.keySecret = process.env.RAZORPAY_KEY_SECRET;
+                    this.settings.razorpay.isActive = true;
+                    
+                    await this.settings.save();
+                    logger.info('[UnifiedPaymentService] Updated settings with razorpay credentials from environment variables');
+                }
             }
             // logger.info('[UnifiedPaymentService] Settings initialized');
         } catch (error) {
@@ -62,6 +89,11 @@ class UnifiedPaymentService {
                 payout: {
                     instantPayout: { isEnabled: true, fee: 50 },
                     monthlyPayout: { isEnabled: true, dayOfMonth: 5 }
+                },
+                razorpay: {
+                    keyId: process.env.RAZORPAY_KEY_ID || null,
+                    keySecret: process.env.RAZORPAY_KEY_SECRET || null,
+                    isActive: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET)
                 }
             };
         }
