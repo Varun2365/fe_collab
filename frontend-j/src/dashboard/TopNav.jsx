@@ -15,7 +15,6 @@ import {
   Text,
   Badge,
   useColorModeValue,
-  useColorMode,
   Tooltip,
   MenuGroup,
   useBreakpointValue,
@@ -28,8 +27,6 @@ import {
 import {
   FiBell,
   FiSearch,
-  FiSun,
-  FiMoon,
   FiLogOut,
   FiSettings,
   FiUser,
@@ -48,14 +45,12 @@ import {
 } from 'react-icons/fi';
 import { logout } from '../redux/authSlice';
 import { selectUser } from '../redux/authSlice';
-import { toggleDarkMode } from '../redux/uiSlice';
 import { dashboardAPI } from '../services/api';
 
 const TopNav = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const user = useSelector(selectUser);
-  const { colorMode, toggleColorMode } = useColorMode();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const toast = useToast();
   
@@ -479,10 +474,6 @@ const TopNav = () => {
     dispatch(logout());
   };
 
-  const handleThemeToggle = () => {
-    toggleColorMode();
-    dispatch(toggleDarkMode());
-  };
 
   const handleProfileClick = () => {
     navigate('/Profile_settings');
@@ -793,18 +784,7 @@ const TopNav = () => {
             )}
           </Box>
 
-          {/* Theme Toggle */}
-          <Tooltip label={`Switch to ${colorMode === 'light' ? 'dark' : 'light'} mode`}>
-            <IconButton
-              icon={colorMode === 'light' ? <FiMoon /> : <FiSun />}
-              variant="ghost"
-              size="md"
-              aria-label="Toggle theme"
-              onClick={handleThemeToggle}
-            />
-          </Tooltip>
-
-          {/* Beautiful User Menu */}
+          {/* User Menu */}
           <Menu>
             <MenuButton
               as={IconButton}
@@ -814,32 +794,58 @@ const TopNav = () => {
               aria-label="User menu"
               _hover={{ bg: 'rgba(102, 126, 234, 0.1)' }}
             />
-            <MenuList minW="260px" borderRadius="xl" boxShadow="2xl" border="none" overflow="hidden">
-              {/* User Header */}
+            <MenuList 
+              minW="320px" 
+              borderRadius="2xl" 
+              boxShadow="0 20px 60px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.1)" 
+              border="1px solid"
+              borderColor={useColorModeValue('gray.200', 'gray.700')}
+              overflow="hidden"
+              p={0}
+            >
+              {/* User Header - Minimal & Elegant */}
               <Box 
-                p={4} 
-                bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-                color="white"
+                p={6} 
+                bg={useColorModeValue('white', 'gray.800')}
+                borderBottom="1px solid"
+                borderColor={useColorModeValue('gray.100', 'gray.700')}
               >
-                <Flex alignItems="center" gap={3}>
+                <Flex alignItems="center" gap={4}>
                   <Avatar 
-                    size="md" 
+                    size="lg" 
                     name={user?.name} 
                     src={user?.avatar}
-                    border="2px solid white"
+                    border="3px solid"
+                    borderColor={useColorModeValue('gray.100', 'gray.600')}
+                    bg="brand.500"
                   />
-                  <Box>
-                    <Text fontWeight="bold" fontSize="md">
+                  <Box flex="1" minW={0}>
+                    <Text 
+                      fontWeight="600" 
+                      fontSize="lg" 
+                      color={useColorModeValue('gray.900', 'white')}
+                      noOfLines={1}
+                    >
                       {user?.name || 'User'}
                     </Text>
-                    <Text fontSize="sm" opacity={0.9}>
+                    <Text 
+                      fontSize="sm" 
+                      color={useColorModeValue('gray.500', 'gray.400')}
+                      noOfLines={1}
+                      mt={0.5}
+                    >
                       {user?.email || 'user@example.com'}
                     </Text>
                     <Badge 
-                      bg="rgba(255,255,255,0.2)" 
-                      color="white" 
+                      bg={useColorModeValue('brand.50', 'brand.900')}
+                      color="brand.600"
                       size="sm" 
-                      mt={1}
+                      mt={2}
+                      px={2}
+                      py={0.5}
+                      borderRadius="full"
+                      fontSize="xs"
+                      fontWeight="500"
                     >
                       {user?.role || 'User'}
                     </Badge>
@@ -847,89 +853,109 @@ const TopNav = () => {
                 </Flex>
               </Box>
 
-              {/* Stats Section */}
-              <Box p={3} bg={useColorModeValue('gray.50', 'gray.800')}>
-                <Flex justify="space-around">
-                  <Box textAlign="center">
-                    <Text fontSize="lg" fontWeight="bold" color="brand.500">
-                      {notificationCount}
-                    </Text>
-                    <Text fontSize="xs" color="gray.500">Alerts</Text>
-                  </Box>
-                  <Box textAlign="center">
-                    <Text fontSize="lg" fontWeight="bold" color="green.500">
-                      Online
-                    </Text>
-                    <Text fontSize="xs" color="gray.500">Status</Text>
-                  </Box>
-                  <Box textAlign="center">
-                    <Text fontSize="lg" fontWeight="bold" color="purple.500">
-                      Pro
-                    </Text>
-                    <Text fontSize="xs" color="gray.500">Plan</Text>
-                  </Box>
-                </Flex>
-              </Box>
-
-              {/* Menu Items */}
-              <Box p={1}>
+              {/* Menu Items - Clean & Minimal */}
+              <Box p={2}>
                 <MenuItem 
                   icon={<FiUser />} 
                   onClick={handleProfileClick}
-                  borderRadius="md"
-                  _hover={{ bg: 'brand.50' }}
+                  borderRadius="lg"
+                  py={3}
+                  px={4}
+                  _hover={{ 
+                    bg: useColorModeValue('gray.50', 'gray.700'),
+                    transform: 'translateX(4px)'
+                  }}
+                  transition="all 0.2s ease"
                 >
-                  <Box>
-                    <Text fontWeight="medium">Profile Settings</Text>
-                    <Text fontSize="xs" color="gray.500">Manage your account</Text>
-                  </Box>
+                  <VStack align="flex-start" spacing={0} flex="1">
+                    <Text fontWeight="500" fontSize="sm" color={useColorModeValue('gray.900', 'white')}>
+                      Profile Settings
+                    </Text>
+                    <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                      Manage your account
+                    </Text>
+                  </VStack>
                 </MenuItem>
 
                 <Menu>
                   <MenuButton 
                     as={MenuItem} 
                     icon={<FiSettings />}
-                    borderRadius="md"
-                    _hover={{ bg: 'brand.50' }}
+                    borderRadius="lg"
+                    py={3}
+                    px={4}
+                    _hover={{ 
+                      bg: useColorModeValue('gray.50', 'gray.700'),
+                      transform: 'translateX(4px)'
+                    }}
+                    transition="all 0.2s ease"
                   >
-                    <Box>
-                      <Text fontWeight="medium">Settings</Text>
-                      <Text fontSize="xs" color="gray.500">Configure preferences</Text>
-                    </Box>
+                    <VStack align="flex-start" spacing={0} flex="1">
+                      <Text fontWeight="500" fontSize="sm" color={useColorModeValue('gray.900', 'white')}>
+                        Settings
+                      </Text>
+                      <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                        Configure preferences
+                      </Text>
+                    </VStack>
                   </MenuButton>
-                  <MenuList borderRadius="lg" boxShadow="xl">
-                    <MenuItem icon={<FiMessageCircle />} onClick={handleWhatsAppSettings}>
+                  <MenuList 
+                    borderRadius="xl" 
+                    boxShadow="0 10px 40px rgba(0, 0, 0, 0.1)"
+                    border="1px solid"
+                    borderColor={useColorModeValue('gray.200', 'gray.700')}
+                    minW="200px"
+                  >
+                    <MenuItem 
+                      icon={<FiMessageCircle />} 
+                      onClick={handleWhatsAppSettings}
+                      borderRadius="md"
+                      _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+                    >
                       WhatsApp Integration
                     </MenuItem>
-                    <MenuItem icon={<FiVideo />} onClick={handleZoomSettings}>
+                    <MenuItem 
+                      icon={<FiVideo />} 
+                      onClick={handleZoomSettings}
+                      borderRadius="md"
+                      _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+                    >
                       Zoom Meetings
                     </MenuItem>
-                    <MenuItem icon={<FiCreditCard />} onClick={handlePaymentGateways}>
+                    <MenuItem 
+                      icon={<FiCreditCard />} 
+                      onClick={handlePaymentGateways}
+                      borderRadius="md"
+                      _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+                    >
                       Payment Methods
                     </MenuItem>
                   </MenuList>
                 </Menu>
 
-                <MenuDivider />
+                <MenuDivider my={2} borderColor={useColorModeValue('gray.200', 'gray.700')} />
 
                 <MenuItem 
                   icon={<FiLogOut />} 
                   onClick={handleLogout}
-                  borderRadius="md"
-                  _hover={{ bg: 'red.50' }}
+                  borderRadius="lg"
+                  py={3}
+                  px={4}
+                  _hover={{ 
+                    bg: useColorModeValue('red.50', 'red.900'),
+                    transform: 'translateX(4px)'
+                  }}
+                  transition="all 0.2s ease"
                 >
-                  <Box>
-                    <Text fontWeight="medium" color="red.500">Sign Out</Text>
-                    <Text fontSize="xs" color="gray.500">Logout from account</Text>
-                  </Box>
+                  <VStack align="flex-start" spacing={0} flex="1">
+                    <Text fontWeight="500" fontSize="sm" color="red.500">
+                      Sign Out
+                    </Text>
+                    <Text fontSize="xs" color={useColorModeValue('gray.500', 'gray.400')}>
+                      Logout from account
+                    </Text>
+                  </VStack>
                 </MenuItem>
-              </Box>
-
-              {/* Footer */}
-              <Box p={2} bg={useColorModeValue('gray.100', 'gray.700')} textAlign="center">
-                <Text fontSize="xs" color="gray.500">
-                  Last active: {new Date().toLocaleTimeString()}
-                </Text>
               </Box>
             </MenuList>
           </Menu>

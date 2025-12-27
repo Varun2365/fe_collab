@@ -14,7 +14,7 @@ const getStore = () => {
   return store;
 };
 
-const API_BASE_URL = 'https://api.funnelseye.com';
+import { API_BASE_URL } from '../config/apiConfig';
 
 /**
  * Fetch current user data including permissions

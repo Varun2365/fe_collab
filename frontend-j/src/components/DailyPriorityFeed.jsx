@@ -63,7 +63,7 @@ import {
 } from 'react-icons/fa';
 import { FiMoreVertical, FiRefreshCw } from 'react-icons/fi';
 
-const API_BASE_URL = 'https://api.funnelseye.com';
+import { API_BASE_URL } from '../config/apiConfig';
 
 const DailyPriorityFeed = ({ token, coachId, onItemClick }) => {
   const navigate = useNavigate();

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { getCoachId, getToken, debugAuthState, getAuthHeaders } from '../../utils/authUtils';
 import { selectUser, selectToken, selectAuthStatus } from '../../redux/authSlice';
+import { API_BASE_URL } from '../../config/apiConfig';
 import {
   Box,
   Text,
@@ -630,8 +631,8 @@ function ZoomIntegrationComponent() {
 
     console.log('🚀 Making API Call:', {
       url: endpoint.includes('/api/zoom-integration/setup') 
-        ? 'https://api.funnelseye.com/api/zoom-integration/setup'
-        : 'https://api.funnelseye.com/api/zoom-integration',
+        ? `${API_BASE_URL}/api/zoom-integration/setup`
+        : `${API_BASE_URL}/api/zoom-integration`,
       method: method === 'PUT' ? 'PUT' : 'POST',
       headers: {
         'Authorization': `Bearer ${authToken.substring(0, 20)}...`,
@@ -650,11 +651,11 @@ function ZoomIntegrationComponent() {
       // FIXED: Use correct API URLs as per collection
       let apiUrl;
       if (endpoint.includes('/api/zoom-integration/setup')) {
-        apiUrl = 'https://api.funnelseye.com/api/zoom-integration/setup';
+        apiUrl = `${API_BASE_URL}/api/zoom-integration/setup`;
       } else if (endpoint.includes('/api/zoom-integration')) {
-        apiUrl = 'https://api.funnelseye.com/api/zoom-integration';
+        apiUrl = `${API_BASE_URL}/api/zoom-integration`;
       } else {
-        apiUrl = 'https://api.funnelseye.com/api/zoom-integration/setup';
+        apiUrl = `${API_BASE_URL}/api/zoom-integration/setup`;
       }
       
       const response = await fetch(apiUrl, config);

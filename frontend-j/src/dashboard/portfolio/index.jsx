@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { debugLocalStorage } from '../../redux/authSlice';
 import { getCoachId, getToken, isAuthenticated, debugAuthState } from '../../utils/authUtils';
+import { API_BASE_URL } from '../../config/apiConfig';
 import {
   Box,
   Text,
@@ -72,7 +73,8 @@ import {
   ViewIcon,
   ChevronDownIcon,
   ExternalLinkIcon,
-  CopyIcon
+  CopyIcon,
+  WarningIcon
 } from '@chakra-ui/icons';
 import {
   FiEye,
@@ -476,6 +478,7 @@ function FunnelManagementComponent() {
   // State Management
   const [funnels, setFunnels] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -624,7 +627,7 @@ function FunnelManagementComponent() {
     // Use indexPageId if available, otherwise use first stage's pageId
     const pageId = funnel.indexPageId || funnel.stages[0]?.pageId;
     if (!pageId) return null;
-    return `https://api.funnelseye.com/funnels/${funnel.funnelUrl}/${pageId}`;
+    return `${API_BASE_URL}/funnels/${funnel.funnelUrl}/${pageId}`;
   };
 
   // Data Fetching
@@ -638,7 +641,8 @@ function FunnelManagementComponent() {
       
       try {
         setLoading(true);
-        const response = await fetch(`https://api.funnelseye.com/api/funnels/coach/${coachID}/funnels`, {
+        setError(null);
+        const response = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachID}/funnels`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!response.ok) throw new Error(`Server error: ${response.status}`);
@@ -664,9 +668,12 @@ function FunnelManagementComponent() {
         }));
         
         setFunnels(transformedData);
+        setError(null);
       } catch (err) {
         console.error('Error fetching funnels:', err);
-        customToast(err.message, 'error');
+        const errorMsg = err.response?.data?.message || err.message || "Failed to fetch funnels. Please try again.";
+        setError(errorMsg);
+        customToast(errorMsg, 'error');
       } finally {
         setLoading(false);
       }
@@ -742,7 +749,7 @@ function FunnelManagementComponent() {
       // Show loading state
       setActionLoading(true);
       
-      const response = await fetch(`https://api.funnelseye.com/api/funnels/coach/${coachID}/funnels/${selectedFunnel.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachID}/funnels/${selectedFunnel.id}`, {
         method: 'DELETE',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -797,7 +804,7 @@ function FunnelManagementComponent() {
     setPublishingId(funnelId);
     
     try {
-      const fetchRes = await fetch(`https://api.funnelseye.com/api/funnels/coach/${coachID}/funnels/${funnelId}`, {
+      const fetchRes = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachID}/funnels/${funnelId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!fetchRes.ok) throw new Error('Failed to fetch funnel details');
@@ -809,7 +816,7 @@ function FunnelManagementComponent() {
         isPublished: nextStatus
       };
 
-      const updateRes = await fetch(`https://api.funnelseye.com/api/funnels/coach/${coachID}/funnels/${funnelId}`, {
+      const updateRes = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachID}/funnels/${funnelId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(payload)
@@ -862,7 +869,7 @@ function FunnelManagementComponent() {
     setActionLoading(true);
     try {
       const deletePromises = selectedFunnels.map(id => 
-        fetch(`https://api.funnelseye.com/api/funnels/coach/${coachID}/funnels/${id}`, {
+        fetch(`${API_BASE_URL}/api/funnels/coach/${coachID}/funnels/${id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         })
@@ -949,7 +956,7 @@ function FunnelManagementComponent() {
 
       if (isEditMode) {
         method = 'PUT';
-        url = `https://api.funnelseye.com/api/funnels/coach/${coachID}/funnels/${selectedFunnel.id}`;
+        url = `${API_BASE_URL}/api/funnels/coach/${coachID}/funnels/${selectedFunnel.id}`;
         const fetchRes = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` }});
         if (!fetchRes.ok) throw new Error('Failed to fetch funnel for update.');
         const { data: fullFunnel } = await fetchRes.json();
@@ -966,7 +973,7 @@ function FunnelManagementComponent() {
         };
       } else {
         method = 'POST';
-        url = `https://api.funnelseye.com/api/funnels/coach/${coachID}/funnels`;
+        url = `${API_BASE_URL}/api/funnels/coach/${coachID}/funnels`;
         const firstStagePageId = `welcome-page-${Date.now()}`;
         payload = {
           name: formData.name,
@@ -1233,6 +1240,82 @@ function FunnelManagementComponent() {
   if (loading && !funnels.length) {
     return <ProfessionalLoader />;
   }
+
+  if (error) return (
+    <Box 
+      bg={useColorModeValue('white', 'gray.900')} 
+      h="100vh"
+      w="100vw"
+      position="fixed"
+      top={0}
+      left={0}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      px={4}
+      overflow="hidden"
+    >
+      <Box maxW="500px" w="auto" mx="auto" textAlign="center">
+        <VStack spacing={6}>
+          {/* Minimal Icon */}
+          <Box
+            w="64px"
+            h="64px"
+            borderRadius="full"
+            bg={useColorModeValue('red.50', 'red.900')}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            mx="auto"
+          >
+            <WarningIcon 
+              boxSize="32px" 
+              color={useColorModeValue('red.500', 'red.300')}
+            />
+          </Box>
+
+          {/* Error Content */}
+          <VStack spacing={3}>
+            <Heading 
+              size="md" 
+              fontWeight="600"
+              color={useColorModeValue('gray.900', 'white')}
+              letterSpacing="-0.3px"
+            >
+              Unable to Load Funnels
+            </Heading>
+            <Text 
+              color={useColorModeValue('gray.600', 'gray.400')} 
+              fontSize="sm"
+              lineHeight="1.5"
+              maxW="400px"
+              mx="auto"
+              noOfLines={3}
+            >
+              {error}
+            </Text>
+          </VStack>
+
+          {/* Action Button */}
+          <Button 
+            size="md"
+            colorScheme="blue"
+            borderRadius="lg"
+            px={6}
+            fontWeight="500"
+            onClick={() => window.location.reload()}
+            _hover={{ 
+              transform: 'translateY(-2px)',
+              boxShadow: 'lg'
+            }}
+            transition="all 0.2s"
+          >
+            Retry
+          </Button>
+        </VStack>
+      </Box>
+    </Box>
+  );
 
   return (
     <Box bg={bgColor} minH="100vh" py={6} px={6} transition="all 0.3s ease" position="relative">

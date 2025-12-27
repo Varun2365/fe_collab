@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://api.funnelseye.com';
+import { API_BASE_URL } from '../config/apiConfig';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {

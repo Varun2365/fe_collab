@@ -33,6 +33,7 @@ import {
   Flex,
   SimpleGrid,
   Skeleton,
+  Heading,
 } from '@chakra-ui/react';
 import { 
   FaRupeeSign, FaClock, FaRegMoneyBillAlt, 
@@ -50,7 +51,7 @@ ChartJS.register(
 );
 
 // API Base URL
-const API_BASE_URL = 'https://api.funnelseye.com';
+import { API_BASE_URL } from '../config/apiConfig';
 
 // Import API service
 import { dashboardAPI, handleAPIError } from '../services/api';
@@ -385,6 +386,7 @@ const Dashboard = () => {
   const borderColor = useColorModeValue('gray.200', 'gray.600');
   const textColor = useColorModeValue('gray.800', 'white');
   const secondaryTextColor = useColorModeValue('gray.600', 'gray.300');
+  const mutedTextColor = useColorModeValue('gray.600', 'gray.400');
   const hoverBg = useColorModeValue('gray.50', 'gray.600');
   const shadowColor = useColorModeValue('sm', 'dark-lg');
   
@@ -421,6 +423,10 @@ const Dashboard = () => {
   // Timeline filter state
   const [trendsTimeFilter, setTrendsTimeFilter] = useState('1W');
   const [leadsTimeFilter, setLeadsTimeFilter] = useState('1M');
+  
+  // Funnels state for mapping funnelId to funnel name
+  const [funnels, setFunnels] = useState([]);
+  const [funnelMap, setFunnelMap] = useState({}); // Map funnelId to funnel name
 
   // No mock data - all data must come from backend
 
@@ -526,34 +532,9 @@ const Dashboard = () => {
     } catch (error) {
       console.error(`❌ API call failed:`, error.message);
       
-      // Show user-friendly error message
-      if (error.message.includes('500')) {
-        toast({
-          title: 'Server Error',
-          description: 'The server encountered an error. Please try again later.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      } else if (error.message.includes('401') || error.message.includes('403')) {
-        toast({
-          title: 'Authentication Error',
-          description: 'Please login again to continue.',
-          status: 'warning',
-          duration: 5000,
-          isClosable: true,
-        });
-      } else if (error.message.includes('Network') || error.message.includes('fetch')) {
-        toast({
-          title: 'Connection Error',
-          description: 'Unable to connect to the server. Please check your internet connection.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-      
-      throw error; // Re-throw to let caller handle it properly
+      // Don't show toasts - error page will handle it
+      // Just re-throw to let caller handle it properly
+      throw error;
     }
   };
 
@@ -848,7 +829,8 @@ const Dashboard = () => {
           console.error('❌ Unified dashboard API failed');
           console.error('❌ API Error details:', completeError);
           
-          setError('Failed to load dashboard data. Please check your connection and try again.');
+          const errorMessage = completeError?.response?.data?.message || completeError?.message || 'Failed to load dashboard data. Please check your connection and try again.';
+          setError(errorMessage);
           setDashboardData({
             overview: null,
             leads: null,
@@ -862,13 +844,7 @@ const Dashboard = () => {
             dailyFeed: null,
           });
           
-          toast({
-            title: 'Connection Error',
-            description: 'Unable to load dashboard data. Please refresh the page.',
-            status: 'error',
-            duration: 5000,
-            isClosable: true,
-          });
+          // No toast - error page will handle it
           
           setLastSyncTime(new Date());
           setLoading(false);
@@ -878,7 +854,8 @@ const Dashboard = () => {
       } catch (err) {
         console.error('❌ Dashboard fetch error:', err);
         
-        setError('Failed to fetch dashboard data. Please try again.');
+        const errorMessage = err?.response?.data?.message || err?.message || 'Failed to fetch dashboard data. Please try again.';
+        setError(errorMessage);
         setDashboardData({
           overview: null,
           leads: null,
@@ -892,27 +869,16 @@ const Dashboard = () => {
           dailyFeed: null,
         });
         
-        toast({
-          title: 'Error',
-          description: 'Failed to load dashboard data. Please refresh the page.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
+        // No toast - error page will handle it
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     } catch (err) {
-      setError('Failed to fetch dashboard data');
+      const errorMessage = err?.response?.data?.message || err?.message || 'Failed to fetch dashboard data';
+      setError(errorMessage);
       console.error('❌ Dashboard fetch error:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to load dashboard data',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
+      // No toast - error page will handle it
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -961,6 +927,39 @@ const Dashboard = () => {
     };
   }, []);
 
+  // Fetch funnels to create mapping
+  useEffect(() => {
+    const fetchFunnels = async () => {
+      if (!coachId || !token) return;
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachId}/funnels`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.data)) {
+            setFunnels(data.data);
+            // Create a map from funnelId to funnel name
+            const map = {};
+            data.data.forEach(funnel => {
+              map[funnel._id] = funnel.name;
+            });
+            setFunnelMap(map);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching funnels:', error);
+      }
+    };
+    
+    fetchFunnels();
+  }, [coachId, token]);
+
   // Real-time data fetching
   useEffect(() => {
     fetchDashboardData();
@@ -984,9 +983,9 @@ const Dashboard = () => {
     const data = Object.values(statusData);
 
     return {
-      labels: labels.length > 0 ? labels : ['Welcome Page', 'Appointment'],
+      labels: labels.length > 0 ? labels : [],
       datasets: [{
-        data: data.length > 0 ? data : [0, 0],
+        data: data.length > 0 ? data : [],
         backgroundColor: ['#6366f1', '#ec4899', '#10b981', '#f59e0b'],
         borderWidth: 0,
         hoverBackgroundColor: ['#4f46e5', '#db2777', '#059669', '#d97706'],
@@ -1022,10 +1021,36 @@ const Dashboard = () => {
     };
   };
 
+  // Helper function to get funnel name from lead
+  const getFunnelName = (lead) => {
+    // Try to get funnel name from various possible fields
+    const funnelId = lead.funnelId?._id || lead.funnelId || lead.funnel?.id || lead.funnel?._id;
+    if (funnelId && funnelMap[funnelId]) {
+      return funnelMap[funnelId];
+    }
+    // If funnel name is directly available
+    if (lead.funnelId?.name || lead.funnel?.name) {
+      return lead.funnelId.name || lead.funnel.name;
+    }
+    // Fallback to status if no funnel info available
+    return lead.status || 'Unknown';
+  };
+
   // Filter leads data based on selected timeline
   const getFilteredLeadsData = () => {
     const leads = dashboardData.leads;
-    if (!leads?.recentLeads) return { statusDistribution: leads?.statusDistribution || {}, totalLeads: leads?.totalLeads || 0 };
+    if (!leads?.recentLeads) {
+      // If we have statusDistribution from API, convert it to funnel distribution if possible
+      const statusDist = leads?.statusDistribution || {};
+      const funnelDistribution = {};
+      // Try to map status to funnel names (this is a fallback)
+      Object.keys(statusDist).forEach(status => {
+        // If status looks like a page name, we'll keep it as is for now
+        // Otherwise, try to find matching funnel
+        funnelDistribution[status] = statusDist[status];
+      });
+      return { statusDistribution: funnelDistribution, totalLeads: leads?.totalLeads || 0 };
+    }
 
     const now = new Date();
     let cutoffDate;
@@ -1041,14 +1066,27 @@ const Dashboard = () => {
       return leadDate >= cutoffDate;
     });
 
-    // Recalculate status distribution for filtered leads
-    const statusDistribution = {};
+    // Recalculate distribution by funnel name instead of status
+    const funnelDistribution = {};
     filteredLeads.forEach(lead => {
-      statusDistribution[lead.status] = (statusDistribution[lead.status] || 0) + 1;
+      const funnelName = getFunnelName(lead);
+      funnelDistribution[funnelName] = (funnelDistribution[funnelName] || 0) + 1;
     });
 
+    // If no filtered leads, use original statusDistribution but try to convert
+    if (Object.keys(funnelDistribution).length === 0 && leads?.statusDistribution) {
+      const convertedDist = {};
+      Object.keys(leads.statusDistribution).forEach(status => {
+        convertedDist[status] = leads.statusDistribution[status];
+      });
+      return {
+        statusDistribution: convertedDist,
+        totalLeads: leads?.totalLeads || 0
+      };
+    }
+
     return {
-      statusDistribution: Object.keys(statusDistribution).length > 0 ? statusDistribution : (leads?.statusDistribution || {}),
+      statusDistribution: funnelDistribution,
       totalLeads: filteredLeads.length > 0 ? filteredLeads.length : (leads?.totalLeads || 0)
     };
   };
@@ -1119,33 +1157,224 @@ const Dashboard = () => {
     return <ProfessionalLoader />;
   }
 
-  // Error component
+  // Professional Error Component with Animations
   if (error && !dashboardData.overview) {
     return (
       <Box 
-        textAlign="center" 
-        py={20}
         bg={bgColor}
-        minH="100vh"
-        transition="all 0.3s ease"
+        h="100vh"
+        w="100vw"
+        position="fixed"
+        top={0}
+        left={0}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        px={4}
+        overflow="hidden"
       >
-        <Icon as={FaExclamationTriangle} boxSize={16} color="red.500" mb={4} />
-        <Text fontSize="xl" fontWeight="semibold" mb={2} color={textColor}>
-          Oops! Something went wrong
-        </Text>
-        <Text color={secondaryTextColor} mb={4}>{error}</Text>
-        {coachId && (
-          <Badge colorScheme="brand" variant="subtle" mb={4}>
-            Coach ID: {coachId}
-          </Badge>
-        )}
-        <Button
-          leftIcon={<FaSyncAlt />}
-          colorScheme="brand"
-          onClick={() => fetchDashboardData()}
+        {/* Animated Background Elements */}
+        <Box
+          position="absolute"
+          top="-50%"
+          left="-50%"
+          w="200%"
+          h="200%"
+          bg={useColorModeValue('rgba(59, 130, 246, 0.05)', 'rgba(59, 130, 246, 0.1)')}
+          borderRadius="full"
+          animation="float 20s ease-in-out infinite"
+          sx={{
+            '@keyframes float': {
+              '0%, 100%': { transform: 'translate(0, 0) rotate(0deg)' },
+              '50%': { transform: 'translate(30px, 30px) rotate(180deg)' }
+            }
+          }}
+        />
+        <Box
+          position="absolute"
+          bottom="-30%"
+          right="-30%"
+          w="150%"
+          h="150%"
+          bg={useColorModeValue('rgba(59, 130, 246, 0.05)', 'rgba(59, 130, 246, 0.1)')}
+          borderRadius="full"
+          animation="float 25s ease-in-out infinite reverse"
+          sx={{
+            '@keyframes float': {
+              '0%, 100%': { transform: 'translate(0, 0) rotate(0deg)' },
+              '50%': { transform: 'translate(-30px, -30px) rotate(-180deg)' }
+            }
+          }}
+        />
+
+        <Box 
+          maxW="600px" 
+          w="auto" 
+          ml="30px"
+          textAlign="center"
+          position="relative"
+          zIndex={1}
         >
-          Try Again
-        </Button>
+          <VStack spacing={8}>
+            {/* Animated Icon Container */}
+            <Box
+              position="relative"
+              w="120px"
+              h="120px"
+              mx="auto"
+            >
+              {/* Pulsing Ring Animation */}
+              <Box
+                position="absolute"
+                top="50%"
+                left="50%"
+                transform="translate(-50%, -50%)"
+                w="120px"
+                h="120px"
+                borderRadius="full"
+                bg={useColorModeValue('blue.100', 'blue.900')}
+                opacity={0.3}
+                animation="pulse 2s ease-in-out infinite"
+                sx={{
+                  '@keyframes pulse': {
+                    '0%, 100%': { transform: 'translate(-50%, -50%) scale(1)', opacity: 0.3 },
+                    '50%': { transform: 'translate(-50%, -50%) scale(1.2)', opacity: 0.1 }
+                  }
+                }}
+              />
+              {/* Main Icon Circle */}
+              <Box
+                w="120px"
+                h="120px"
+                borderRadius="full"
+                bg={useColorModeValue('white', 'gray.800')}
+                boxShadow="xl"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                position="relative"
+                border="4px solid"
+                borderColor={useColorModeValue('blue.200', 'blue.700')}
+                animation="bounce 2s ease-in-out infinite"
+                sx={{
+                  '@keyframes bounce': {
+                    '0%, 100%': { transform: 'translateY(0)' },
+                    '50%': { transform: 'translateY(-10px)' }
+                  }
+                }}
+              >
+                <Icon 
+                  as={FaExclamationTriangle} 
+                  boxSize="48px" 
+                  color={useColorModeValue('blue.500', 'blue.300')}
+                />
+              </Box>
+            </Box>
+
+            {/* Error Content with Fade-in Animation */}
+            <VStack 
+              spacing={4}
+              animation="fadeInUp 0.6s ease-out"
+              sx={{
+                '@keyframes fadeInUp': {
+                  '0%': { opacity: 0, transform: 'translateY(20px)' },
+                  '100%': { opacity: 1, transform: 'translateY(0)' }
+                }
+              }}
+            >
+              <Heading 
+                size="xl" 
+                fontWeight="700"
+                letterSpacing="-0.5px"
+                color={textColor}
+              >
+                Dashboard Unavailable
+              </Heading>
+              <Text 
+                color={secondaryTextColor} 
+                fontSize="lg"
+                lineHeight="1.7"
+                maxW="500px"
+                mx="auto"
+                px={4}
+              >
+                {error}
+              </Text>
+            </VStack>
+
+            {/* Action Buttons with Hover Animations */}
+            <HStack 
+              spacing={4}
+              animation="fadeInUp 0.8s ease-out"
+              sx={{
+                '@keyframes fadeInUp': {
+                  '0%': { opacity: 0, transform: 'translateY(20px)' },
+                  '100%': { opacity: 1, transform: 'translateY(0)' }
+                }
+              }}
+            >
+              <Button 
+                size="lg"
+                colorScheme="blue"
+                borderRadius="8px"
+                px={8}
+                fontWeight="600"
+                leftIcon={<FaSyncAlt />}
+                onClick={() => {
+                  setError(null);
+                  fetchDashboardData();
+                }}
+                _hover={{ 
+                  transform: 'translateY(-3px)',
+                  boxShadow: 'xl'
+                }}
+                _active={{
+                  transform: 'translateY(-1px)'
+                }}
+                transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+                boxShadow="lg"
+              >
+                Refresh Dashboard
+              </Button>
+              <Button 
+                size="lg"
+                variant="outline"
+                colorScheme="blue"
+                borderRadius="8px"
+                px={8}
+                fontWeight="600"
+                onClick={() => window.location.reload()}
+                _hover={{ 
+                  transform: 'translateY(-3px)',
+                  boxShadow: 'md',
+                  bg: useColorModeValue('blue.50', 'blue.900')
+                }}
+                _active={{
+                  transform: 'translateY(-1px)'
+                }}
+                transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+              >
+                Reload Page
+              </Button>
+            </HStack>
+
+            {/* Subtle Help Text */}
+            <Text 
+              fontSize="sm" 
+              color={secondaryTextColor}
+              mt={4}
+              animation="fadeIn 1s ease-out"
+              sx={{
+                '@keyframes fadeIn': {
+                  '0%': { opacity: 0 },
+                  '100%': { opacity: 1 }
+                }
+              }}
+            >
+              If the problem persists, please check your internet connection or contact support.
+            </Text>
+          </VStack>
+        </Box>
       </Box>
     );
   }
@@ -2132,18 +2361,9 @@ const Dashboard = () => {
               </Box>
             ))}
             {Object.keys(getFilteredLeadsData().statusDistribution).length === 0 && (
-              <>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Box w={3} h={3} bg="blue.500" borderRadius="full" />
-                  <Text fontSize="sm" color={secondaryTextColor}>Welcome Page</Text>
-                  <Text fontSize="sm" fontWeight="semibold" ml="auto" color={textColor}>0</Text>
-                </Box>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Box w={3} h={3} bg="pink.500" borderRadius="full" />
-                  <Text fontSize="sm" color={secondaryTextColor}>Appointment</Text>
-                  <Text fontSize="sm" fontWeight="semibold" ml="auto" color={textColor}>0</Text>
-                </Box>
-              </>
+              <Box textAlign="center" py={4}>
+                <Text fontSize="sm" color={secondaryTextColor}>No leads data available</Text>
+              </Box>
             )}
           </Box>
         </Box>
@@ -2377,11 +2597,11 @@ const Dashboard = () => {
                     </Box>
                     <Box textAlign="right">
                       <Badge 
-                        colorScheme={lead.status === 'Welcome Page' ? 'blue' : lead.status === 'Appointment' ? 'green' : 'orange'} 
+                        colorScheme="blue"
                         variant="subtle"
                         size="sm"
                       >
-                        {lead.status}
+                        {getFunnelName(lead)}
                       </Badge>
                       <Text fontSize="xs" color={secondaryTextColor} mt={1}>
                         {new Date(lead.createdAt).toLocaleDateString()}

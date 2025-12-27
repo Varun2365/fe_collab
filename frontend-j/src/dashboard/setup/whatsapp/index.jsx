@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { getCoachId, getToken, debugAuthState } from '../../../utils/authUtils';
+import { API_BASE_URL } from '../../../config/apiConfig';
 import {
   Box,
   Text,
@@ -359,7 +360,7 @@ function WhatsAppSetupComponent() {
         }
       };
     } else {
-      const url = new URL(`https://api.funnelseye.com${endpoint}`);
+      const url = new URL(`${API_BASE_URL}${endpoint}`);
       url.searchParams.append('coachId', coachID);
       url.searchParams.append('token', token);
       endpoint = url.pathname + url.search;
@@ -369,7 +370,7 @@ function WhatsAppSetupComponent() {
       config.body = JSON.stringify(requestBody);
     }
 
-    const response = await fetch(`https://api.funnelseye.com${endpoint}`, config);
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

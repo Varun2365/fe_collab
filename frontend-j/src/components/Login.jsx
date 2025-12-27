@@ -49,7 +49,7 @@ import { motion } from 'framer-motion';
 const MotionBox = motion(Box);
 const MotionCard = motion(Card);
 
-const BASE_API_URL = 'https://api.funnelseye.com';
+import { API_BASE_URL as BASE_API_URL } from '../config/apiConfig';
 
 const Login = () => {
   const navigate = useNavigate();
