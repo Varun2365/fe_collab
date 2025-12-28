@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { getToken } from '../../utils/authUtils';
+import { API_BASE_URL } from '../../config/apiConfig';
 import {
   Box,
   Container,
@@ -80,8 +81,6 @@ import {
   FiDownload,
   FiUpload
 } from 'react-icons/fi';
-
-const API_BASE_URL = 'https://api.funnelseye.com';
 
 const Courses = () => {
   const navigate = useNavigate();
@@ -200,12 +199,25 @@ const Courses = () => {
         const courses = data.data?.courses || [];
         // Filter only courses created by this coach
         const coachCourses = courses.filter(c => {
+          if (!c) return false;
           const courseCreatorId = c.createdBy?._id || c.createdBy;
           const userId = user?._id || user?.id;
+          // If createdBy is not set, include it if it's a customer_course (coaches can only create customer courses)
+          if (!courseCreatorId && c.category === 'customer_course') {
+            return true; // Include courses without createdBy if they're customer courses
+          }
           return courseCreatorId?.toString() === userId?.toString();
         });
-        setMyCourses(coachCourses);
-        calculateAnalytics(coachCourses);
+        
+        // Sort by creation date (newest first)
+        const sortedCourses = coachCourses.sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.updatedAt || 0);
+          const dateB = new Date(b.createdAt || b.updatedAt || 0);
+          return dateB - dateA;
+        });
+        
+        setMyCourses(sortedCourses);
+        calculateAnalytics(sortedCourses);
       } else {
         const errorData = await response.json().catch(() => ({ message: `HTTP ${response.status}` }));
         console.error('Error loading my courses:', errorData.message || `HTTP ${response.status}`);
@@ -365,6 +377,11 @@ const Courses = () => {
       });
       
       if (response.ok) {
+        const responseData = await response.json();
+        const newCourse = responseData.data?.course || responseData.data;
+        
+        console.log('Course created successfully:', newCourse);
+        
         toast({
           title: 'Success',
           description: 'Course created successfully',
@@ -372,6 +389,7 @@ const Courses = () => {
           duration: 3000,
           isClosable: true,
         });
+        
         onCreateClose();
         setCourseForm({
           title: '',
@@ -382,7 +400,37 @@ const Courses = () => {
           category: 'customer_course',
           thumbnail: ''
         });
-        loadMyCourses();
+        
+        // Switch to "My Courses" tab to show the newly created course
+        setActiveTab('my-courses');
+        
+        // Add the new course immediately to state (optimistic update)
+        if (newCourse && newCourse._id) {
+          setMyCourses(prevCourses => {
+            // Check if course already exists to avoid duplicates
+            const exists = prevCourses.some(c => c._id === newCourse._id);
+            if (!exists) {
+              console.log('Adding new course to state:', newCourse);
+              // Ensure createdBy is set for filtering
+              const courseWithCreator = {
+                ...newCourse,
+                createdBy: newCourse.createdBy || user?._id || user?.id,
+                category: newCourse.category || 'customer_course'
+              };
+              const updatedCourses = [courseWithCreator, ...prevCourses];
+              // Update analytics with new courses list
+              calculateAnalytics(updatedCourses);
+              return updatedCourses;
+            }
+            return prevCourses;
+          });
+        }
+        
+        // Reload courses from API to ensure we have the latest data
+        // Use a small delay to allow backend to process
+        setTimeout(async () => {
+          await loadMyCourses();
+        }, 500);
       } else {
         const error = await response.json();
         throw new Error(error.message || 'Failed to create course');

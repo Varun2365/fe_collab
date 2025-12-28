@@ -51,6 +51,15 @@ import CourseEdit from './dashboard/courses/edit.jsx';
 import TasksAndActivities from './dashboard/tasks/index.jsx';
 import NotFound from './components/NotFound.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+// Client Management Pages
+import PersonalProgressTracking from './dashboard/client_management/PersonalProgressTracking';
+import CoachingDeliverySystem from './dashboard/client_management/CoachingDeliverySystem';
+import Gamification from './dashboard/client_management/Gamification';
+import Communication from './dashboard/client_management/Communication';
+import EducationalHub from './dashboard/client_management/EducationalHub';
+import ProgressAnalytics from './dashboard/client_management/ProgressAnalytics';
+import Community from './dashboard/client_management/Community';
+import Motivational from './dashboard/client_management/Motivational';
 function App() {
   return (
     <ErrorBoundary>
@@ -108,6 +117,15 @@ function App() {
           <Route path="courses" element={<Courses />} />
           <Route path="courses/:courseId/edit" element={<CourseEdit />} />
           <Route path="tasks" element={<TasksAndActivities />} />
+          {/* Client Management Routes */}
+          <Route path="client_management/personal_progress" element={<PersonalProgressTracking />} />
+          <Route path="client_management/coaching_delivery" element={<CoachingDeliverySystem />} />
+          <Route path="client_management/gamification" element={<Gamification />} />
+          <Route path="client_management/communication" element={<Communication />} />
+          <Route path="client_management/educational_hub" element={<EducationalHub />} />
+          <Route path="client_management/progress_analytics" element={<ProgressAnalytics />} />
+          <Route path="client_management/community" element={<Community />} />
+          <Route path="client_management/motivational" element={<Motivational />} />
         </Route>
 
         {/* Standalone Portfolio Routes - No Sidebar/Topbar */}

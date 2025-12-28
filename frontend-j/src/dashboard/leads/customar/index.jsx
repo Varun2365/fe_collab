@@ -1011,7 +1011,7 @@ const CreateLeadModal = ({ isOpen, onClose, onSave, leadToEdit, funnels, staff }
     : { 
         name: '', email: '', phone: '', city: '', country: '', status: '', 
         funnelId: '', notes: '', source: 'Web Form', leadTemperature: 'Warm', 
-        nextFollowUpAt: '', targetAudience: 'customer', assignedTo: ''
+        nextFollowUpAt: '', targetAudience: 'client', assignedTo: ''
       };
   
   const [formData, setFormData] = useState(initialFormData);
@@ -1075,7 +1075,7 @@ const CreateLeadModal = ({ isOpen, onClose, onSave, leadToEdit, funnels, staff }
       const resetData = { 
         name: '', email: '', phone: '', city: '', country: '', status: '', 
         funnelId: '', notes: '', source: 'Web Form', leadTemperature: 'Warm', 
-        nextFollowUpAt: '', targetAudience: 'customer', assignedTo: ''
+        nextFollowUpAt: '', targetAudience: 'client', assignedTo: ''
       };
       setFormData(resetData);
       setSelectedFunnel(null);
@@ -4392,9 +4392,64 @@ const LeadsView = () => {
     }
   };
 
+  // Helper function to sanitize payload - remove any non-serializable data
+  const sanitizeLeadPayload = (data) => {
+    // Extract funnelId if it's an object
+    let funnelId = '';
+    if (data.funnelId) {
+      if (typeof data.funnelId === 'string') {
+        funnelId = data.funnelId;
+      } else if (typeof data.funnelId === 'object' && data.funnelId !== null) {
+        funnelId = data.funnelId._id || data.funnelId.id || '';
+      }
+    }
+    
+    // Extract assignedTo if it's an object
+    let assignedTo = null;
+    if (data.assignedTo) {
+      if (typeof data.assignedTo === 'string') {
+        assignedTo = data.assignedTo;
+      } else if (typeof data.assignedTo === 'object' && data.assignedTo !== null) {
+        assignedTo = data.assignedTo._id || data.assignedTo.id || null;
+      }
+    }
+    
+    // Build clean payload with only serializable values
+    const cleanPayload = {
+      name: String(data.name || ''),
+      email: String(data.email || ''),
+      phone: String(data.phone || ''),
+      city: String(data.city || ''),
+      country: String(data.country || ''),
+      status: String(data.status || ''),
+      funnelId: String(funnelId),
+      notes: String(data.notes || ''),
+      source: String(data.source || 'Web Form'),
+      leadTemperature: String(data.leadTemperature || 'Warm'),
+      nextFollowUpAt: data.nextFollowUpAt ? new Date(data.nextFollowUpAt).toISOString() : null,
+      targetAudience: (() => {
+        const audience = data.targetAudience || 'client';
+        // Convert 'customer' to 'client' for backward compatibility
+        return audience === 'customer' ? 'client' : String(audience);
+      })(),
+      assignedTo: assignedTo,
+      coachId: data.coachId || coachId
+    };
+    
+    // Only include _id if it exists (for edit mode)
+    if (data._id) {
+      cleanPayload._id = String(data._id);
+    }
+    
+    return cleanPayload;
+  };
+
   const handleSaveLead = async (leadData) => {
     const isEditMode = !!leadData._id;
-    const payload = isEditMode ? leadData : { ...leadData, coachId };
+    
+    // Sanitize the payload to remove any React/DOM references
+    const sanitizedData = sanitizeLeadPayload(leadData);
+    const payload = isEditMode ? sanitizedData : { ...sanitizedData, coachId };
     
     // Check if lead is being assigned to staff (new assignment)
     const oldLead = isEditMode ? leads.find(l => l._id === leadData._id) : null;
@@ -4409,7 +4464,6 @@ const LeadsView = () => {
       
       if (isEditMode) {
         console.log('Updating lead with ID:', payload._id);
-        console.log('Payload being sent:', JSON.stringify(payload, null, 2));
         
         try {
           // Try different assignment field names if assignedTo is present
@@ -4788,7 +4842,7 @@ const LeadsView = () => {
             return { 
               name: v[0] || '', email: v[1] || '', phone: v[2] || '', 
               city: v[3] || '', country: v[4] || '', source: v[8] || 'Import', 
-              leadTemperature: v[7] || 'Warm', targetAudience: 'customer' 
+              leadTemperature: v[7] || 'Warm', targetAudience: 'client' 
             }; 
           }).filter(lead => lead.name && lead.email);
           
