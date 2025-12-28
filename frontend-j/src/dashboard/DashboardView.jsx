@@ -2639,7 +2639,7 @@ const Dashboard = () => {
               if (item.leadId) {
                 navigate(`/dashboard/leads?leadId=${item.leadId}`);
               } else if (item.appointmentId) {
-                navigate(`/dashboard/calender?appointmentId=${item.appointmentId}`);
+                navigate(`/dashboard/calendar?appointmentId=${item.appointmentId}`);
               }
             }}
           />

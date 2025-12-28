@@ -214,7 +214,7 @@ const DailyPriorityFeed = ({ token, coachId, onItemClick }) => {
         break;
       case 'view-appointment':
         if (item.appointmentId) {
-          navigate(`/dashboard/calender?appointmentId=${item.appointmentId}`);
+          navigate(`/dashboard/calendar?appointmentId=${item.appointmentId}`);
         }
         break;
       case 'create-task':

@@ -60,7 +60,21 @@ const getCoachAvailability = asyncHandler(async (req, res) => {
   
   // If not staff or no user context, get coach availability
   if (!targetAvailability) {
-    targetAvailability = await CoachAvailability.findOne({ coachId : coachId });
+    // Try to find by coachId (handle both string and ObjectId)
+    const mongoose = require('mongoose');
+    let query = { coachId: coachId };
+    
+    // If coachId is a valid ObjectId string, try both string and ObjectId formats
+    if (mongoose.Types.ObjectId.isValid(coachId)) {
+      query = {
+        $or: [
+          { coachId: coachId },
+          { coachId: new mongoose.Types.ObjectId(coachId) }
+        ]
+      };
+    }
+    
+    targetAvailability = await CoachAvailability.findOne(query);
   }
   
   if (!targetAvailability) {
@@ -70,14 +84,27 @@ const getCoachAvailability = asyncHandler(async (req, res) => {
         timeZone: 'UTC',
         workingHours: [],
         unavailableSlots: [],
-        slotDuration: 30,
+        slotDuration: 30, // Keep slotDuration for backward compatibility
+        defaultAppointmentDuration: 30,
+        bufferTime: 10,
       },
     });
   }
 
+  // Transform the response to include both slotDuration (for backward compatibility) and defaultAppointmentDuration
+  const responseData = targetAvailability.toObject ? targetAvailability.toObject() : { ...targetAvailability };
+  
+  // Ensure slotDuration is present for backward compatibility
+  if (responseData.defaultAppointmentDuration !== undefined && responseData.slotDuration === undefined) {
+    responseData.slotDuration = responseData.defaultAppointmentDuration;
+  } else if (responseData.slotDuration === undefined && responseData.defaultAppointmentDuration === undefined) {
+    responseData.slotDuration = 30;
+    responseData.defaultAppointmentDuration = 30;
+  }
+
   res.status(200).json({
     success: true,
-    data: targetAvailability,
+    data: responseData,
     userContext: userContext ? {
       isStaff: userContext.isStaff,
       userId: userContext.userId,
@@ -154,9 +181,23 @@ const setCoachAvailability = asyncHandler(async (req, res) => {
             console.log(`[Staff Availability] Updated availability for staff ${userContext.userId}`);
         } else {
             // Update coach availability
+            // Handle both string and ObjectId formats for coachId
+            const mongoose = require('mongoose');
+            let query = { coachId: coachId };
+            
+            if (mongoose.Types.ObjectId.isValid(coachId)) {
+                query = {
+                    $or: [
+                        { coachId: coachId },
+                        { coachId: new mongoose.Types.ObjectId(coachId) }
+                    ]
+                };
+            }
+            
             availability = await CoachAvailability.findOneAndUpdate(
-                { coachId: coachId },
+                query,
                 {
+                    coachId: mongoose.Types.ObjectId.isValid(coachId) ? new mongoose.Types.ObjectId(coachId) : coachId,
                     timeZone,
                     workingHours,
                     unavailableSlots,
@@ -168,7 +209,11 @@ const setCoachAvailability = asyncHandler(async (req, res) => {
                 { new: true, upsert: true, runValidators: true }
             );
             
-            console.log(`[Coach Availability] Updated availability for coach ${coachId}`);
+            console.log(`[Coach Availability] Updated availability for coach ${coachId}`, {
+                workingHoursCount: workingHours?.length || 0,
+                timeZone,
+                defaultAppointmentDuration
+            });
         }
 
         res.status(200).json({
@@ -287,32 +332,87 @@ const getCoachCalendar = asyncHandler(async (req, res) => {
   let currentDate = new Date(startDate);
   const end = new Date(endDate);
 
-  while (currentDate <= end) {
-    const dateString = currentDate.toISOString().split('T')[0];
+  while (currentDate <= end) {
+    const dateString = currentDate.toISOString().split('T')[0];
 
     // <-- CHANGED: Now calls the service function to get slots for the day
-    const availableSlots = await getAvailableSlots(coachId, dateString);
+    const availableSlots = await getAvailableSlots(coachId, dateString);
 
-    // Get all existing appointments for the day from the database
-    // This part can also be moved into the service later if we need to centralize it.
-    const existingAppointments = await Appointment.find({
-      coachId: coachId,
-      startTime: {
-        $gte: new Date(dateString),
-        $lt: new Date(new Date(dateString).getTime() + 86400000),
-      },
-    });
-    
-    const daySchedule = {
-      date: dateString,
-      appointments: existingAppointments,
-      availableSlots: availableSlots,
-    };
+    // Get all existing appointments for the day from the database
+    // Populate lead data with name and clientQuestions/coachQuestions for lead name
+    const existingAppointments = await Appointment.find({
+      coachId: coachId,
+      startTime: {
+        $gte: new Date(dateString),
+        $lt: new Date(new Date(dateString).getTime() + 86400000),
+      },
+    })
+    .populate('leadId', 'name email phone clientQuestions coachQuestions')
+    .lean(); // Use lean() for better performance
+    
+    // Format appointments with zoom meeting details and lead name
+    const formattedAppointments = existingAppointments.map(appointment => {
+      const formatted = { ...appointment };
+      
+      // Extract lead name - prioritize clientQuestions.fullName or coachQuestions.fullName, fallback to name field
+      const lead = appointment.leadId;
+      if (lead && typeof lead === 'object') {
+        // Lead is populated as an object
+        formatted.leadName = lead.clientQuestions?.fullName || 
+                            lead.coachQuestions?.fullName || 
+                            lead.name || 
+                            'Unknown Lead';
+        formatted.lead = lead; // Include full lead object for frontend
+      } else if (lead) {
+        // Lead is just an ID string (shouldn't happen with populate, but handle it)
+        formatted.leadName = 'Unknown Lead';
+        formatted.lead = null;
+      } else {
+        formatted.leadName = 'Unknown Lead';
+        formatted.lead = null;
+      }
+      
+      // Format zoom meeting details to match frontend expectations
+      if (appointment.zoomMeeting && typeof appointment.zoomMeeting === 'object') {
+        if (appointment.zoomMeeting.joinUrl) {
+          formatted.zoomMeetingLink = appointment.zoomMeeting.joinUrl;
+          formatted.zoom_link = appointment.zoomMeeting.joinUrl;
+          formatted.zoomUrl = appointment.zoomMeeting.joinUrl;
+          formatted.meetingLink = appointment.zoomMeeting.joinUrl;
+        }
+        if (appointment.zoomMeeting.meetingId) {
+          formatted.zoomMeetingId = appointment.zoomMeeting.meetingId;
+          formatted.zoomMeetingNumber = appointment.zoomMeeting.meetingId;
+        }
+        if (appointment.zoomMeeting.password) {
+          formatted.zoomPassword = appointment.zoomMeeting.password;
+        }
+        if (appointment.startTime) {
+          formatted.zoomStartTime = appointment.startTime; // Use appointment start time
+        }
+        if (appointment.zoomMeeting.startUrl) {
+          formatted.zoomStartUrl = appointment.zoomMeeting.startUrl;
+        }
+        formatted.zoomTopic = appointment.summary || appointment.notes || 'Appointment Meeting';
+        formatted.zoomAgenda = appointment.notes || '';
+      }
+      
+      // Keep the original zoomMeeting object for backward compatibility
+      formatted.zoomMeeting = appointment.zoomMeeting;
+      
+      return formatted;
+    });
+    
+    const daySchedule = {
+      date: dateString,
+      appointments: formattedAppointments,
+      availableSlots: availableSlots,
+    };
 
-    calendar.push(daySchedule);
+    calendar.push(daySchedule);
 
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
 
     res.status(200).json({
     success: true,

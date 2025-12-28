@@ -17,9 +17,45 @@ class ZoomService {
 
     /**
      * Generate OAuth access token for Zoom API authentication
+     * Supports both OAuth 2.0 (authorization code) and Server-to-Server OAuth
      */
-    async generateOAuthToken(clientId, clientSecret, accountId) {
+    async generateOAuthToken(clientId, clientSecret, accountId, integration = null) {
         try {
+            // If integration has a valid OAuth 2.0 access token, use it
+            if (integration && integration.accessToken) {
+                const now = new Date();
+                const expiresAt = integration.tokenExpiresAt ? new Date(integration.tokenExpiresAt) : null;
+                
+                // Check if token is still valid (with 5 minute buffer)
+                if (!expiresAt || now < new Date(expiresAt.getTime() - 5 * 60 * 1000)) {
+                    return {
+                        accessToken: integration.accessToken,
+                        expiresIn: expiresAt ? Math.floor((expiresAt - now) / 1000) : 3600,
+                        tokenType: 'Bearer'
+                    };
+                }
+                
+                // Token expired, try to refresh
+                if (integration.refreshToken) {
+                    try {
+                        const refreshed = await this.refreshOAuthToken(integration.refreshToken);
+                        // Update integration with new token
+                        integration.accessToken = refreshed.accessToken;
+                        integration.tokenExpiresAt = new Date(Date.now() + (refreshed.expiresIn * 1000));
+                        await integration.save();
+                        return refreshed;
+                    } catch (refreshError) {
+                        console.error('[ZoomService] Token refresh failed:', refreshError);
+                        // Fall through to generate new token
+                    }
+                }
+            }
+
+            // Fallback to Server-to-Server OAuth if OAuth 2.0 token not available
+            if (!clientId || !clientSecret || !accountId) {
+                throw new Error('OAuth credentials not available');
+            }
+
             const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
             
             const response = await axios.post('https://zoom.us/oauth/token', 
@@ -40,6 +76,41 @@ class ZoomService {
         } catch (error) {
             console.error('[ZoomService] Error generating OAuth token:', error.response?.data || error.message);
             throw new Error('Failed to generate OAuth token');
+        }
+    }
+
+    /**
+     * Refresh OAuth 2.0 access token using refresh token
+     */
+    async refreshOAuthToken(refreshToken) {
+        try {
+            const zoomClientId = process.env.ZOOM_OAUTH_CLIENT_ID;
+            const zoomClientSecret = process.env.ZOOM_OAUTH_CLIENT_SECRET;
+
+            if (!zoomClientId || !zoomClientSecret) {
+                throw new Error('Zoom OAuth credentials not configured');
+            }
+
+            const response = await axios.post('https://zoom.us/oauth/token', null, {
+                params: {
+                    grant_type: 'refresh_token',
+                    refresh_token: refreshToken
+                },
+                auth: {
+                    username: zoomClientId,
+                    password: zoomClientSecret
+                }
+            });
+
+            return {
+                accessToken: response.data.access_token,
+                refreshToken: response.data.refresh_token || refreshToken,
+                expiresIn: response.data.expires_in,
+                tokenType: 'Bearer'
+            };
+        } catch (error) {
+            console.error('[ZoomService] Error refreshing OAuth token:', error.response?.data || error.message);
+            throw new Error('Failed to refresh OAuth token');
         }
     }
 
@@ -93,11 +164,12 @@ class ZoomService {
             // Get coach's Zoom integration
             const integration = await this.getCoachIntegration(appointment.coachId._id);
 
-            // Generate OAuth token
+            // Generate OAuth token (supports both OAuth 2.0 and Server-to-Server)
             const tokenData = await this.generateOAuthToken(
                 integration.clientId, 
                 integration.clientSecret, 
-                integration.zoomAccountId
+                integration.zoomAccountId,
+                integration // Pass integration to use OAuth 2.0 tokens if available
             );
             const token = tokenData.accessToken;
 
@@ -194,7 +266,8 @@ class ZoomService {
             const tokenData = await this.generateOAuthToken(
                 integration.clientId, 
                 integration.clientSecret, 
-                integration.zoomAccountId
+                integration.zoomAccountId,
+                integration // Pass integration to use OAuth 2.0 tokens if available
             );
             const token = tokenData.accessToken;
 
@@ -248,7 +321,8 @@ class ZoomService {
             const tokenData = await this.generateOAuthToken(
                 integration.clientId, 
                 integration.clientSecret, 
-                integration.zoomAccountId
+                integration.zoomAccountId,
+                integration // Pass integration to use OAuth 2.0 tokens if available
             );
             const token = tokenData.accessToken;
 
@@ -285,7 +359,8 @@ class ZoomService {
             const tokenData = await this.generateOAuthToken(
                 integration.clientId, 
                 integration.clientSecret, 
-                integration.zoomAccountId
+                integration.zoomAccountId,
+                integration // Pass integration to use OAuth 2.0 tokens if available
             );
             const token = tokenData.accessToken;
 
@@ -318,7 +393,8 @@ class ZoomService {
             const tokenData = await this.generateOAuthToken(
                 integration.clientId, 
                 integration.clientSecret, 
-                integration.zoomAccountId
+                integration.zoomAccountId,
+                integration // Pass integration to use OAuth 2.0 tokens if available
             );
             const token = tokenData.accessToken;
 
@@ -351,7 +427,8 @@ class ZoomService {
             const tokenData = await this.generateOAuthToken(
                 integration.clientId, 
                 integration.clientSecret, 
-                integration.zoomAccountId
+                integration.zoomAccountId,
+                integration // Pass integration to use OAuth 2.0 tokens if available
             );
             const token = tokenData.accessToken;
 
