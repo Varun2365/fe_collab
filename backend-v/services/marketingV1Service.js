@@ -246,32 +246,56 @@ async function verifyOpenAICredentials(coachId) {
  * Get credentials status
  */
 async function getCredentialsStatus(coachId) {
-    const credentials = await CoachMarketingCredentials.findOne({ coachId });
-    
-    if (!credentials) {
+    try {
+        const credentials = await CoachMarketingCredentials.findOne({ coachId });
+        
+        if (!credentials) {
+            return {
+                meta: { 
+                    isConnected: false, 
+                    hasCredentials: false,
+                    isConfigured: false
+                },
+                openai: { 
+                    isConnected: false, 
+                    hasCredentials: false 
+                },
+                setupComplete: false
+            };
+        }
+
         return {
-            meta: { isConnected: false, hasCredentials: false },
-            openai: { isConnected: false, hasCredentials: false },
+            meta: {
+                isConnected: credentials.metaAds?.isConnected || false,
+                hasCredentials: !!credentials.metaAds?.accessToken,
+                isConfigured: !!(credentials.metaAds?.accessToken && credentials.metaAds?.appId),
+                lastVerified: credentials.metaAds?.lastVerified || null,
+                businessAccountId: credentials.metaAds?.businessAccountId || null,
+                adAccountId: credentials.metaAds?.adAccountId || null
+            },
+            openai: {
+                isConnected: credentials.openAI?.isConnected || false,
+                hasCredentials: !!credentials.openAI?.apiKey,
+                lastVerified: credentials.openAI?.lastVerified || null,
+                modelPreference: credentials.openAI?.modelPreference || 'gpt-4'
+            },
+            setupComplete: (credentials.metaAds?.isConnected || false) && (credentials.openAI?.isConnected || false)
+        };
+    } catch (error) {
+        console.error('Error getting credentials status:', error);
+        return {
+            meta: { 
+                isConnected: false, 
+                hasCredentials: false,
+                isConfigured: false
+            },
+            openai: { 
+                isConnected: false, 
+                hasCredentials: false 
+            },
             setupComplete: false
         };
     }
-
-    return {
-        meta: {
-            isConnected: credentials.metaAds.isConnected,
-            hasCredentials: !!credentials.metaAds.accessToken,
-            lastVerified: credentials.metaAds.lastVerified,
-            businessAccountId: credentials.metaAds.businessAccountId,
-            adAccountId: credentials.metaAds.adAccountId
-        },
-        openai: {
-            isConnected: credentials.openAI.isConnected,
-            hasCredentials: !!credentials.openAI.apiKey,
-            lastVerified: credentials.openAI.lastVerified,
-            modelPreference: credentials.openAI.modelPreference
-        },
-        setupComplete: credentials.metaAds.isConnected && credentials.openAI.isConnected
-    };
 }
 
 // ===== CAMPAIGN ANALYSIS & MANAGEMENT =====
@@ -283,21 +307,93 @@ async function getCampaignAnalysis(coachId, options) {
     const { dateRange, campaignIds, includeInsights, includeRecommendations } = options;
     
     try {
+        // First, try to get campaigns from local database
+        const localCampaigns = await AdCampaign.find({ coachId });
+        
+        // If we have local campaigns, use them
+        if (localCampaigns && localCampaigns.length > 0) {
+            const filteredCampaigns = campaignIds.length > 0 
+                ? localCampaigns.filter(c => campaignIds.includes(c.campaignId))
+                : localCampaigns;
+
+            const analysis = {
+                summary: {
+                    totalCampaigns: filteredCampaigns.length,
+                    activeCampaigns: filteredCampaigns.filter(c => c.status === 'ACTIVE').length,
+                    pausedCampaigns: filteredCampaigns.filter(c => c.status === 'PAUSED').length,
+                    dateRange,
+                    overallMetrics: {
+                        totalImpressions: filteredCampaigns.reduce((sum, c) => sum + (parseFloat(c.impressions) || 0), 0),
+                        totalClicks: filteredCampaigns.reduce((sum, c) => sum + (parseFloat(c.clicks) || 0), 0),
+                        totalSpend: filteredCampaigns.reduce((sum, c) => sum + (parseFloat(c.totalSpent) || 0), 0),
+                        totalConversions: filteredCampaigns.reduce((sum, c) => sum + (parseFloat(c.conversions) || 0), 0)
+                    }
+                },
+                campaigns: filteredCampaigns.map(campaign => ({
+                    id: campaign.campaignId || campaign._id,
+                    name: campaign.name,
+                    status: campaign.status,
+                    objective: campaign.objective,
+                    insights: includeInsights ? {
+                        impressions: campaign.impressions || 0,
+                        clicks: campaign.clicks || 0,
+                        spend: campaign.totalSpent || 0,
+                        conversions: campaign.conversions || 0,
+                        ctr: campaign.impressions > 0 ? ((campaign.clicks || 0) / campaign.impressions * 100).toFixed(2) : '0.00',
+                        cpc: campaign.clicks > 0 ? ((campaign.totalSpent || 0) / campaign.clicks).toFixed(2) : '0.00'
+                    } : null
+                }))
+            };
+
+            return analysis;
+        }
+        
+        // If no local campaigns, try to fetch from Meta API if credentials exist
         const credentials = await CoachMarketingCredentials.findOne({ coachId })
             .select('+metaAds.accessToken +encryptionKey');
         
         if (!credentials || !credentials.metaAds.accessToken) {
-            throw new Error('Meta credentials not found');
+            // Return empty analysis if no credentials
+            return {
+                summary: {
+                    totalCampaigns: 0,
+                    activeCampaigns: 0,
+                    pausedCampaigns: 0,
+                    dateRange,
+                    overallMetrics: {
+                        totalImpressions: 0,
+                        totalClicks: 0,
+                        totalSpend: 0,
+                        totalConversions: 0
+                    }
+                },
+                campaigns: []
+            };
         }
 
         const accessToken = credentials.getDecryptedAccessToken();
         const adAccountId = credentials.metaAds.adAccountId;
         
         if (!adAccountId) {
-            throw new Error('Ad account ID not configured');
+            // Return empty analysis if no ad account
+            return {
+                summary: {
+                    totalCampaigns: 0,
+                    activeCampaigns: 0,
+                    pausedCampaigns: 0,
+                    dateRange,
+                    overallMetrics: {
+                        totalImpressions: 0,
+                        totalClicks: 0,
+                        totalSpend: 0,
+                        totalConversions: 0
+                    }
+                },
+                campaigns: []
+            };
         }
 
-        // Get campaigns
+        // Get campaigns from Meta API
         const campaignsResponse = await axios.get(`${META_ADS_API_BASE}/act_${adAccountId}/campaigns`, {
             params: {
                 access_token: accessToken,
@@ -306,7 +402,7 @@ async function getCampaignAnalysis(coachId, options) {
             }
         });
 
-        const campaigns = campaignsResponse.data.data;
+        const campaigns = campaignsResponse.data.data || [];
         const filteredCampaigns = campaignIds.length > 0 
             ? campaigns.filter(c => campaignIds.includes(c.id))
             : campaigns;
@@ -317,7 +413,13 @@ async function getCampaignAnalysis(coachId, options) {
                 totalCampaigns: filteredCampaigns.length,
                 activeCampaigns: filteredCampaigns.filter(c => c.status === 'ACTIVE').length,
                 pausedCampaigns: filteredCampaigns.filter(c => c.status === 'PAUSED').length,
-                dateRange
+                dateRange,
+                overallMetrics: {
+                    totalImpressions: 0,
+                    totalClicks: 0,
+                    totalSpend: 0,
+                    totalConversions: 0
+                }
             },
             campaigns: []
         };
@@ -359,8 +461,18 @@ async function getCampaignAnalysis(coachId, options) {
                 totalImpressions: campaignsWithInsights.reduce((sum, c) => sum + (parseInt(c.insights.impressions) || 0), 0),
                 totalClicks: campaignsWithInsights.reduce((sum, c) => sum + (parseInt(c.insights.clicks) || 0), 0),
                 totalSpend: campaignsWithInsights.reduce((sum, c) => sum + (parseFloat(c.insights.spend) || 0), 0),
+                totalConversions: campaignsWithInsights.reduce((sum, c) => sum + (parseInt(c.insights.conversions) || 0), 0),
                 averageCTR: campaignsWithInsights.reduce((sum, c) => sum + (parseFloat(c.insights.ctr) || 0), 0) / campaignsWithInsights.length,
                 averageCPC: campaignsWithInsights.reduce((sum, c) => sum + (parseFloat(c.insights.cpc) || 0), 0) / campaignsWithInsights.length
+            };
+        } else {
+            analysis.summary.overallMetrics = {
+                totalImpressions: 0,
+                totalClicks: 0,
+                totalSpend: 0,
+                totalConversions: 0,
+                averageCTR: 0,
+                averageCPC: 0
             };
         }
 
@@ -814,16 +926,37 @@ async function getMarketingDashboard(coachId, options) {
     const { dateRange, includeAIInsights, includeRecommendations } = options;
     
     try {
-        // Get campaign analysis
-        const campaignAnalysis = await getCampaignAnalysis(coachId, {
-            dateRange,
-            campaignIds: [],
-            includeInsights: true,
-            includeRecommendations
-        });
-
-        // Get credentials status
+        // Get credentials status first
         const credentialsStatus = await getCredentialsStatus(coachId);
+
+        // Get campaign analysis (will return empty if no credentials/campaigns)
+        let campaignAnalysis;
+        try {
+            campaignAnalysis = await getCampaignAnalysis(coachId, {
+                dateRange,
+                campaignIds: [],
+                includeInsights: true,
+                includeRecommendations: includeRecommendations === true || includeRecommendations === 'true'
+            });
+        } catch (error) {
+            console.error('Error getting campaign analysis:', error);
+            // Return empty analysis on error
+            campaignAnalysis = {
+                summary: {
+                    totalCampaigns: 0,
+                    activeCampaigns: 0,
+                    pausedCampaigns: 0,
+                    dateRange,
+                    overallMetrics: {
+                        totalImpressions: 0,
+                        totalClicks: 0,
+                        totalSpend: 0,
+                        totalConversions: 0
+                    }
+                },
+                campaigns: []
+            };
+        }
 
         const dashboard = {
             credentials: credentialsStatus,
@@ -831,20 +964,48 @@ async function getMarketingDashboard(coachId, options) {
             timestamp: new Date()
         };
 
-        // Add AI insights if requested
-        if (includeAIInsights) {
+        // Add AI insights if requested (optional, don't fail if it errors)
+        if (includeAIInsights === true || includeAIInsights === 'true') {
             try {
                 const aiMarketingService = require('./aiMarketingService');
-                const aiInsights = await aiMarketingService.generateDashboardInsights(coachId, campaignAnalysis);
-                dashboard.aiInsights = aiInsights;
+                if (aiMarketingService && typeof aiMarketingService.generateDashboardInsights === 'function') {
+                    const aiInsights = await aiMarketingService.generateDashboardInsights(coachId, campaignAnalysis);
+                    dashboard.aiInsights = aiInsights;
+                }
             } catch (error) {
+                console.error('Error getting AI insights:', error);
                 dashboard.aiInsightsError = error.message;
             }
         }
 
         return dashboard;
     } catch (error) {
-        throw new Error(`Failed to get marketing dashboard: ${error.message}`);
+        console.error('Error in getMarketingDashboard:', error);
+        // Return minimal dashboard on error
+        return {
+            credentials: {
+                meta: { isConnected: false, hasCredentials: false },
+                openai: { isConnected: false, hasCredentials: false },
+                setupComplete: false
+            },
+            campaigns: {
+                summary: {
+                    totalCampaigns: 0,
+                    activeCampaigns: 0,
+                    pausedCampaigns: 0,
+                    dateRange: dateRange || '30d',
+                    overallMetrics: {
+                        totalImpressions: 0,
+                        totalClicks: 0,
+                        totalSpend: 0,
+                        totalConversions: 0
+                    }
+                },
+                campaigns: []
+            },
+            timestamp: new Date(),
+            error: error.message
+        };
     }
 }
 

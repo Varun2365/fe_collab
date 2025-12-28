@@ -275,6 +275,186 @@ exports.getMetaAccountInfo = asyncHandler(async (req, res) => {
     });
 });
 
+// @desc    Initiate Meta OAuth flow
+// @route   POST /api/marketing/v1/credentials/meta/oauth/initiate
+// @access  Private (Coaches/Staff with permission)
+exports.initiateMetaOAuth = asyncHandler(async (req, res) => {
+    const coachId = CoachStaffService.getCoachIdForQuery(req);
+    const userContext = CoachStaffService.getUserContext(req);
+    
+    // Log staff action if applicable
+    CoachStaffService.logStaffAction(req, 'manage', 'marketing', 'initiate_meta_oauth', { coachId });
+    
+    // Generate OAuth URL
+        const META_APP_ID = process.env.META_APP_ID;
+        const META_APP_SECRET = process.env.META_APP_SECRET;
+        
+        if (!META_APP_ID || !META_APP_SECRET || META_APP_ID === 'YOUR_META_APP_ID' || META_APP_SECRET === 'YOUR_META_APP_SECRET') {
+            return res.status(500).json({
+                success: false,
+                message: 'Meta OAuth is not configured. Please set META_APP_ID and META_APP_SECRET environment variables.',
+                error: 'OAUTH_NOT_CONFIGURED'
+            });
+        }
+        
+        const state = Buffer.from(JSON.stringify({ coachId, timestamp: Date.now() })).toString('base64');
+        
+        // Build proper redirect URI based on environment
+        const isDevelopment = process.env.NODE_ENV !== 'production';
+        const baseUrl = isDevelopment 
+            ? `http://localhost:8080`
+            : `https://api.funnelseye.com`;
+        const callbackUri = `${baseUrl}/api/marketing/v1/credentials/meta/oauth/callback`;
+        
+        const scopes = [
+            'ads_management',
+            'ads_read',
+            'business_management',
+            'pages_read_engagement',
+            'pages_manage_posts',
+            'instagram_basic',
+            'instagram_content_publish'
+        ].join(',');
+        
+        const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?` +
+            `client_id=${META_APP_ID}` +
+            `&redirect_uri=${encodeURIComponent(callbackUri)}` +
+            `&scope=${encodeURIComponent(scopes)}` +
+            `&state=${encodeURIComponent(state)}` +
+            `&response_type=code`;
+    
+    res.status(200).json({
+        success: true,
+        data: {
+            authUrl,
+            state
+        }
+    });
+});
+
+// @desc    Handle Meta OAuth callback
+// @route   POST /api/marketing/v1/credentials/meta/oauth/callback
+// @access  Private (Coaches/Staff with permission)
+exports.handleMetaOAuthCallback = asyncHandler(async (req, res) => {
+    const coachId = CoachStaffService.getCoachIdForQuery(req);
+    const userContext = CoachStaffService.getUserContext(req);
+    
+    // Log staff action if applicable
+    CoachStaffService.logStaffAction(req, 'manage', 'marketing', 'handle_meta_oauth_callback', { coachId });
+    
+    // OAuth callback can come as GET (from browser redirect) or POST
+    const { code, state } = req.method === 'GET' ? req.query : req.body;
+    
+    if (!code || !state) {
+        return res.status(400).json({
+            success: false,
+            message: 'Authorization code and state are required'
+        });
+    }
+    
+    try {
+        // Verify state
+        const decodedState = JSON.parse(Buffer.from(state, 'base64').toString());
+        if (decodedState.coachId !== coachId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Invalid state parameter'
+            });
+        }
+        
+        const META_APP_ID = process.env.META_APP_ID;
+        const META_APP_SECRET = process.env.META_APP_SECRET;
+        
+        if (!META_APP_ID || !META_APP_SECRET || META_APP_ID === 'YOUR_META_APP_ID' || META_APP_SECRET === 'YOUR_META_APP_SECRET') {
+            return res.status(500).json({
+                success: false,
+                message: 'Meta OAuth is not configured. Please set META_APP_ID and META_APP_SECRET environment variables.',
+                error: 'OAUTH_NOT_CONFIGURED'
+            });
+        }
+        
+        // Build proper redirect URI based on environment
+        const isDevelopment = process.env.NODE_ENV !== 'production';
+        const baseUrl = isDevelopment 
+            ? `http://localhost:8080`
+            : `https://api.funnelseye.com`;
+        const redirectUri = `${baseUrl}/api/marketing/v1/credentials/meta/oauth/callback`;
+        
+        // Exchange code for access token
+        const axios = require('axios');
+        const tokenResponse = await axios.get(`https://graph.facebook.com/v19.0/oauth/access_token`, {
+            params: {
+                client_id: META_APP_ID,
+                client_secret: META_APP_SECRET,
+                redirect_uri: redirectUri,
+                code: code
+            }
+        });
+        
+        const accessToken = tokenResponse.data.access_token;
+        
+        // Get long-lived token (optional, but recommended)
+        const longLivedTokenResponse = await axios.get(`https://graph.facebook.com/v19.0/oauth/access_token`, {
+            params: {
+                grant_type: 'fb_exchange_token',
+                client_id: META_APP_ID,
+                client_secret: META_APP_SECRET,
+                fb_exchange_token: accessToken
+            }
+        });
+        
+        const longLivedToken = longLivedTokenResponse.data.access_token || accessToken;
+        
+        // Get user's ad accounts
+        const accountsResponse = await axios.get(`https://graph.facebook.com/v19.0/me/adaccounts`, {
+            params: {
+                access_token: longLivedToken,
+                fields: 'id,name,account_id'
+            }
+        });
+        
+        const adAccounts = accountsResponse.data.data || [];
+        const adAccountId = adAccounts.length > 0 ? adAccounts[0].id : null;
+        
+        // Get business accounts
+        const businessResponse = await axios.get(`https://graph.facebook.com/v19.0/me/businesses`, {
+            params: {
+                access_token: longLivedToken
+            }
+        });
+        
+        const businesses = businessResponse.data.data || [];
+        const businessAccountId = businesses.length > 0 ? businesses[0].id : null;
+        
+        // Save credentials using existing service
+        const result = await marketingV1Service.setupMetaCredentials(coachId, {
+            accessToken: longLivedToken,
+            appId: META_APP_ID,
+            appSecret: META_APP_SECRET, // Store for reference, but OAuth doesn't require it
+            businessAccountId,
+            adAccountId: adAccountId ? adAccountId.replace('act_', '') : null,
+            facebookPageId: null, // Can be fetched separately if needed
+            instagramAccountId: null // Can be fetched separately if needed
+        });
+        
+        res.status(200).json({
+            success: true,
+            message: 'Meta account connected successfully via OAuth',
+            data: {
+                ...result,
+                oauthConnected: true
+            }
+        });
+    } catch (error) {
+        console.error('Meta OAuth callback error:', error.response?.data || error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to complete OAuth flow',
+            error: error.response?.data?.error?.message || error.message
+        });
+    }
+});
+
 // @desc    Setup OpenAI credentials for AI features
 // @route   POST /api/marketing/v1/credentials/openai
 // @access  Private (Coaches)
@@ -299,6 +479,89 @@ exports.setupOpenAICredentials = asyncHandler(async (req, res) => {
         message: 'OpenAI credentials setup successfully',
         data: result
     });
+});
+
+// @desc    Get currency preference
+// @route   GET /api/marketing/v1/preferences/currency
+// @access  Private (Coaches/Staff with permission)
+exports.getCurrencyPreference = asyncHandler(async (req, res) => {
+    const coachId = CoachStaffService.getCoachIdForQuery(req);
+    const userContext = CoachStaffService.getUserContext(req);
+    
+    // Log staff action if applicable
+    CoachStaffService.logStaffAction(req, 'read', 'marketing', 'get_currency_preference', { coachId });
+    
+    try {
+        const CoachMarketingCredentials = require('../schema/CoachMarketingCredentials');
+        const credentials = await CoachMarketingCredentials.findOne({ coachId });
+        
+        const currency = credentials?.preferences?.currency || 'USD';
+        
+        res.status(200).json({
+            success: true,
+            data: { currency }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch currency preference',
+            error: error.message
+        });
+    }
+});
+
+// @desc    Save currency preference
+// @route   POST /api/marketing/v1/preferences/currency
+// @access  Private (Coaches/Staff with permission)
+exports.saveCurrencyPreference = asyncHandler(async (req, res) => {
+    const coachId = CoachStaffService.getCoachIdForQuery(req);
+    const userContext = CoachStaffService.getUserContext(req);
+    
+    // Log staff action if applicable
+    CoachStaffService.logStaffAction(req, 'manage', 'marketing', 'save_currency_preference', { coachId });
+    
+    const { currency } = req.body;
+    
+    if (!currency) {
+        return res.status(400).json({
+            success: false,
+            message: 'Currency is required'
+        });
+    }
+    
+    const validCurrencies = ['USD', 'EUR', 'GBP', 'INR', 'CAD', 'AUD'];
+    if (!validCurrencies.includes(currency)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid currency code'
+        });
+    }
+    
+    try {
+        const CoachMarketingCredentials = require('../schema/CoachMarketingCredentials');
+        const credentials = await CoachMarketingCredentials.findOneAndUpdate(
+            { coachId },
+            {
+                $set: {
+                    'preferences.currency': currency,
+                    'preferences.updatedAt': new Date()
+                }
+            },
+            { upsert: true, new: true }
+        );
+        
+        res.status(200).json({
+            success: true,
+            message: 'Currency preference saved successfully',
+            data: { currency: credentials.preferences?.currency || currency }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to save currency preference',
+            error: error.message
+        });
+    }
 });
 
 // @desc    Get marketing credentials status
@@ -776,25 +1039,44 @@ exports.generateAIStrategy = asyncHandler(async (req, res) => {
 
 // @desc    Get marketing dashboard data
 // @route   GET /api/marketing/v1/dashboard
-// @access  Private (Coaches)
+// @access  Private (Coaches/Staff with permission)
 exports.getMarketingDashboard = asyncHandler(async (req, res) => {
-    const coachId = req.coachId;
+    // Get coach ID using unified service (handles both coach and staff)
+    const coachId = CoachStaffService.getCoachIdForQuery(req);
+    const userContext = CoachStaffService.getUserContext(req);
+    
+    // Log staff action if applicable
+    CoachStaffService.logStaffAction(req, 'read', 'marketing', 'get_dashboard', { coachId });
+    
     const { 
         dateRange = '30d',
-        includeAIInsights = true,
-        includeRecommendations = true
+        includeAIInsights = 'true',
+        includeRecommendations = 'true'
     } = req.query;
 
-    const dashboardData = await marketingV1Service.getMarketingDashboard(coachId, {
-        dateRange,
-        includeAIInsights,
-        includeRecommendations
-    });
+    try {
+        const dashboardData = await marketingV1Service.getMarketingDashboard(coachId, {
+            dateRange,
+            includeAIInsights: includeAIInsights === 'true',
+            includeRecommendations: includeRecommendations === 'true'
+        });
 
-    res.status(200).json({
-        success: true,
-        data: dashboardData
-    });
+        res.status(200).json({
+            success: true,
+            data: dashboardData,
+            userContext: {
+                isStaff: userContext.isStaff,
+                permissions: userContext.permissions
+            }
+        });
+    } catch (error) {
+        console.error('Error getting marketing dashboard:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get marketing dashboard',
+            error: error.message
+        });
+    }
 });
 
 // @desc    Get campaign performance summary

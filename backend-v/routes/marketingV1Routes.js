@@ -16,8 +16,12 @@ const {
     setupMetaCredentials,
     verifyMetaCredentials,
     getMetaAccountInfo,
+    initiateMetaOAuth,
+    handleMetaOAuthCallback,
     setupOpenAICredentials,
     getCredentialsStatus,
+    getCurrencyPreference,
+    saveCurrencyPreference,
     
     // Campaign Analysis & Management
     getCampaignAnalysis,
@@ -71,11 +75,24 @@ router.post('/credentials/meta/verify', requirePermission('ads:manage'), verifyM
 // Get Meta account information
 router.get('/credentials/meta/account-info', requirePermission('ads:read'), getMetaAccountInfo);
 
+// Meta OAuth endpoints
+router.post('/credentials/meta/oauth/initiate', requirePermission('ads:manage'), initiateMetaOAuth);
+router.post('/credentials/meta/oauth/callback', requirePermission('ads:manage'), handleMetaOAuthCallback);
+router.get('/credentials/meta/oauth/callback', requirePermission('ads:manage'), handleMetaOAuthCallback);
+
 // Setup OpenAI credentials
 router.post('/credentials/openai', requirePermission('ads:manage'), setupOpenAICredentials);
 
 // Get marketing credentials status
 router.get('/credentials/status', requirePermission('ads:read'), getCredentialsStatus);
+
+// ===== PREFERENCES =====
+
+// Get currency preference
+router.get('/preferences/currency', requirePermission('ads:read'), getCurrencyPreference);
+
+// Save currency preference
+router.post('/preferences/currency', requirePermission('ads:manage'), saveCurrencyPreference);
 
 // ===== CAMPAIGN ANALYSIS & MANAGEMENT =====
 

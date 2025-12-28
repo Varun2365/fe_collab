@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import logoImage from '../logo.png';
 import {
   Box,
   VStack,
@@ -40,24 +41,30 @@ import {
   FiBookOpen,
   FiPieChart,
   FiHeart,
+  FiMove,
 } from 'react-icons/fi';
 import { IoPeopleOutline } from 'react-icons/io5';
 
-// Enhanced SVG Icons with better styling
+// Enhanced Logo with image
 const FindMeLogo = () => (
   <Box
     w={10}
     h={10}
-    bg="linear-gradient(135deg, #5a54ff 0%, #b26bff 100%)"
     borderRadius="xl"
     display="flex"
     alignItems="center"
     justifyContent="center"
-    boxShadow="0 8px 25px rgba(90, 84, 255, 0.35)"
+    overflow="hidden"
+    p="3px"
   >
-    <Text fontSize="lg" fontWeight="bold" color="white">
-      F
-    </Text>
+    <Box
+      as="img"
+      src={logoImage}
+      alt="FunnelsEye Logo"
+      w="100%"
+      h="100%"
+      objectFit="contain"
+    />
   </Box>
 );
 
@@ -83,6 +90,15 @@ const Sidebar = () => {
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [hoveredItem, setHoveredItem] = useState(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isHoverMode, setIsHoverMode] = useState(() => {
+    // Load hover mode from localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sidebarHoverMode');
+      return saved === 'true';
+    }
+    return false;
+  });
+  const [isHovered, setIsHovered] = useState(false);
   
   // Check if we're on mobile
   const isMobile = useBreakpointValue({ base: true, md: false });
@@ -167,7 +183,7 @@ const Sidebar = () => {
     {
       title: 'Marketing & Growth',
       items: [
-        { icon: FiTarget, label: 'Marketing & Ads', path: '/ads', badge: 'AI', type: 'single' },
+        { icon: FiTarget, label: 'Marketing & Ads', path: '/ads', badge: null, type: 'single' },
         { icon: FiZap, label: 'AI & Automation', path: '/automation', badge: null, type: 'single' },
         { icon: FiFileText, label: 'Courses & Content', path: '/courses', badge: null, type: 'single' },
       ]
@@ -220,6 +236,11 @@ const Sidebar = () => {
 
 
   const toggleSidebar = () => {
+    // In hover mode, clicking should not toggle - hover controls it
+    if (isHoverMode) {
+      return;
+    }
+    
     const newCollapsed = !isCollapsed;
     setIsCollapsed(newCollapsed);
     
@@ -236,6 +257,62 @@ const Sidebar = () => {
     window.dispatchEvent(event);
   };
 
+  const toggleHoverMode = () => {
+    const newHoverMode = !isHoverMode;
+    setIsHoverMode(newHoverMode);
+    
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebarHoverMode', String(newHoverMode));
+    }
+    
+    if (newHoverMode) {
+      // When enabling hover mode, collapse sidebar and keep it at 80px
+      setIsCollapsed(true);
+      setIsHovered(false);
+      // Dispatch fixed width event to keep content margin at 80px
+      const event = new CustomEvent('sidebarToggle', {
+        detail: {
+          width: '80px',
+          collapsed: true,
+          hoverMode: true
+        }
+      });
+      window.dispatchEvent(event);
+    } else {
+      // When disabling hover mode, preserve current visual state
+      // If sidebar is currently expanded (via hover), keep it expanded
+      const currentlyExpanded = isHovered;
+      setIsCollapsed(!currentlyExpanded);
+      setIsHovered(false);
+      
+      // Dispatch event to update layout based on preserved state
+      const newWidth = currentlyExpanded ? '320px' : '80px';
+      const event = new CustomEvent('sidebarToggle', {
+        detail: {
+          width: newWidth,
+          collapsed: !currentlyExpanded,
+          hoverMode: false
+        }
+      });
+      window.dispatchEvent(event);
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (isHoverMode) {
+      setIsHovered(true);
+      setIsCollapsed(false);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (isHoverMode) {
+      setIsHovered(false);
+      setIsCollapsed(true);
+    }
+  };
+
   const isActive = (path) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
@@ -247,23 +324,26 @@ const Sidebar = () => {
   const renderMenuItem = (item, index) => {
     const isExpanded = expandedItems.has(item.path);
     const isItemActive = isActive(item.path);
-    const isHovered = hoveredItem === item.name;
+    const isItemHovered = hoveredItem === item.name;
     const useNeutralBg = item.label === 'Lead Management' || item.label === 'Settings' || item.label === 'Client Management';
 
     if (item.type === 'dropdown') {
       return (
-        <Box key={item.path} mb={1}>
+        <Box key={item.path} w="100%" mb={effectiveCollapsed ? 0.5 : 1}>
           {/* Main Dropdown Item */}
           <Box
             as="button"
             w="100%"
-            p={2}
+            p={effectiveCollapsed ? 1.5 : 2}
             borderRadius="lg"
+            display="flex"
+            alignItems="center"
+            justifyContent={effectiveCollapsed ? "center" : "flex-start"}
             bg={
               useNeutralBg
                 ? 'transparent'
                 : isItemActive
-                ? sidebarPalette.panelActive
+                ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(118, 75, 162, 0.15) 100%)'
                 : sidebarPalette.panel
             }
             color={isItemActive ? sidebarPalette.text : sidebarPalette.textMuted}
@@ -271,12 +351,12 @@ const Sidebar = () => {
               bg: useNeutralBg
                 ? 'rgba(255, 255, 255, 0.04)'
                 : isItemActive
-                ? sidebarPalette.panelActive
+                ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.35) 0%, rgba(118, 75, 162, 0.2) 100%)'
                 : sidebarPalette.panelHover,
               color: sidebarPalette.text,
               transform: 'translateX(3px)',
             }}
-            transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+            transition="all 0.1s cubic-bezier(0.4, 0, 0.2, 1)"
             onClick={() => toggleDropdown(item.path)}
             position="relative"
             border="1px solid"
@@ -284,14 +364,14 @@ const Sidebar = () => {
               useNeutralBg
                 ? 'transparent'
                 : isItemActive
-                ? sidebarPalette.highlight
+                ? 'rgba(102, 126, 234, 0.4)'
                 : 'transparent'
             }
             boxShadow={
               useNeutralBg
                 ? 'none'
                 : isItemActive
-                ? '0 8px 30px rgba(101, 92, 255, 0.25)'
+                ? '0 8px 30px rgba(102, 126, 234, 0.3)'
                 : '0 2px 8px rgba(3, 3, 6, 0.35)'
             }
             transform={
@@ -304,42 +384,59 @@ const Sidebar = () => {
             onMouseEnter={() => setHoveredItem(item.name)}
             onMouseLeave={() => setHoveredItem(null)}
           >
-            <HStack spacing={3} justify={isCollapsed ? "center" : "space-between"} align="center">
-              <HStack spacing={3} align="center" flex={1}>
+            {/* Always render full structure, just hide/show with opacity */}
+            <HStack 
+              spacing={effectiveCollapsed ? 0 : 3} 
+              justify={effectiveCollapsed ? "center" : "space-between"} 
+              align="center" 
+              w="100%"
+            >
+              <HStack 
+                spacing={effectiveCollapsed ? 0 : 3} 
+                align="center" 
+                flex={effectiveCollapsed ? 0 : 1} 
+                justify={effectiveCollapsed ? "center" : "flex-start"}
+                w={effectiveCollapsed ? "auto" : "100%"}
+              >
                 <Box
-                  p={isCollapsed ? 2 : "4px"}
-                  borderRadius="md"
-                  bg={isItemActive ? sidebarPalette.iconActive : sidebarPalette.icon}
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
-                  transform={isHovered ? 'scale(1.05)' : 'scale(1)'}
-                  transition="transform 0.15s ease"
-                  w={isCollapsed ? "40px" : "36px"}
-                  h={isCollapsed ? "40px" : "36px"}
-                  minW={isCollapsed ? "40px" : "36px"}
-                  minH={isCollapsed ? "40px" : "36px"}
+                  borderRadius="md"
+                  bg={isItemActive ? sidebarPalette.iconActive : sidebarPalette.icon}
+                  w="36px"
+                  h="36px"
+                  minW="36px"
+                  minH="36px"
+                  p={effectiveCollapsed ? 0 : "4px"}
+                  transform={isItemHovered ? 'scale(1.05)' : 'scale(1)'}
+                  transition="transform 0.1s ease"
                 >
                   <Icon 
                     as={item.icon} 
                     boxSize="15px" 
-                      color={isItemActive ? sidebarPalette.text : sidebarPalette.textMuted} 
-                    flexShrink={0}
+                    color={isItemActive ? sidebarPalette.text : sidebarPalette.textMuted} 
                   />
                 </Box>
-                {!isCollapsed && (
-                  <Text 
-                    fontWeight={isItemActive ? '600' : '400'} 
-                    textAlign="left"
-                    fontSize="sm"
-                    letterSpacing="0.01em"
-                    flex={1}
-                    color={isItemActive ? sidebarPalette.text : sidebarPalette.textMuted}
-                  >
-                    {item.label}
-                  </Text>
-                )}
-                {!isCollapsed && item.badge && (
+                <Text 
+                  fontWeight={isItemActive ? '600' : '400'} 
+                  fontSize="sm"
+                  letterSpacing="0.01em"
+                  flex={effectiveCollapsed ? 0 : 1}
+                  color={isItemActive ? sidebarPalette.text : sidebarPalette.textMuted}
+                  textAlign="left"
+                  opacity={effectiveCollapsed ? 0 : 1}
+                  visibility={effectiveCollapsed ? 'hidden' : 'visible'}
+                  transition="opacity 0.1s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.1s cubic-bezier(0.4, 0, 0.2, 1)"
+                  whiteSpace="nowrap"
+                  overflow="hidden"
+                  pointerEvents={effectiveCollapsed ? "none" : "auto"}
+                  maxW={effectiveCollapsed ? "0" : "100%"}
+                  w={effectiveCollapsed ? "0" : "auto"}
+                >
+                  {item.label}
+                </Text>
+                {item.badge && (
                   <Badge
                     bg="rgba(255, 255, 255, 0.12)"
                     color={sidebarPalette.text}
@@ -349,25 +446,43 @@ const Sidebar = () => {
                     px={1.5}
                     py={0.5}
                     fontWeight="600"
+                    opacity={effectiveCollapsed ? 0 : 1}
+                    visibility={effectiveCollapsed ? 'hidden' : 'visible'}
+                    transition="opacity 0.1s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.1s cubic-bezier(0.4, 0, 0.2, 1)"
+                    pointerEvents={effectiveCollapsed ? "none" : "auto"}
+                    maxW={effectiveCollapsed ? "0" : "100%"}
+                    overflow="hidden"
+                    w={effectiveCollapsed ? "0" : "auto"}
                   >
                     {item.badge}
                   </Badge>
                 )}
               </HStack>
-              
-              {/* Dropdown Arrow */}
-              {!isCollapsed && (
-                <Icon 
-                  as={isExpanded ? FiChevronDown : FiChevronRight} 
-                  boxSize="15px" 
-                  color={isItemActive ? sidebarPalette.text : sidebarPalette.textMuted}
-                />
-              )}
+              <Icon 
+                as={isExpanded ? FiChevronDown : FiChevronRight} 
+                boxSize="15px" 
+                color={isItemActive ? sidebarPalette.text : sidebarPalette.textMuted}
+                flexShrink={0}
+                display={effectiveCollapsed ? "none" : "block"}
+                opacity={effectiveCollapsed ? 0 : 1}
+                visibility={effectiveCollapsed ? 'hidden' : 'visible'}
+                transition="opacity 0.1s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.1s cubic-bezier(0.4, 0, 0.2, 1)"
+                pointerEvents={effectiveCollapsed ? "none" : "auto"}
+                w={effectiveCollapsed ? "0" : "auto"}
+              />
             </HStack>
           </Box>
 
           {/* Dropdown Sub-items */}
-          {!isCollapsed && (
+          <Box
+            opacity={effectiveCollapsed ? 0 : 1}
+            visibility={effectiveCollapsed ? 'hidden' : 'visible'}
+            transition="opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.15s cubic-bezier(0.4, 0, 0.2, 1)"
+            pointerEvents={effectiveCollapsed ? "none" : "auto"}
+            w="100%"
+            h={effectiveCollapsed ? 0 : "auto"}
+            overflow="hidden"
+          >
             <Collapse in={isExpanded} animateOpacity>
               <VStack spacing={1} align="stretch" pl={7} mt={1.5}>
                 {item.subItems.map((subItem) => {
@@ -381,22 +496,22 @@ const Sidebar = () => {
                       p={1.5}
                       borderRadius="md"
                       bg={isSubActive 
-                        ? 'rgba(102, 126, 234, 0.15)' 
+                        ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.12) 100%)' 
                         : 'transparent'
                       }
                       color={isSubActive ? 'white' : 'gray.500'}
                       _hover={{
                         bg: isSubActive 
-                          ? 'rgba(102, 126, 234, 0.2)' 
+                          ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.18) 100%)' 
                           : 'rgba(255, 255, 255, 0.05)',
                         color: 'white',
                         transform: 'translateX(2px)',
                       }}
-                      transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                      transition="all 0.1s cubic-bezier(0.4, 0, 0.2, 1)"
                       onClick={() => handleNavigation(subItem.path)}
                       position="relative"
                       border="1px solid"
-                      borderColor={isSubActive ? 'rgba(102, 126, 234, 0.25)' : 'transparent'}
+                      borderColor={isSubActive ? 'rgba(102, 126, 234, 0.4)' : 'transparent'}
                       transform={isSubHovered ? 'translateX(2px)' : 'translateX(0)'}
                       onMouseEnter={() => setHoveredItem(subItem.name)}
                       onMouseLeave={() => setHoveredItem(null)}
@@ -406,14 +521,14 @@ const Sidebar = () => {
                           p="4px"
                           borderRadius="sm"
                           bg={isSubActive 
-                            ? 'rgba(102, 126, 234, 0.2)' 
+                            ? 'rgba(102, 126, 234, 0.25)' 
                             : 'rgba(255, 255, 255, 0.05)'
                           }
                           display="flex"
                           alignItems="center"
                           justifyContent="center"
                           transform={isSubHovered ? 'scale(1.05)' : 'scale(1)'}
-                          transition="transform 0.15s ease"
+                          transition="transform 0.1s ease"
                           w="28px"
                           h="28px"
                           minW="28px"
@@ -452,99 +567,126 @@ const Sidebar = () => {
                 })}
               </VStack>
             </Collapse>
-          )}
+          </Box>
         </Box>
       );
     }
 
     // Single Menu Item
     return (
-      <Box
-        key={item.path}
-        as="button"
-        w="100%"
-        p={2}
-        borderRadius="lg"
-        bg={isItemActive 
-          ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.1) 100%)' 
-          : 'transparent'
-        }
-        color={isItemActive ? sidebarPalette.text : sidebarPalette.textMuted}
-        _hover={{
-          bg: isItemActive 
+      <Box key={item.path} w="100%" mb={effectiveCollapsed ? 0.5 : 0.5}>
+        <Box
+          as="button"
+          w="100%"
+          p={effectiveCollapsed ? 1.5 : 2}
+          borderRadius="lg"
+          bg={isItemActive 
             ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(118, 75, 162, 0.15) 100%)' 
-            : 'rgba(255, 255, 255, 0.05)',
-          color: 'white',
-          transform: 'translateX(3px)',
-        }}
-        transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
-        onClick={() => handleNavigation(item.path)}
-        position="relative"
-        border="1px solid"
-        borderColor={isItemActive ? 'rgba(102, 126, 234, 0.3)' : 'transparent'}
-        mb={0.5}
-        boxShadow={isItemActive 
-          ? '0 2px 6px rgba(102, 126, 234, 0.2)' 
-          : 'none'
-        }
-        transform={isItemActive ? 'translateX(2px)' : 'translateX(0)'}
-        onMouseEnter={() => setHoveredItem(item.name)}
-        onMouseLeave={() => setHoveredItem(null)}
-      >
-        <HStack spacing={3} justify={isCollapsed ? "center" : "flex-start"} align="center">
-          <Box
-            p={isCollapsed ? 2 : "4px"}
-            borderRadius="md"
-            bg={isItemActive 
-              ? 'rgba(102, 126, 234, 0.25)' 
-              : 'rgba(255, 255, 255, 0.05)'
-            }
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            transform={hoveredItem === item.name ? 'scale(1.05)' : 'scale(1)'}
-            transition="transform 0.15s ease"
-            w={isCollapsed ? "40px" : "36px"}
-            h={isCollapsed ? "40px" : "36px"}
-            minW={isCollapsed ? "40px" : "36px"}
-            minH={isCollapsed ? "40px" : "36px"}
+            : 'transparent'
+          }
+          color={isItemActive ? sidebarPalette.text : sidebarPalette.textMuted}
+          _hover={{
+            bg: isItemActive 
+              ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.35) 0%, rgba(118, 75, 162, 0.2) 100%)' 
+              : 'rgba(255, 255, 255, 0.05)',
+            color: 'white',
+            transform: effectiveCollapsed ? 'scale(1.05)' : 'translateX(3px)',
+          }}
+          transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+          onClick={() => handleNavigation(item.path)}
+          position="relative"
+          border="1px solid"
+          borderColor={isItemActive ? 'rgba(102, 126, 234, 0.4)' : 'transparent'}
+          boxShadow={isItemActive 
+            ? '0 2px 8px rgba(102, 126, 234, 0.3)' 
+            : 'none'
+          }
+          transform={effectiveCollapsed ? 'translateX(0)' : (isItemActive ? 'translateX(2px)' : 'translateX(0)')}
+          onMouseEnter={() => setHoveredItem(item.name)}
+          onMouseLeave={() => setHoveredItem(null)}
+          display="flex"
+          alignItems="center"
+          justifyContent={effectiveCollapsed ? "center" : "flex-start"}
+        >
+          {/* Always render full structure, just hide/show with opacity */}
+          <HStack 
+            spacing={effectiveCollapsed ? 0 : 3} 
+            align="center" 
+            w="100%" 
+            justify={effectiveCollapsed ? "center" : "flex-start"}
           >
-            <Icon 
-              as={item.icon} 
-              boxSize="15px" 
-              color={isItemActive ? sidebarPalette.text : sidebarPalette.textMuted} 
-              flexShrink={0}
-            />
-          </Box>
-          {!isCollapsed && (
+            <Box
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              borderRadius="md"
+              bg={isItemActive 
+                ? 'rgba(102, 126, 234, 0.25)' 
+                : 'rgba(255, 255, 255, 0.05)'
+              }
+              w="36px"
+              h="36px"
+              minW="36px"
+              minH="36px"
+              p={effectiveCollapsed ? 0 : "4px"}
+              transform={isItemHovered ? 'scale(1.05)' : 'scale(1)'}
+              transition="transform 0.1s ease"
+            >
+              <Icon 
+                as={item.icon} 
+                boxSize="15px" 
+                color={isItemActive ? sidebarPalette.text : sidebarPalette.textMuted} 
+              />
+            </Box>
             <Text 
               fontWeight={isItemActive ? '600' : '400'} 
-              textAlign="left"
               fontSize="sm"
               letterSpacing="0.01em"
-              flex={1}
+              flex={effectiveCollapsed ? 0 : 1}
+              textAlign="left"
+              opacity={effectiveCollapsed ? 0 : 1}
+              visibility={effectiveCollapsed ? 'hidden' : 'visible'}
+              transition="opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.15s cubic-bezier(0.4, 0, 0.2, 1)"
+              whiteSpace="nowrap"
+              overflow="hidden"
+              pointerEvents={effectiveCollapsed ? "none" : "auto"}
+              maxW={effectiveCollapsed ? "0" : "100%"}
+              w={effectiveCollapsed ? "0" : "auto"}
             >
               {item.label}
             </Text>
-          )}
-          {!isCollapsed && item.badge && (
-            <Badge
-              colorScheme={item.badge === 'New' ? 'green' : 'red'}
-              variant="solid"
-              size="sm"
-              borderRadius="full"
-              fontSize="2xs"
-              px={1.5}
-              py={0.5}
-              fontWeight="600"
-            >
-              {item.badge}
-            </Badge>
-          )}
-        </HStack>
+            {item.badge && (
+              <Badge
+                colorScheme={item.badge === 'New' ? 'green' : 'red'}
+                variant="solid"
+                size="sm"
+                borderRadius="full"
+                fontSize="2xs"
+                px={1.5}
+                py={0.5}
+                fontWeight="600"
+                opacity={effectiveCollapsed ? 0 : 1}
+                visibility={effectiveCollapsed ? 'hidden' : 'visible'}
+                transition="opacity 0.1s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.1s cubic-bezier(0.4, 0, 0.2, 1)"
+                pointerEvents={effectiveCollapsed ? "none" : "auto"}
+                maxW={effectiveCollapsed ? "0" : "100%"}
+                overflow="hidden"
+                w={effectiveCollapsed ? "0" : "auto"}
+              >
+                {item.badge}
+              </Badge>
+            )}
+          </HStack>
+        </Box>
       </Box>
     );
   };
+
+  // Determine effective collapsed state - in hover mode, use isHovered
+  const effectiveCollapsed = isHoverMode ? !isHovered : isCollapsed;
+  
+  // Use fixed widths for smooth animation
+  const sidebarWidth = effectiveCollapsed ? '80px' : '320px';
 
   return (
     <Box
@@ -552,107 +694,142 @@ const Sidebar = () => {
       left={0}
       top={0}
       h="100vh"
-      w={isCollapsed ? "80px" : { base: "280px", sm: "300px", md: "320px" }}
-      maxW={isCollapsed ? "80px" : { base: "280px", sm: "300px", md: "320px" }}
-      minW={isCollapsed ? "80px" : { base: "280px", sm: "300px", md: "320px" }}
       bg={sidebarPalette.background}
       borderRight={`1px solid ${sidebarPalette.border}`}
       boxShadow={sidebarPalette.glow}
-      zIndex={1000}
+      zIndex={9999}
       overflow="hidden"
-      transition="width 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-      display={isMobile && isCollapsed ? "none" : "flex"}
+      display={isMobile && effectiveCollapsed ? "none" : "flex"}
       flexDirection="column"
       transform="translateZ(0)"
-      willChange="width"
       backdropFilter="blur(12px)"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       sx={{
+        width: sidebarWidth,
+        minWidth: sidebarWidth,
+        maxWidth: sidebarWidth,
+        transition: 'width 0.1s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.1s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.1s cubic-bezier(0.4, 0, 0.2, 1)',
+        willChange: 'width, min-width, max-width',
         '@media (max-width: 575px)': {
-          width: isCollapsed ? '80px' : '100%',
-          maxWidth: isCollapsed ? '80px' : '100%',
-          minWidth: isCollapsed ? '80px' : '100%',
+          width: effectiveCollapsed ? '80px' : '100%',
+          maxWidth: effectiveCollapsed ? '80px' : '100%',
+          minWidth: effectiveCollapsed ? '80px' : '100%',
         },
-        '@media (min-width: 576px) and (max-width: 767px)': {
-          width: isCollapsed ? '80px' : '280px',
-          maxWidth: isCollapsed ? '80px' : '280px',
-          minWidth: isCollapsed ? '80px' : '280px',
-        },
-        '@media (min-width: 768px) and (max-width: 991px)': {
-          width: isCollapsed ? '80px' : '280px',
-          maxWidth: isCollapsed ? '80px' : '280px',
-          minWidth: isCollapsed ? '80px' : '280px',
-        },
-        '@media (min-width: 992px) and (max-width: 1199px)': {
-          width: isCollapsed ? '80px' : '280px',
-          maxWidth: isCollapsed ? '80px' : '280px',
-          minWidth: isCollapsed ? '80px' : '280px',
+        '@media (min-width: 576px) and (max-width: 1199px)': {
+          width: sidebarWidth,
+          maxWidth: sidebarWidth,
+          minWidth: sidebarWidth,
         },
         '@media (min-width: 1200px) and (max-width: 1399px)': {
-          width: isCollapsed ? '80px' : '300px',
-          maxWidth: isCollapsed ? '80px' : '300px',
-          minWidth: isCollapsed ? '80px' : '300px',
-        },
-        '@media (min-width: 1400px)': {
-          width: isCollapsed ? '80px' : '320px',
-          maxWidth: isCollapsed ? '80px' : '320px',
-          minWidth: isCollapsed ? '80px' : '320px',
+          width: effectiveCollapsed ? '80px' : '300px',
+          maxWidth: effectiveCollapsed ? '80px' : '300px',
+          minWidth: effectiveCollapsed ? '80px' : '300px',
         },
       }}
     >
       {/* Header */}
       <Box 
-        p={isCollapsed ? 3 : 4} 
+        p={effectiveCollapsed ? 3 : 4} 
         borderBottom={`1px solid ${sidebarPalette.border}`} 
         mb={3}
         flexShrink={0}
-        minH={isCollapsed ? "60px" : "70px"}
+        minH={effectiveCollapsed ? "60px" : "70px"}
         bg={sidebarPalette.headerBg}
+        position="relative"
       >
-        <HStack spacing={isCollapsed ? 0 : 3} justify={isCollapsed ? "center" : "space-between"}>
-          <HStack spacing={isCollapsed ? 0 : 3} justify={isCollapsed ? "center" : "flex-start"}>
+        <HStack spacing={effectiveCollapsed ? 0 : 3} justify={effectiveCollapsed ? "center" : "space-between"} align="flex-start">
+          <HStack spacing={effectiveCollapsed ? 0 : 3} justify={effectiveCollapsed ? "center" : "flex-start"} flex={1}>
             <Box
-              onClick={isCollapsed ? toggleSidebar : undefined}
-              cursor={isCollapsed ? "pointer" : "default"}
-              transition="transform 0.2s"
-              _hover={isCollapsed ? { transform: "scale(1.1)" } : {}}
+              onClick={effectiveCollapsed && !isHoverMode ? toggleSidebar : undefined}
+              cursor={effectiveCollapsed && !isHoverMode ? "pointer" : "default"}
+              transition="transform 0.1s"
+              _hover={effectiveCollapsed && !isHoverMode ? { transform: "scale(1.1)" } : {}}
             >
               <FindMeLogo />
             </Box>
-            {!isCollapsed && (
-              <Box>
-                <Text 
-                  fontSize="lg" 
-                  fontWeight="bold" 
-                  color={sidebarPalette.text}
-                  letterSpacing="0.04em"
-                >
-                  FunnelsEye
-                </Text>
-                <Text fontSize="2xs" color={sidebarPalette.textMuted} mt={-0.5}>
-                  Dashboard
-                </Text>
-              </Box>
-            )}
+            <Box
+              opacity={effectiveCollapsed ? 0 : 1}
+              visibility={effectiveCollapsed ? 'hidden' : 'visible'}
+              transition="opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.15s cubic-bezier(0.4, 0, 0.2, 1)"
+              pointerEvents={effectiveCollapsed ? "none" : "auto"}
+              whiteSpace="nowrap"
+              overflow="hidden"
+              maxW={effectiveCollapsed ? "0" : "100%"}
+            >
+              <Text 
+                fontSize="lg" 
+                fontWeight="bold" 
+                color={sidebarPalette.text}
+                letterSpacing="0.04em"
+              >
+                FunnelsEye
+              </Text>
+              <Text fontSize="2xs" color={sidebarPalette.textMuted} mt={-0.5}>
+                Dashboard
+              </Text>
+            </Box>
           </HStack>
           
-          {/* Toggle Button */}
-          {!isCollapsed && (
-            <Button
-              size="xs"
-              variant="ghost"
-              color={sidebarPalette.textMuted}
-              _hover={{
-                bg: sidebarPalette.panelHover,
-                color: sidebarPalette.text
-              }}
-              onClick={toggleSidebar}
-              p={1}
-              borderRadius="md"
-              minW="auto"
-              h="auto"
+          {/* Action Buttons - Top Right Corner */}
+          {!effectiveCollapsed && (
+            <HStack 
+              spacing={1.5} 
+              position="relative"
+              zIndex={10}
+              align="center"
             >
-              <Icon as={FiX} boxSize="15px" />
-            </Button>
+              {/* Hover Mode Toggle Button - Only visible when sidebar is open */}
+              <IconButton
+                aria-label={isHoverMode ? "Disable hover mode" : "Enable hover mode"}
+                icon={<Icon as={FiMove} />}
+                size="xs"
+                variant="ghost"
+                color={isHoverMode ? '#667eea' : sidebarPalette.textMuted}
+                bg={isHoverMode ? 'rgba(102, 126, 234, 0.15)' : 'transparent'}
+                _hover={{
+                  bg: isHoverMode ? 'rgba(102, 126, 234, 0.25)' : sidebarPalette.panelHover,
+                  color: isHoverMode ? '#667eea' : sidebarPalette.text,
+                  transform: 'scale(1.1)',
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleHoverMode();
+                }}
+                borderRadius="md"
+                minW="auto"
+                h="auto"
+                p={1.5}
+                boxSize="28px"
+                title={isHoverMode ? "Disable hover mode" : "Enable hover mode"}
+                transition="all 0.1s ease"
+              />
+              
+              {/* Close Button - Only show when not in hover mode */}
+              {!isHoverMode && (
+                <IconButton
+                  aria-label="Collapse sidebar"
+                  icon={<Icon as={FiX} />}
+                  size="xs"
+                  variant="ghost"
+                  color={sidebarPalette.textMuted}
+                  bg="transparent"
+                  _hover={{
+                    bg: sidebarPalette.panelHover,
+                    color: sidebarPalette.text,
+                    transform: 'scale(1.1)',
+                  }}
+                  onClick={toggleSidebar}
+                  borderRadius="md"
+                  minW="auto"
+                  h="auto"
+                  p={1.5}
+                  boxSize="28px"
+                  title="Collapse sidebar"
+                  transition="all 0.1s ease"
+                />
+              )}
+            </HStack>
           )}
         </HStack>
       </Box>
@@ -662,7 +839,7 @@ const Sidebar = () => {
         flex={1} 
         overflowY="auto" 
         overflowX="hidden"
-        px={isCollapsed ? 2 : 2.5}
+        px={effectiveCollapsed ? 0 : 2.5}
         sx={{
           '&::-webkit-scrollbar': {
             display: 'none',
@@ -671,28 +848,61 @@ const Sidebar = () => {
           msOverflowStyle: 'none',
         }}
       >
-        <VStack spacing={3} py={2} align="stretch">
+        <VStack 
+          spacing={effectiveCollapsed ? 0.5 : 3} 
+          py={effectiveCollapsed ? 1 : 2} 
+          align="stretch"
+          w="100%"
+        >
           {menuGroups.map((group, groupIndex) => (
-            <Box key={groupIndex}>
-              {!isCollapsed && (
-                <Text
-                  fontSize="2xs"
-                  fontWeight="600"
-                  color="gray.500"
-                  textTransform="uppercase"
-                  letterSpacing="0.1em"
-                  px={2}
-                  py={1.5}
-                  mb={1}
-                >
-                  {group.title}
-                </Text>
-              )}
-              <VStack spacing={0.5} align="stretch">
+            <Box key={groupIndex} w="100%">
+              <Text
+                fontSize="2xs"
+                fontWeight="600"
+                color="gray.500"
+                textTransform="uppercase"
+                letterSpacing="0.1em"
+                px={2}
+                py={1.5}
+                mb={1}
+                opacity={effectiveCollapsed ? 0 : 1}
+                visibility={effectiveCollapsed ? 'hidden' : 'visible'}
+                transition="opacity 0.1s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.1s cubic-bezier(0.4, 0, 0.2, 1)"
+                pointerEvents={effectiveCollapsed ? "none" : "auto"}
+                whiteSpace="nowrap"
+                overflow="hidden"
+                maxW={effectiveCollapsed ? "0" : "100%"}
+                minH="auto"
+                h="auto"
+              >
+                {effectiveCollapsed ? " " : group.title}
+              </Text>
+              <VStack 
+                spacing={effectiveCollapsed ? 0.5 : 0.5} 
+                align="stretch"
+              >
                 {group.items.map((item, index) => renderMenuItem(item, index))}
               </VStack>
-              {groupIndex < menuGroups.length - 1 && !isCollapsed && (
-                <Divider borderColor="rgba(255, 255, 255, 0.05)" my={2} />
+              {/* Divider - Show between groups (both collapsed and expanded), hide after last group */}
+              {groupIndex < menuGroups.length - 1 && (
+                <Box 
+                  w="100%" 
+                  display="flex" 
+                  justifyContent="center" 
+                  my={effectiveCollapsed ? 1 : 2}
+                  minH="1px"
+                  h="1px"
+                >
+                  <Divider 
+                    borderColor={effectiveCollapsed ? "transparent" : "rgba(255, 255, 255, 0.05)"}
+                    w={effectiveCollapsed ? "60%" : "100%"}
+                    opacity={1}
+                    visibility="visible"
+                    transition="border-color 0.1s cubic-bezier(0.4, 0, 0.2, 1), width 0.1s cubic-bezier(0.4, 0, 0.2, 1)"
+                    minH="1px"
+                    h="1px"
+                  />
+                </Box>
               )}
             </Box>
           ))}
@@ -700,7 +910,7 @@ const Sidebar = () => {
       </Box>
 
       {/* Restore Button when Collapsed - at bottom */}
-      {isCollapsed && (
+      {effectiveCollapsed && !isHoverMode && (
         <Box 
           p={2.5} 
           flexShrink={0}
@@ -718,7 +928,7 @@ const Sidebar = () => {
               bg: 'rgba(102, 126, 234, 0.2)',
               transform: 'scale(1.05)',
             }}
-            transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+            transition="all 0.1s cubic-bezier(0.4, 0, 0.2, 1)"
             onClick={toggleSidebar}
             position="relative"
             border="1px solid"

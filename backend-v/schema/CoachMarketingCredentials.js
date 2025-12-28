@@ -110,6 +110,15 @@ const coachMarketingCredentialsSchema = new mongoose.Schema({
         language: {
             type: String,
             default: 'en'
+        },
+        currency: {
+            type: String,
+            enum: ['USD', 'EUR', 'GBP', 'INR', 'CAD', 'AUD'],
+            default: 'USD'
+        },
+        updatedAt: {
+            type: Date,
+            default: Date.now
         }
     },
 
