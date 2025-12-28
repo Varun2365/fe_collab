@@ -1925,42 +1925,65 @@ function FunnelManagementComponent() {
                       ))
                     ) : (
                       <Tr>
-                        <Td colSpan={7} textAlign="center" py={20}>
-                          <VStack spacing={6}>
+                        <Td colSpan={7} textAlign="center" py={24} px={8}>
+                          <VStack spacing={5} align="center" maxW="480px" mx="auto">
+                            {/* Minimal Icon */}
                             <Box
-                              w="120px"
-                              h="120px"
-                              bg="blue.50"
-                              borderRadius="lg"
+                              w="64px"
+                              h="64px"
+                              borderRadius="12px"
+                              bg="gray.50"
                               display="flex"
                               alignItems="center"
                               justifyContent="center"
-                              color="blue.500"
-                              boxShadow="lg"
+                              color="gray.400"
+                              border="1px solid"
+                              borderColor="gray.100"
                             >
-                              <Box as={FiBarChart2} size="48px" />
+                              <Box as={FiBarChart2} size="28px" />
                             </Box>
-                            <VStack spacing={3}>
-                              <Heading size="lg" color="gray.600">
-                                No funnels found
-                              </Heading>
-                              <Text color="gray.500">
-                                {searchTerm ? 'Try adjusting your search terms' : 'Get started by creating your first funnel'}
+                            
+                            {/* Clean Typography */}
+                            <VStack spacing={2} align="center">
+                              <Text 
+                                fontSize="lg" 
+                                fontWeight="600" 
+                                color="gray.700"
+                                letterSpacing="-0.02em"
+                              >
+                                {searchTerm ? 'No matching funnels' : 'No funnels yet'}
+                              </Text>
+                              <Text 
+                                fontSize="sm" 
+                                color="gray.500"
+                                textAlign="center"
+                                lineHeight="1.6"
+                                maxW="360px"
+                              >
+                                {searchTerm 
+                                  ? 'Try adjusting your search or filter criteria to find what you\'re looking for.'
+                                  : 'Start building your sales funnel to convert leads into customers and grow your business.'
+                                }
                               </Text>
                             </VStack>
+                            
+                            {/* Minimal Action Button */}
                             {!searchTerm && (
                               <Button
-                                bg="blue.500"
-                                color="white"
-                                size="lg"
+                                size="md"
+                                colorScheme="blue"
                                 leftIcon={<AddIcon />}
                                 onClick={() => handleOpenModal(false, null)}
-                                _hover={{ bg: 'blue.600', transform: 'translateY(-2px)', boxShadow: 'lg' }}
-                                _active={{ bg: 'blue.700' }}
-                                transition="all 0.3s"
-                                fontWeight="semibold"
+                                borderRadius="8px"
+                                fontWeight="500"
+                                px={6}
+                                _hover={{ 
+                                  transform: 'translateY(-1px)',
+                                  boxShadow: '0 4px 12px rgba(66, 153, 225, 0.2)'
+                                }}
+                                transition="all 0.2s"
                               >
-                                Create Your First Funnel
+                                Create Funnel
                               </Button>
                             )}
                           </VStack>

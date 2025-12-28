@@ -26,20 +26,30 @@ class ZoomMeetingService {
                 throw new Error('Appointment not found');
             }
 
-            // Get Zoom integration for the user
-            const zoomIntegration = await ZoomIntegration.findOne({ 
-                userId: userId,
+            // Get Zoom integration for the user (try coachId first, then userId)
+            let zoomIntegration = await ZoomIntegration.findOne({ 
+                coachId: userId,
                 isActive: true
             });
+
+            if (!zoomIntegration) {
+                zoomIntegration = await ZoomIntegration.findOne({ 
+                    userId: userId,
+                    isActive: true
+                });
+            }
 
             if (!zoomIntegration) {
                 throw new Error('Zoom integration not found for this user');
             }
 
-            // Check if access token is expired
-            if (new Date() >= zoomIntegration.expiresAt) {
-                // Attempt to refresh token
-                await this.refreshAccessToken(zoomIntegration);
+            // Check if access token is expired (support both tokenExpiresAt and expiresAt)
+            const expiresAt = zoomIntegration.tokenExpiresAt || zoomIntegration.expiresAt;
+            if (expiresAt && new Date() >= new Date(expiresAt)) {
+                // Attempt to refresh token if we have refreshToken
+                if (zoomIntegration.refreshToken) {
+                    await this.refreshAccessToken(zoomIntegration);
+                }
             }
 
             // Prepare meeting data
@@ -64,13 +74,32 @@ class ZoomMeetingService {
                 }
             };
 
+            // Get access token (support both OAuth 2.0 and Server-to-Server)
+            let accessToken = zoomIntegration.accessToken;
+            
+            // If using Server-to-Server OAuth, generate token using zoomService
+            if (!accessToken && zoomIntegration.clientId && zoomIntegration.clientSecret) {
+                const zoomService = require('./zoomService');
+                const tokenData = await zoomService.generateOAuthToken(
+                    zoomIntegration.clientId,
+                    zoomIntegration.clientSecret,
+                    zoomIntegration.zoomAccountId,
+                    zoomIntegration
+                );
+                accessToken = tokenData.accessToken;
+            }
+
+            if (!accessToken) {
+                throw new Error('No valid access token available');
+            }
+
             // Create meeting via Zoom API
             const response = await axios.post(
                 'https://api.zoom.us/v2/users/me/meetings',
                 meetingData,
                 {
                     headers: {
-                        'Authorization': `Bearer ${zoomIntegration.accessToken}`,
+                        'Authorization': `Bearer ${accessToken}`,
                         'Content-Type': 'application/json'
                     }
                 }
@@ -135,6 +164,14 @@ class ZoomMeetingService {
      */
     async refreshAccessToken(zoomIntegration) {
         try {
+            // Use OAuth 2.0 credentials if available, otherwise fall back to env vars
+            const clientId = process.env.ZOOM_OAUTH_CLIENT_ID || process.env.ZOOM_CLIENT_ID;
+            const clientSecret = process.env.ZOOM_OAUTH_CLIENT_SECRET || process.env.ZOOM_CLIENT_SECRET;
+
+            if (!clientId || !clientSecret) {
+                throw new Error('Zoom OAuth credentials not configured');
+            }
+
             const response = await axios.post(
                 'https://zoom.us/oauth/token',
                 null,
@@ -144,21 +181,24 @@ class ZoomMeetingService {
                         refresh_token: zoomIntegration.refreshToken
                     },
                     auth: {
-                        username: process.env.ZOOM_CLIENT_ID,
-                        password: process.env.ZOOM_CLIENT_SECRET
+                        username: clientId,
+                        password: clientSecret
                     }
                 }
             );
 
             const { access_token, refresh_token, expires_in } = response.data;
 
-            // Update integration with new tokens
+            // Update integration with new tokens (support both tokenExpiresAt and expiresAt)
             zoomIntegration.accessToken = access_token;
-            zoomIntegration.refreshToken = refresh_token;
-            zoomIntegration.expiresAt = new Date(Date.now() + expires_in * 1000);
+            zoomIntegration.refreshToken = refresh_token || zoomIntegration.refreshToken;
+            zoomIntegration.tokenExpiresAt = new Date(Date.now() + expires_in * 1000);
+            zoomIntegration.expiresAt = zoomIntegration.tokenExpiresAt; // Also update legacy field
+            zoomIntegration.tokenGeneratedAt = new Date();
             await zoomIntegration.save();
 
-            console.log(`[Zoom] Access token refreshed for user ${zoomIntegration.userId}`);
+            const userId = zoomIntegration.coachId || zoomIntegration.userId;
+            console.log(`[Zoom] Access token refreshed for user ${userId}`);
         } catch (error) {
             console.error('[Zoom] Error refreshing token:', error.message);
             throw new Error('Failed to refresh Zoom access token');
@@ -167,22 +207,57 @@ class ZoomMeetingService {
 
     /**
      * Check if user has valid Zoom integration
-     * @param {String} userId - User ID
+     * @param {String} userId - User ID (coachId for coaches, userId for staff)
      * @returns {Boolean} - Whether user has valid Zoom credentials
      */
     async hasValidZoomIntegration(userId) {
         try {
-            const zoomIntegration = await ZoomIntegration.findOne({ 
-                userId: userId,
+            // Try to find integration by coachId first (for OAuth and Server-to-Server)
+            let zoomIntegration = await ZoomIntegration.findOne({ 
+                coachId: userId,
                 isActive: true
             });
+
+            // If not found, try userId (for staff or legacy integrations)
+            if (!zoomIntegration) {
+                zoomIntegration = await ZoomIntegration.findOne({ 
+                    userId: userId,
+                    isActive: true
+                });
+            }
 
             if (!zoomIntegration) {
                 return false;
             }
 
-            // Check if token is expired
-            if (new Date() >= zoomIntegration.expiresAt) {
+            // Check if integration is valid using the schema method
+            // This supports both OAuth 2.0 (accessToken) and Server-to-Server (clientId/clientSecret)
+            if (!zoomIntegration.isValid()) {
+                return false;
+            }
+
+            // For OAuth 2.0 tokens, check expiration
+            if (zoomIntegration.accessToken && zoomIntegration.tokenExpiresAt) {
+                const now = new Date();
+                const expiresAt = new Date(zoomIntegration.tokenExpiresAt);
+                
+                // Check if token expires in the next 5 minutes
+                if (now >= new Date(expiresAt.getTime() - 5 * 60 * 1000)) {
+                    // Try to refresh if we have a refresh token
+                    if (zoomIntegration.refreshToken) {
+                        try {
+                            await this.refreshAccessToken(zoomIntegration);
+                            return true;
+                        } catch (error) {
+                            console.error('[Zoom] Error refreshing token:', error.message);
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            // For legacy integrations with expiresAt field
+            if (zoomIntegration.expiresAt && new Date() >= zoomIntegration.expiresAt) {
                 // Try to refresh
                 try {
                     await this.refreshAccessToken(zoomIntegration);
@@ -211,14 +286,41 @@ class ZoomMeetingService {
                 return { success: true, message: 'No meeting to delete' };
             }
 
-            const zoomIntegration = await ZoomIntegration.findOne({ 
-                userId: userId,
+            // Get Zoom integration (try coachId first, then userId)
+            let zoomIntegration = await ZoomIntegration.findOne({ 
+                coachId: userId,
                 isActive: true
             });
 
             if (!zoomIntegration) {
+                zoomIntegration = await ZoomIntegration.findOne({ 
+                    userId: userId,
+                    isActive: true
+                });
+            }
+
+            if (!zoomIntegration) {
                 console.log('[Zoom] No integration found, skipping meeting deletion');
                 return { success: true, message: 'No integration found' };
+            }
+
+            // Get access token (support both OAuth 2.0 and Server-to-Server)
+            let accessToken = zoomIntegration.accessToken;
+            
+            // If using Server-to-Server OAuth, generate token using zoomService
+            if (!accessToken && zoomIntegration.clientId && zoomIntegration.clientSecret) {
+                const zoomService = require('./zoomService');
+                const tokenData = await zoomService.generateOAuthToken(
+                    zoomIntegration.clientId,
+                    zoomIntegration.clientSecret,
+                    zoomIntegration.zoomAccountId,
+                    zoomIntegration
+                );
+                accessToken = tokenData.accessToken;
+            }
+
+            if (!accessToken) {
+                throw new Error('No valid access token available');
             }
 
             // Delete meeting via Zoom API
@@ -226,7 +328,7 @@ class ZoomMeetingService {
                 `https://api.zoom.us/v2/meetings/${appointment.zoomMeeting.meetingId}`,
                 {
                     headers: {
-                        'Authorization': `Bearer ${zoomIntegration.accessToken}`
+                        'Authorization': `Bearer ${accessToken}`
                     }
                 }
             );

@@ -722,6 +722,239 @@ const updateRetentionPeriod = asyncHandler(async (req, res, next) => {
     }
 });
 
+// ===== ZOOM OAUTH 2.0 INTEGRATION =====
+
+// @desc    Initiate Zoom OAuth 2.0 flow
+// @route   GET /api/zoom-integration/oauth/authorize
+// @access  Public (redirects to Zoom)
+const initiateZoomOAuth = asyncHandler(async (req, res, next) => {
+    try {
+        const { coachId } = req.query;
+        
+        if (!coachId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Coach ID is required'
+            });
+        }
+
+        // Zoom OAuth 2.0 configuration
+        const zoomClientId = process.env.ZOOM_OAUTH_CLIENT_ID;
+        const redirectUri = process.env.ZOOM_OAUTH_REDIRECT_URI || `${req.protocol}://${req.get('host')}/api/zoom-integration/oauth/callback`;
+        
+        if (!zoomClientId) {
+            return res.status(500).json({
+                success: false,
+                message: 'Zoom OAuth is not configured. Please contact administrator.'
+            });
+        }
+
+        // Generate state parameter for security (store coachId and timestamp)
+        // State is verified on callback by decoding and checking timestamp (must be within 10 minutes)
+        const state = Buffer.from(JSON.stringify({ coachId, timestamp: Date.now() })).toString('base64');
+
+        // Zoom OAuth 2.0 authorization URL
+        // Using user-level scopes (not admin scopes) for user-managed apps
+        // These scope names match what's available in Zoom Marketplace
+        const scopes = [
+            'meeting:write:meeting',      // Create a meeting for a user
+            'meeting:update:meeting',     // Update a meeting
+            'meeting:delete:meeting',     // Delete a meeting
+            'meeting:read:meeting',       // View a meeting
+            'meeting:read:list_meetings', // View a user's meetings
+            'user:read:user',             // Read user information (required for /v2/users/me)
+            'user:read:user:admin'        // Alternative user read scope (some endpoints may require this)
+        ].join(' ');
+
+        const authUrl = `https://zoom.us/oauth/authorize?response_type=code&client_id=${zoomClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(state)}`;
+
+        // Redirect to Zoom authorization page
+        res.redirect(authUrl);
+    } catch (error) {
+        console.error('[ZoomOAuth] Error initiating OAuth:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to initiate Zoom OAuth',
+            error: error.message
+        });
+    }
+});
+
+// @desc    Handle Zoom OAuth 2.0 callback
+// @route   GET /api/zoom-integration/oauth/callback
+// @access  Public (callback from Zoom)
+const handleZoomOAuthCallback = asyncHandler(async (req, res, next) => {
+    try {
+        const { code, state, error } = req.query;
+
+        if (error) {
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/calendar?zoom_error=${encodeURIComponent(error)}`);
+        }
+
+        if (!code || !state) {
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/calendar?zoom_error=missing_parameters`);
+        }
+
+        // Verify state parameter (decode and check timestamp)
+        let stateData;
+        try {
+            stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+        } catch (e) {
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/calendar?zoom_error=invalid_state`);
+        }
+
+        const { coachId, timestamp } = stateData;
+
+        if (!coachId) {
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/calendar?zoom_error=missing_coach_id`);
+        }
+
+        // Verify state timestamp (must be within 10 minutes)
+        const stateAge = Date.now() - timestamp;
+        if (stateAge > 10 * 60 * 1000) {
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/calendar?zoom_error=state_expired`);
+        }
+
+        // Exchange authorization code for access token
+        const zoomClientId = process.env.ZOOM_OAUTH_CLIENT_ID;
+        const zoomClientSecret = process.env.ZOOM_OAUTH_CLIENT_SECRET;
+        const redirectUri = process.env.ZOOM_OAUTH_REDIRECT_URI || `${req.protocol}://${req.get('host')}/api/zoom-integration/oauth/callback`;
+
+        if (!zoomClientId || !zoomClientSecret) {
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/calendar?zoom_error=oauth_not_configured`);
+        }
+
+        // Exchange code for tokens
+        const axios = require('axios');
+        const tokenResponse = await axios.post('https://zoom.us/oauth/token', null, {
+            params: {
+                grant_type: 'authorization_code',
+                code: code,
+                redirect_uri: redirectUri
+            },
+            auth: {
+                username: zoomClientId,
+                password: zoomClientSecret
+            }
+        });
+
+        const { access_token, refresh_token, expires_in } = tokenResponse.data;
+
+        // Get user info from Zoom (try with error handling)
+        let zoomEmail = null;
+        let zoomAccountId = null;
+        
+        try {
+            const userResponse = await axios.get('https://api.zoom.us/v2/users/me', {
+                headers: {
+                    'Authorization': `Bearer ${access_token}`
+                }
+            });
+
+            const zoomUser = userResponse.data;
+            zoomEmail = zoomUser.email;
+            zoomAccountId = zoomUser.account_id || zoomUser.id;
+        } catch (userInfoError) {
+            // If we can't get user info, we'll still save the integration
+            // The user info can be retrieved later when needed
+            console.warn('[ZoomOAuth] Could not fetch user info:', userInfoError.response?.data || userInfoError.message);
+            
+            // Try to decode user info from the token if possible
+            // For now, we'll save without email/accountId and fetch it later when needed
+            zoomEmail = 'pending@zoom.user'; // Placeholder, will be updated on first API call
+            zoomAccountId = 'pending'; // Placeholder
+        }
+
+        // Save or update Zoom integration
+        let integration = await ZoomIntegration.findOne({ coachId });
+
+        const tokenExpiresAt = new Date(Date.now() + (expires_in * 1000));
+
+        if (integration) {
+            // Update existing integration
+            integration.accessToken = access_token;
+            integration.refreshToken = refresh_token;
+            integration.tokenExpiresAt = tokenExpiresAt;
+            integration.tokenGeneratedAt = new Date();
+            integration.zoomEmail = zoomEmail;
+            integration.zoomAccountId = zoomAccountId;
+            integration.isActive = true;
+            integration.lastSync = {
+                timestamp: new Date(),
+                status: 'success',
+                message: 'OAuth connection established successfully'
+            };
+            await integration.save();
+        } else {
+            // Create new integration
+            integration = new ZoomIntegration({
+                coachId,
+                accessToken: access_token,
+                refreshToken: refresh_token,
+                tokenExpiresAt: tokenExpiresAt,
+                tokenGeneratedAt: new Date(),
+                zoomEmail: zoomEmail,
+                zoomAccountId: zoomAccountId,
+                isActive: true,
+                lastSync: {
+                    timestamp: new Date(),
+                    status: 'success',
+                    message: 'OAuth connection established successfully'
+                }
+            });
+            await integration.save();
+        }
+
+        // Redirect back to frontend with success
+        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/calendar?zoom_connected=true`);
+    } catch (error) {
+        console.error('[ZoomOAuth] Error handling callback:', error);
+        const errorMessage = error.response?.data?.error_description || error.message || 'unknown_error';
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/calendar?zoom_error=${encodeURIComponent(errorMessage)}`);
+    }
+});
+
+// @desc    Get Zoom OAuth status
+// @route   GET /api/zoom-integration/oauth/status
+// @access  Private (Coaches)
+const getZoomOAuthStatus = asyncHandler(async (req, res, next) => {
+    try {
+        const integration = await ZoomIntegration.findOne({ coachId: req.coachId });
+        
+        if (!integration) {
+            return res.status(200).json({
+                success: true,
+                data: {
+                    isConnected: false,
+                    message: 'No Zoom integration found'
+                }
+            });
+        }
+
+        const isConnected = integration.isActive && integration.accessToken && 
+                           (!integration.tokenExpiresAt || new Date() < integration.tokenExpiresAt);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                isConnected,
+                isActive: integration.isActive,
+                accountInfo: {
+                    zoomEmail: integration.zoomEmail,
+                    zoomAccountId: integration.zoomAccountId
+                },
+                lastSync: integration.lastSync
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to get OAuth status',
+            error: error.message
+        });
+    }
+});
+
 module.exports = {
     setupZoomIntegration,
     getZoomIntegration,
@@ -739,5 +972,9 @@ module.exports = {
     stopCleanup,
     manualCleanup,
     getCleanupStats,
-    updateRetentionPeriod
+    updateRetentionPeriod,
+    // NEW: OAuth 2.0 Integration
+    initiateZoomOAuth,
+    handleZoomOAuthCallback,
+    getZoomOAuthStatus
 };
