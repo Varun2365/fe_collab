@@ -161,7 +161,7 @@ const Sidebar = () => {
           ]
         },
         { icon: FiMessageCircle, label: 'Messages', path: '/messaging', badge: null, type: 'single' },
-        { icon: FiCalendar, label: 'Calendar', path: '/calender', badge: null, type: 'single' },
+        { icon: FiCalendar, label: 'Calendar', path: '/calendar', badge: null, type: 'single' },
       ]
     },
     {
@@ -610,7 +610,14 @@ const Sidebar = () => {
       >
         <HStack spacing={isCollapsed ? 0 : 3} justify={isCollapsed ? "center" : "space-between"}>
           <HStack spacing={isCollapsed ? 0 : 3} justify={isCollapsed ? "center" : "flex-start"}>
-            <FindMeLogo />
+            <Box
+              onClick={isCollapsed ? toggleSidebar : undefined}
+              cursor={isCollapsed ? "pointer" : "default"}
+              transition="transform 0.2s"
+              _hover={isCollapsed ? { transform: "scale(1.1)" } : {}}
+            >
+              <FindMeLogo />
+            </Box>
             {!isCollapsed && (
               <Box>
                 <Text 
@@ -732,4 +739,3 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
-

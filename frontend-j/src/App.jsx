@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box } from '@chakra-ui/react';
 import MainLayout from './dashboard/MainLayout';
 import DashboardView from './dashboard/DashboardView';
@@ -15,7 +15,7 @@ import Funnel1 from './dashboard/portfolio/index';
 import Funnel_settings from './dashboard/portfolio/funnel1/index';
 import Portfolio_page from './dashboard/portfolio/funnel1/portfolioedit.jsx';
 import Staff from './dashboard/staff/index';
-import Calender from './dashboard/calendar/index';
+import Calendar from './dashboard/calendar/index';
 import Inbox from './dashboard/setup/index.jsx';
 import Ads from './dashboard/ads/index.jsx';
 // Also trying backup in case index isn't working
@@ -99,7 +99,9 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
           <Route path="staff" element={<Staff />} />
-          <Route path="calender" element={<Calender />} />
+          <Route path="calendar" element={<Calendar />} />
+          {/* Redirect old typo route to correct one */}
+          <Route path="calender" element={<Navigate to="/calendar" replace />} />
           <Route path="inbox" element={<Inbox />} />
           <Route path="ads" element={<Ads />} />
           {/* <Route path="funnels1" element={<Funnels1 />} />   */}
