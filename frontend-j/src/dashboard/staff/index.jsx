@@ -126,6 +126,9 @@ import { useSelector } from 'react-redux';
 import { getCoachId, getToken, isAuthenticated, debugAuthState } from '../../utils/authUtils';
 
 // --- API CONFIGURATION ---
+// API_BASE_URL automatically switches between:
+// - Development: http://localhost:8080
+// - Production: https://api.funnelseye.com
 import { API_BASE_URL } from '../../config/apiConfig';
 
 // --- BEAUTIFUL SKELETON COMPONENTS ---

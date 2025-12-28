@@ -36,6 +36,10 @@ import {
   FiGlobe,
   FiCheckSquare,
   FiActivity,
+  FiAward,
+  FiBookOpen,
+  FiPieChart,
+  FiHeart,
 } from 'react-icons/fi';
 import { IoPeopleOutline } from 'react-icons/io5';
 
@@ -139,8 +143,25 @@ const Sidebar = () => {
             { icon: FiTeam, label: 'Coach Leads', path: '/leads_couch', badge: null },
           ]
         },
+        { 
+          icon: FiUserCheck, 
+          label: 'Client Management', 
+          path: '/client_management', 
+          badge: null, 
+          type: 'dropdown',
+          subItems: [
+            { icon: FiActivity, label: 'Personal Progress Tracking', path: '/client_management/personal_progress', badge: null },
+            { icon: FiZap, label: 'Coaching Delivery System (Core)', path: '/client_management/coaching_delivery', badge: null },
+            { icon: FiAward, label: 'Essential Gamification', path: '/client_management/gamification', badge: null },
+            { icon: FiMessageCircle, label: 'Communication Tools', path: '/client_management/communication', badge: null },
+            { icon: FiBookOpen, label: 'Educational Hub (Core)', path: '/client_management/educational_hub', badge: null },
+            { icon: FiPieChart, label: 'Progress Analytics (Essential)', path: '/client_management/progress_analytics', badge: null },
+            { icon: FiUsers, label: 'Community & Social Programs', path: '/client_management/community', badge: null },
+            { icon: FiHeart, label: 'Motivational Features', path: '/client_management/motivational', badge: null },
+          ]
+        },
         { icon: FiMessageCircle, label: 'Messages', path: '/messaging', badge: null, type: 'single' },
-        { icon: FiCalendar, label: 'Calendar', path: '/calender', badge: null, type: 'single' },
+        { icon: FiCalendar, label: 'Calendar', path: '/calendar', badge: null, type: 'single' },
       ]
     },
     {
@@ -227,7 +248,7 @@ const Sidebar = () => {
     const isExpanded = expandedItems.has(item.path);
     const isItemActive = isActive(item.path);
     const isHovered = hoveredItem === item.name;
-    const useNeutralBg = item.label === 'Lead Management' || item.label === 'Settings';
+    const useNeutralBg = item.label === 'Lead Management' || item.label === 'Settings' || item.label === 'Client Management';
 
     if (item.type === 'dropdown') {
       return (
@@ -589,7 +610,14 @@ const Sidebar = () => {
       >
         <HStack spacing={isCollapsed ? 0 : 3} justify={isCollapsed ? "center" : "space-between"}>
           <HStack spacing={isCollapsed ? 0 : 3} justify={isCollapsed ? "center" : "flex-start"}>
-            <FindMeLogo />
+            <Box
+              onClick={isCollapsed ? toggleSidebar : undefined}
+              cursor={isCollapsed ? "pointer" : "default"}
+              transition="transform 0.2s"
+              _hover={isCollapsed ? { transform: "scale(1.1)" } : {}}
+            >
+              <FindMeLogo />
+            </Box>
             {!isCollapsed && (
               <Box>
                 <Text 

@@ -8,16 +8,16 @@ const zoomIntegrationSchema = new mongoose.Schema({
         unique: true
     },
     
-    // Zoom OAuth credentials (for Server-to-Server OAuth apps)
+    // Zoom OAuth credentials (for Server-to-Server OAuth apps) - Optional for OAuth 2.0 flow
     clientId: {
         type: String,
-        required: true,
+        required: false,
         trim: true
     },
     
     clientSecret: {
         type: String,
-        required: true,
+        required: false,
         trim: true
     },
     
@@ -174,7 +174,11 @@ zoomIntegrationSchema.pre('save', function(next) {
 
 // Method to check if integration is valid
 zoomIntegrationSchema.methods.isValid = function() {
-    return this.isActive && this.clientId && this.clientSecret;
+    // Support both OAuth 2.0 (accessToken) and Server-to-Server (clientId/clientSecret)
+    return this.isActive && (
+        (this.accessToken && (!this.tokenExpiresAt || new Date() < this.tokenExpiresAt)) ||
+        (this.clientId && this.clientSecret)
+    );
 };
 
 // Method to check if token needs refresh

@@ -1,6 +1,6 @@
 
 
-// 🚀 Load environment variables from .env file
+// 🚀 Load environment variables from .env file jass
 require('dotenv').config({ quiet: true });
 
 // 🛡️ Global Error Handlers to prevent server crashes

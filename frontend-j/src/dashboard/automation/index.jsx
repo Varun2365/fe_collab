@@ -36,10 +36,14 @@ import { FaWhatsapp } from 'react-icons/fa';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import { getCoachId, getToken, isAuthenticated, debugAuthState } from '../../utils/authUtils';
+import { API_BASE_URL as BASE_URL } from '../../config/apiConfig';
 import GraphAutomationBuilder from './GraphAutomationBuilder';
 
 // --- API CONFIGURATION ---
-const API_BASE_URL = 'https://api.funnelseye.com/api';
+// API_BASE_URL automatically switches between:
+// - Development: http://localhost:8080/api
+// - Production: https://api.funnelseye.com/api
+const API_BASE_URL = `${BASE_URL}/api`;
 
 const shouldHideBillingTrigger = (event) => {
   const value =

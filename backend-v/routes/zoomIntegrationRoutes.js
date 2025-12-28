@@ -18,7 +18,11 @@ const {
     stopCleanup,
     manualCleanup,
     getCleanupStats,
-    updateRetentionPeriod
+    updateRetentionPeriod,
+    // NEW: OAuth 2.0 Integration
+    initiateZoomOAuth,
+    handleZoomOAuthCallback,
+    getZoomOAuthStatus
 } = require('../controllers/zoomIntegrationController');
 
 const { 
@@ -30,6 +34,10 @@ const {
 const { updateLastActive } = require('../middleware/activityMiddleware');
 
 // ===== PUBLIC ROUTES (No Authentication Required) =====
+
+// OAuth 2.0 Routes (Public - for redirects)
+router.get('/oauth/authorize', initiateZoomOAuth);
+router.get('/oauth/callback', handleZoomOAuthCallback);
 
 // Get Zoom API setup guide (Public)
 router.get('/setup-guide', (req, res) => {
@@ -210,6 +218,9 @@ router.get('/usage', requirePermission('calendar:read'), getZoomUsage);
 
 // Get integration status
 router.get('/status', requirePermission('calendar:read'), getIntegrationStatus);
+
+// Get OAuth status (for checking if user needs to connect)
+router.get('/oauth/status', requirePermission('calendar:read'), getZoomOAuthStatus);
 
 // ===== ZOOM MEETING MANAGEMENT =====
 
