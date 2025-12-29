@@ -2,8 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box, Flex, Text, Button, Input, InputGroup, InputLeftElement, 
   Table, Thead, Tbody, Tr, Th, Td, TableContainer, Badge, Avatar,
-  Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
-  FormControl, FormLabel, FormHelperText, Select, Textarea, Switch, useDisclosure,
+  Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, FormControl, FormLabel, FormHelperText, Select, Textarea, Switch, useDisclosure,
   HStack, VStack, Divider, IconButton, Menu, MenuButton, MenuList, MenuItem,
   Alert, AlertIcon, AlertTitle, AlertDescription, useToast,
   Skeleton, SkeletonText, Card, CardBody, CardHeader, Heading,
@@ -38,6 +37,88 @@ import { useSelector } from 'react-redux';
 import { getCoachId, getToken, isAuthenticated, debugAuthState } from '../../utils/authUtils';
 import { API_BASE_URL as BASE_URL } from '../../config/apiConfig';
 import GraphAutomationBuilder from './GraphAutomationBuilder';
+
+// Graph Builder Drawer Component with dynamic sidebar width
+const GraphBuilderDrawer = ({ isOpen, onClose, graphBuilderRule, handleGraphBuilderSave, eventsActions, builderResources, viewMode = false }) => {
+  const [sidebarWidth, setSidebarWidth] = useState(320);
+  
+  useEffect(() => {
+    const handleSidebarToggle = (event) => {
+      if (event.detail) {
+        if (event.detail.width) {
+          const widthStr = event.detail.width;
+          const width = widthStr === '80px' ? 80 : (widthStr === '300px' ? 300 : 320);
+          setSidebarWidth(width);
+        } else if (event.detail.collapsed !== undefined) {
+          // Handle collapsed state
+          const width = event.detail.collapsed ? 80 : 320;
+          setSidebarWidth(width);
+        }
+      }
+    };
+    
+    window.addEventListener('sidebarToggle', handleSidebarToggle);
+    
+    // Get initial sidebar state - check if sidebar is collapsed
+    const checkInitialWidth = () => {
+      // Try to get from event or check sidebar state
+      const sidebarElement = document.querySelector('[data-sidebar]');
+      if (sidebarElement) {
+        const computedWidth = window.getComputedStyle(sidebarElement).width;
+        const width = parseInt(computedWidth) || 320;
+        setSidebarWidth(width);
+      }
+    };
+    
+    // Check after a short delay to ensure DOM is ready
+    setTimeout(checkInitialWidth, 100);
+    
+    return () => {
+      window.removeEventListener('sidebarToggle', handleSidebarToggle);
+    };
+  }, []);
+  
+  return (
+    <Drawer
+      isOpen={isOpen}
+      placement="right"
+      onClose={onClose}
+      size="full"
+    >
+      <DrawerOverlay />
+      <DrawerContent 
+        maxW={sidebarWidth === 80 ? '100vw' : `calc(100vw - ${sidebarWidth}px)`}
+        ml={sidebarWidth === 80 ? '0' : `${sidebarWidth}px`}
+        w={sidebarWidth === 80 ? '100vw' : `calc(100vw - ${sidebarWidth}px)`}
+        sx={{
+          transition: 'margin-left 0.1s cubic-bezier(0.4, 0, 0.2, 1), width 0.1s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.1s cubic-bezier(0.4, 0, 0.2, 1)',
+          '@media (max-width: 1199px)': {
+            maxW: sidebarWidth === 80 ? '100vw' : (sidebarWidth === 80 ? 'calc(100vw - 80px)' : 'calc(100vw - 300px)'),
+            ml: sidebarWidth === 80 ? '0' : (sidebarWidth === 80 ? '80px' : '300px'),
+            w: sidebarWidth === 80 ? '100vw' : (sidebarWidth === 80 ? 'calc(100vw - 80px)' : 'calc(100vw - 300px)'),
+          },
+          '@media (max-width: 767px)': {
+            maxW: '100vw',
+            ml: '0',
+            w: '100vw',
+          }
+        }}
+      >
+        <DrawerCloseButton zIndex={20} />
+        <DrawerBody p={0} overflow="hidden">
+          <GraphAutomationBuilder
+            rule={graphBuilderRule}
+            onSave={handleGraphBuilderSave}
+            onClose={onClose}
+            eventsActions={eventsActions}
+            builderResources={builderResources}
+            viewMode={viewMode || graphBuilderRule?.viewMode || false}
+          />
+        </DrawerBody>
+      </DrawerContent>
+    </Drawer>
+  );
+};
 
 // --- API CONFIGURATION ---
 // API_BASE_URL automatically switches between:
@@ -1343,10 +1424,14 @@ const AutomationDashboard = () => {
     onGraphBuilderOpen();
   };
 
-  const openEditGraphModal = (rule) => {
+  const [viewMode, setViewMode] = useState(false);
+  
+  const openEditGraphModal = (rule, isViewMode = false) => {
+    setViewMode(isViewMode);
     // Ensure rule has all necessary fields for graph editor
     const ruleForEditor = {
       ...rule,
+      viewMode: isViewMode,
       workflowType: rule.workflowType || (rule.nodes && rule.nodes.length > 0 ? 'graph' : 'legacy'),
       nodes: rule.nodes || [],
       edges: rule.edges || [],
@@ -1589,13 +1674,41 @@ const AutomationDashboard = () => {
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return 'Never';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return 'Never';
+    }
+  };
+
+  // Handle funnel assignment
+  const handleFunnelAssignment = async (ruleId, funnelId) => {
+    try {
+      const response = await axios.put(
+        `${API_BASE_URL}/automation-rules/${ruleId}/assign-funnel`,
+        { funnelId: funnelId || null },
+        { headers: getAuthHeaders() }
+      );
+
+      if (response.data.success) {
+        // Update local state
+        setAutomationRules(prev => prev.map(rule => 
+          rule._id === ruleId 
+            ? { ...rule, funnelId: funnelId || null }
+            : rule
+        ));
+        toast('Funnel assignment updated successfully', 'success');
+      }
+    } catch (error) {
+      console.error('Error assigning funnel:', error);
+      toast(error.response?.data?.message || 'Failed to assign funnel', 'error');
+    }
   };
 
   // Get trigger event display name
@@ -1767,6 +1880,9 @@ const AutomationDashboard = () => {
                       Status
                     </Th>
                     <Th px={6} py={4} fontSize="xs" fontWeight="600" color="gray.600" textTransform="uppercase" letterSpacing="wider">
+                      Funnel
+                    </Th>
+                    <Th px={6} py={4} fontSize="xs" fontWeight="600" color="gray.600" textTransform="uppercase" letterSpacing="wider">
                       Last Executed
                     </Th>
                     <Th px={6} py={4} fontSize="xs" fontWeight="600" color="gray.600" textTransform="uppercase" letterSpacing="wider">
@@ -1793,86 +1909,102 @@ const AutomationDashboard = () => {
                         </VStack>
                       </Td>
                       <Td px={6} py={4}>
-                        <HStack spacing={2}>
-                          <Badge 
-                            colorScheme="blue" 
-                            variant="subtle" 
-                            borderRadius="md" 
-                            px={2.5} 
-                            py={1}
-                            fontSize="xs"
-                            fontWeight="500"
+                        <HStack spacing={1}>
+                          <Box
+                            px={1.5}
+                            py={0.5}
+                            bg="blue.50"
+                            borderRadius="sm"
+                            border="1px"
+                            borderColor="blue.100"
                           >
-                            {rule.triggerEvent ? getTriggerDisplayName(rule.triggerEvent) : 'Graph Workflow'}
-                          </Badge>
+                            <Text fontSize="10px" fontWeight="600" color="blue.700" letterSpacing="0.5px">
+                              {rule.triggerEvent ? getTriggerDisplayName(rule.triggerEvent).substring(0, 12) : 'Graph'}
+                            </Text>
+                          </Box>
                           {rule.workflowType === 'graph' && (
-                            <Badge 
-                              colorScheme="purple" 
-                              variant="subtle" 
-                              size="sm"
-                              borderRadius="md"
-                              fontSize="xs"
+                            <Box
+                              px={1.5}
+                              py={0.5}
+                              bg="purple.50"
+                              borderRadius="sm"
+                              border="1px"
+                              borderColor="purple.100"
                             >
-                              Graph
-                            </Badge>
+                              <Text fontSize="10px" fontWeight="600" color="purple.700" letterSpacing="0.5px">
+                                G
+                              </Text>
+                            </Box>
                           )}
                         </HStack>
                       </Td>
                       <Td px={6} py={4}>
-                        <HStack spacing={1.5} flexWrap="wrap">
+                        <HStack spacing={1} flexWrap="wrap">
                           {rule.workflowType === 'graph' ? (
                             <>
                               {Array.isArray(rule.nodes) && rule.nodes
                                 .filter(n => n.type === 'action')
                                 .slice(0, 2)
                                 .map((node, index) => (
-                                  <Badge 
-                                    key={index} 
-                                    size="sm" 
-                                    colorScheme="green" 
-                                    variant="subtle"
-                                    borderRadius="md"
-                                    fontSize="xs"
+                                  <Box
+                                    key={index}
+                                    px={1.5}
+                                    py={0.5}
+                                    bg="green.50"
+                                    borderRadius="sm"
+                                    border="1px"
+                                    borderColor="green.100"
                                   >
-                                    {node.label || node.nodeType || 'Action'}
-                                  </Badge>
+                                    <Text fontSize="10px" fontWeight="600" color="green.700" letterSpacing="0.5px">
+                                      {(node.label || node.nodeType || 'Action').substring(0, 8)}
+                                    </Text>
+                                  </Box>
                                 ))}
                               {Array.isArray(rule.nodes) && rule.nodes.filter(n => n.type === 'action').length > 2 && (
-                                <Badge 
-                                  size="sm" 
-                                  colorScheme="gray" 
-                                  variant="subtle"
-                                  borderRadius="md"
-                                  fontSize="xs"
+                                <Box
+                                  px={1.5}
+                                  py={0.5}
+                                  bg="gray.50"
+                                  borderRadius="sm"
+                                  border="1px"
+                                  borderColor="gray.200"
                                 >
-                                  +{rule.nodes.filter(n => n.type === 'action').length - 2}
-                                </Badge>
+                                  <Text fontSize="10px" fontWeight="600" color="gray.600" letterSpacing="0.5px">
+                                    +{rule.nodes.filter(n => n.type === 'action').length - 2}
+                                  </Text>
+                                </Box>
                               )}
                             </>
                           ) : (
                             <>
                               {Array.isArray(rule.actions) && rule.actions.slice(0, 2).map((action, index) => (
-                                <Badge 
-                                  key={index} 
-                                  size="sm" 
-                                  colorScheme="green" 
-                                  variant="subtle"
-                                  borderRadius="md"
-                                  fontSize="xs"
+                                <Box
+                                  key={index}
+                                  px={1.5}
+                                  py={0.5}
+                                  bg="green.50"
+                                  borderRadius="sm"
+                                  border="1px"
+                                  borderColor="green.100"
                                 >
-                                  {getActionDisplayName(action?.type || '')}
-                                </Badge>
+                                  <Text fontSize="10px" fontWeight="600" color="green.700" letterSpacing="0.5px">
+                                    {getActionDisplayName(action?.type || '').substring(0, 8)}
+                                  </Text>
+                                </Box>
                               ))}
                               {Array.isArray(rule.actions) && rule.actions.length > 2 && (
-                                <Badge 
-                                  size="sm" 
-                                  colorScheme="gray" 
-                                  variant="subtle"
-                                  borderRadius="md"
-                                  fontSize="xs"
+                                <Box
+                                  px={1.5}
+                                  py={0.5}
+                                  bg="gray.50"
+                                  borderRadius="sm"
+                                  border="1px"
+                                  borderColor="gray.200"
                                 >
-                                  +{rule.actions.length - 2}
-                                </Badge>
+                                  <Text fontSize="10px" fontWeight="600" color="gray.600" letterSpacing="0.5px">
+                                    +{rule.actions.length - 2}
+                                  </Text>
+                                </Box>
                               )}
                             </>
                           )}
@@ -1881,8 +2013,28 @@ const AutomationDashboard = () => {
                       <Td px={6} py={4}>
                         <StatusBadge status={rule.status} isActive={rule.isActive} />
                       </Td>
+                      <Td px={6} py={4} onClick={(e) => e.stopPropagation()}>
+                        <Select
+                          size="sm"
+                          value={rule.funnelId || ''}
+                          onChange={(e) => handleFunnelAssignment(rule._id, e.target.value)}
+                          placeholder="No funnel"
+                          maxW="200px"
+                          fontSize="xs"
+                          borderRadius="md"
+                          borderColor="gray.300"
+                          _hover={{ borderColor: 'blue.400' }}
+                          _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px blue.500' }}
+                        >
+                          {builderResources.funnels.map(funnel => (
+                            <option key={funnel.id} value={funnel.id}>
+                              {funnel.name}
+                            </option>
+                          ))}
+                        </Select>
+                      </Td>
                       <Td px={6} py={4}>
-                        <Text fontSize="sm" color="gray.600">
+                        <Text fontSize="xs" color="gray.600" fontWeight="500">
                           {formatDate(rule.lastExecutedAt)}
                         </Text>
                       </Td>
@@ -1895,9 +2047,9 @@ const AutomationDashboard = () => {
                             colorScheme="gray"
                             onClick={(e) => {
                               e.stopPropagation();
-                              openViewModal(rule);
+                              openEditGraphModal(rule, true); // Pass true for view mode
                             }}
-                            aria-label="View Details"
+                            aria-label="View Workflow"
                           />
                           <IconButton
                             icon={<FiEdit />}
@@ -2253,26 +2405,15 @@ const AutomationDashboard = () => {
         />
 
         {/* Graph Builder Drawer */}
-        <Drawer
+        <GraphBuilderDrawer
           isOpen={isGraphBuilderOpen}
-          placement="right"
           onClose={onGraphBuilderClose}
-          size="full"
-        >
-          <DrawerOverlay />
-          <DrawerContent maxW="calc(100vw - 250px)" ml="250px">
-            <DrawerCloseButton zIndex={20} />
-            <DrawerBody p={0} overflow="hidden">
-              <GraphAutomationBuilder
-                rule={graphBuilderRule}
-                onSave={handleGraphBuilderSave}
-                onClose={onGraphBuilderClose}
-                eventsActions={eventsActions}
-                builderResources={builderResources}
-              />
-            </DrawerBody>
-          </DrawerContent>
-        </Drawer>
+          graphBuilderRule={graphBuilderRule}
+          handleGraphBuilderSave={handleGraphBuilderSave}
+          eventsActions={eventsActions}
+          builderResources={builderResources}
+          viewMode={viewMode}
+        />
       </VStack>
     </Box>
   );

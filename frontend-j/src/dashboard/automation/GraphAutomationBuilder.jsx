@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -70,9 +70,22 @@ import {
   TabPanel,
   InputGroup,
   InputLeftElement,
+  AlertDialog,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogBody,
+  AlertDialogFooter,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverBody,
+  PopoverHeader,
+  PopoverArrow,
+  Spinner,
 } from '@chakra-ui/react';
 import {
-  FiZap,
+
   FiPlay,
   FiPause,
   FiSave,
@@ -103,13 +116,15 @@ import {
   FiCreditCard,
   FiShoppingCart,
   FiBarChart2,
+  FiZap,
 } from 'react-icons/fi';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import { getCoachId, getToken } from '../../utils/authUtils';
+import { API_BASE_URL as BASE_URL } from '../../config/apiConfig';
 import MessageSequenceBuilder from './MessageSequenceBuilder';
 
-const API_BASE_URL = 'https://api.funnelseye.com/api';
+const API_BASE_URL = `${BASE_URL}/api`;
 
 // Custom Node Components
 const TriggerNode = ({ data, selected }) => {
@@ -311,7 +326,7 @@ const nodeTypes = {
 };
 
 // Inner ReactFlow component that has access to useReactFlow hook
-const ReactFlowInner = ({ nodes, edges, onNodesChange, onEdgesChange, onConnect, onNodeClick, nodeTypes, rule, onViewportReady }) => {
+const ReactFlowInner = ({ nodes, edges, onNodesChange, onEdgesChange, onConnect, onConnectStart, onConnectEnd, onNodeClick, nodeTypes, rule, onViewportReady }) => {
   const reactFlowInstance = useReactFlow();
   
   // Store reference to reactFlowInstance in parent
@@ -341,15 +356,27 @@ const ReactFlowInner = ({ nodes, edges, onNodesChange, onEdgesChange, onConnect,
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
+      onConnectStart={onConnectStart}
+      onConnectEnd={onConnectEnd}
       onNodeClick={onNodeClick}
       nodeTypes={nodeTypes}
       fitView={!rule?.viewport}
       defaultViewport={rule?.viewport ? { x: rule.viewport.x, y: rule.viewport.y, zoom: rule.viewport.zoom } : undefined}
-      attributionPosition="bottom-left"
+      connectionLineStyle={{ stroke: '#b1b1b7', strokeWidth: 2 }}
+      connectionLineType="smoothstep"
+      defaultEdgeOptions={{ type: 'smoothstep', animated: false }}
+      snapToGrid={true}
+      snapGrid={[15, 15]}
+      proOptions={{ hideAttribution: true }}
     >
       <Background />
       <Controls />
       <MiniMap />
+      <style>{`
+        .react-flow__attribution {
+          display: none !important;
+        }
+      `}</style>
     </ReactFlow>
   );
 };
@@ -369,7 +396,7 @@ const shouldHideBillingTrigger = (event) => {
   );
 };
 
-const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderResources }) => {
+const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderResources, viewMode = false }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -377,11 +404,17 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
   const [ruleDescription, setRuleDescription] = useState(rule?.description || '');
   const [isActive, setIsActive] = useState(rule?.isActive !== false);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSavedState, setLastSavedState] = useState(null);
   
   const { isOpen: isNodeConfigOpen, onOpen: onNodeConfigOpen, onClose: onNodeConfigClose } = useDisclosure();
   const { isOpen: isNodePaletteOpen, onOpen: onNodePaletteOpen, onClose: onNodePaletteClose } = useDisclosure();
+  const { isOpen: isUnsavedDialogOpen, onOpen: onUnsavedDialogOpen, onClose: onUnsavedDialogClose } = useDisclosure();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState(0);
+  const [pendingClose, setPendingClose] = useState(false);
+  const [isCreatingTestWorkflow, setIsCreatingTestWorkflow] = useState(false);
+  const cancelRef = useRef();
   
   const toast = useToast();
   const authState = useSelector((state) => state.auth);
@@ -453,7 +486,83 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
       setNodes([triggerNode, ...actionNodes]);
       setEdges(newEdges);
     }
+    
   }, [rule]);
+
+  // Initialize saved state after nodes/edges are set
+  useEffect(() => {
+    if (rule && !lastSavedState) {
+      // Use a small delay to ensure nodes/edges are set
+      const timer = setTimeout(() => {
+        setLastSavedState({
+          name: rule.name || '',
+          description: rule.description || '',
+          nodes: JSON.parse(JSON.stringify(nodes)),
+          edges: JSON.parse(JSON.stringify(edges))
+        });
+        setHasUnsavedChanges(false);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [rule, nodes, edges, lastSavedState]);
+
+  // Track changes to detect unsaved state
+  useEffect(() => {
+    if (!lastSavedState) return;
+    
+    const currentState = {
+      name: ruleName.trim(),
+      description: (ruleDescription || '').trim(),
+      nodes: JSON.parse(JSON.stringify(nodes)),
+      edges: JSON.parse(JSON.stringify(edges))
+    };
+    
+    const savedState = {
+      name: (lastSavedState.name || '').trim(),
+      description: (lastSavedState.description || '').trim(),
+      nodes: lastSavedState.nodes || [],
+      edges: lastSavedState.edges || []
+    };
+    
+    const hasChanges = JSON.stringify(currentState) !== JSON.stringify(savedState);
+    setHasUnsavedChanges(hasChanges);
+  }, [ruleName, ruleDescription, nodes, edges, lastSavedState]);
+
+  // State for drag connection
+  const [connectingFrom, setConnectingFrom] = useState(null);
+  const [pendingConnection, setPendingConnection] = useState(null);
+
+  const onConnectStart = useCallback((event, { nodeId, handleId, handleType }) => {
+    if (handleType === 'source') {
+      setConnectingFrom({ nodeId, handleId });
+    }
+  }, []);
+
+  const onConnectEnd = useCallback((event) => {
+    if (!connectingFrom) return;
+    
+    // Check if we're connecting to an existing node handle
+    const targetHandle = event.target.closest('.react-flow__handle');
+    if (targetHandle) {
+      // If connecting to existing node, let default behavior handle it
+      setConnectingFrom(null);
+      return;
+    }
+
+    // If not connecting to existing node, open palette to add new node
+    const position = reactFlowInstance ? reactFlowInstance.screenToFlowPosition({
+      x: event.clientX || (event.touches && event.touches[0]?.clientX) || 0,
+      y: event.clientY || (event.touches && event.touches[0]?.clientY) || 0
+    }) : { x: 0, y: 0 };
+    
+    setPendingConnection({
+      source: connectingFrom.nodeId,
+      sourceHandle: connectingFrom.handleId,
+      position
+    });
+    setConnectingFrom(null);
+    onNodePaletteOpen();
+  }, [connectingFrom, reactFlowInstance, onNodePaletteOpen]);
 
   const onConnect = useCallback(
     (params) => {
@@ -462,8 +571,11 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
         id: `edge-${Date.now()}`,
         type: 'smoothstep',
         animated: false,
+        style: { stroke: '#b1b1b7', strokeWidth: 2 },
       };
       setEdges((eds) => addEdge(newEdge, eds));
+      setConnectingFrom(null);
+      setPendingConnection(null);
     },
     [setEdges]
   );
@@ -474,13 +586,16 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
   }, [onNodeConfigOpen]);
 
   const addNode = useCallback((nodeType, nodeData) => {
+    // Use pending connection position if available, otherwise random position
+    const position = pendingConnection?.position || {
+      x: Math.random() * 400 + 200,
+      y: Math.random() * 400 + 100,
+    };
+
     const newNode = {
       id: `${nodeType}-${Date.now()}`,
       type: nodeType,
-      position: {
-        x: Math.random() * 400 + 200,
-        y: Math.random() * 400 + 100,
-      },
+      position,
       data: {
         label: nodeData.label || nodeData.name || nodeType,
         nodeType: nodeData.value || nodeData.type || nodeType,
@@ -489,9 +604,28 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
         ...nodeData,
       },
     };
+    
     setNodes((nds) => [...nds, newNode]);
+    
+    // If there's a pending connection, create the edge
+    if (pendingConnection) {
+      setTimeout(() => {
+        const newEdge = {
+          id: `edge-${Date.now()}`,
+          source: pendingConnection.source,
+          target: newNode.id,
+          sourceHandle: pendingConnection.sourceHandle || null,
+          type: 'smoothstep',
+          animated: false,
+          style: { stroke: '#b1b1b7', strokeWidth: 2 },
+        };
+        setEdges((eds) => addEdge(newEdge, eds));
+        setPendingConnection(null);
+      }, 100);
+    }
+    
     onNodePaletteClose();
-  }, [setNodes, onNodePaletteClose]);
+  }, [setNodes, onNodePaletteClose, pendingConnection, setEdges]);
 
   const deleteNode = useCallback((nodeId) => {
     setNodes((nds) => nds.filter((node) => node.id !== nodeId));
@@ -534,6 +668,600 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
       duration: 2000,
     });
   }, [selectedNode, setNodes, toast]);
+
+  const handleClose = () => {
+    if (hasUnsavedChanges) {
+      setPendingClose(true);
+      onUnsavedDialogOpen();
+    } else {
+      onClose();
+    }
+  };
+
+  // Create comprehensive test workflow with all node types
+  const handleCreateTestWorkflow = async () => {
+    if (isCreatingTestWorkflow) return;
+    
+    setIsCreatingTestWorkflow(true);
+    
+    try {
+      // Get available events and actions
+      if (!eventsActions || !eventsActions.events || !eventsActions.actions) {
+        toast({
+          title: 'Error',
+          description: 'Unable to load events and actions. Please refresh the page.',
+          status: 'error',
+          duration: 5000,
+        });
+        setIsCreatingTestWorkflow(false);
+        return;
+      }
+
+      const availableEvents = eventsActions.events || [];
+      const availableActions = eventsActions.actions || [];
+
+      // Find a lead-related trigger (preferably lead_created)
+      const leadTrigger = availableEvents.find(e => 
+        (typeof e === 'string' ? e : e.value || e.label || '').includes('lead_created')
+      ) || availableEvents.find(e => 
+        (typeof e === 'string' ? e : e.value || e.label || '').includes('lead')
+      ) || availableEvents[0];
+
+      const triggerEventValue = typeof leadTrigger === 'string' 
+        ? leadTrigger 
+        : leadTrigger.value || leadTrigger.label || 'lead_created';
+
+      // Generate unique IDs
+      const generateId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Create nodes
+      const testNodes = [];
+      const testEdges = [];
+      let xPos = 100;
+      let yPos = 300;
+      const nodeSpacing = 400;
+      const verticalSpacing = 200;
+
+      // 1. Trigger Node
+      const triggerNodeId = generateId('trigger');
+      testNodes.push({
+        id: triggerNodeId,
+        type: 'trigger',
+        position: { x: xPos, y: yPos },
+        data: {
+          label: 'Lead Created',
+          nodeType: triggerEventValue,
+          description: 'Triggers when a new lead is created',
+          config: {},
+        },
+      });
+      xPos += nodeSpacing;
+      let lastNodeId = triggerNodeId;
+
+      // 2. First Action: Send WhatsApp Message
+      const whatsappAction = availableActions.find(a => 
+        (typeof a === 'string' ? a : a.value || a.label || '').includes('whatsapp')
+      ) || availableActions.find(a => 
+        (typeof a === 'string' ? a : a.value || a.label || '').includes('message')
+      );
+      
+      if (whatsappAction) {
+        const actionValue = typeof whatsappAction === 'string' 
+          ? whatsappAction 
+          : whatsappAction.value || whatsappAction.label || 'send_whatsapp_message';
+        
+        const actionNodeId = generateId('action-whatsapp');
+        testNodes.push({
+          id: actionNodeId,
+          type: 'action',
+          position: { x: xPos, y: yPos },
+          data: {
+            label: 'Send Welcome WhatsApp',
+            nodeType: actionValue,
+            description: 'Send welcome message via WhatsApp',
+            config: {
+              message: 'Hi {{lead.name}}, welcome! Thanks for joining us. We\'re excited to have you on board!',
+              phoneNumber: '{{lead.phone}}',
+              countryCode: '{{lead.countryCode}}',
+            },
+          },
+        });
+        testEdges.push({
+          id: generateId('edge'),
+          source: lastNodeId,
+          target: actionNodeId,
+          type: 'smoothstep',
+          animated: false,
+        });
+        lastNodeId = actionNodeId;
+        xPos += nodeSpacing;
+      }
+
+      // 3. Delay Node
+      const delayNodeId = generateId('delay');
+      testNodes.push({
+        id: delayNodeId,
+        type: 'delay',
+        position: { x: xPos, y: yPos },
+        data: {
+          label: 'Wait 5 seconds',
+          nodeType: 'delay',
+          description: 'Delay before next action',
+          config: {
+            delaySeconds: 5,
+          },
+        },
+      });
+      testEdges.push({
+        id: generateId('edge'),
+        source: lastNodeId,
+        target: delayNodeId,
+        type: 'smoothstep',
+        animated: false,
+      });
+      lastNodeId = delayNodeId;
+      xPos += nodeSpacing;
+
+      // 4. Second Action: Send Email
+      const emailAction = availableActions.find(a => 
+        (typeof a === 'string' ? a : a.value || a.label || '').includes('email')
+      );
+      
+      if (emailAction) {
+        const actionValue = typeof emailAction === 'string' 
+          ? emailAction 
+          : emailAction.value || emailAction.label || 'send_email_message';
+        
+        const actionNodeId = generateId('action-email');
+        testNodes.push({
+          id: actionNodeId,
+          type: 'action',
+          position: { x: xPos, y: yPos },
+          data: {
+            label: 'Send Welcome Email',
+            nodeType: actionValue,
+            description: 'Send welcome email to lead',
+            config: {
+              to: '{{lead.email}}',
+              subject: 'Welcome {{lead.name}}!',
+              body: '<h1>Welcome {{lead.name}}!</h1><p>Thank you for joining us. We\'re thrilled to have you on board.</p><p>Best regards,<br>{{coach.name}}</p>',
+              fromName: '{{coach.name}}',
+              fromEmail: '{{coach.email}}',
+            },
+          },
+        });
+        testEdges.push({
+          id: generateId('edge'),
+          source: lastNodeId,
+          target: actionNodeId,
+          type: 'smoothstep',
+          animated: false,
+        });
+        lastNodeId = actionNodeId;
+        xPos += nodeSpacing;
+      }
+
+      // 5. Third Action: Add Note
+      const noteAction = availableActions.find(a => 
+        (typeof a === 'string' ? a : a.value || a.label || '').includes('note')
+      );
+      
+      if (noteAction) {
+        const actionValue = typeof noteAction === 'string' 
+          ? noteAction 
+          : noteAction.value || noteAction.label || 'add_note_to_lead';
+        
+        const actionNodeId = generateId('action-note');
+        testNodes.push({
+          id: actionNodeId,
+          type: 'action',
+          position: { x: xPos, y: yPos - verticalSpacing },
+          data: {
+            label: 'Add Welcome Note',
+            nodeType: actionValue,
+            description: 'Add note to lead record',
+            config: {
+              note: 'New lead {{lead.name}} ({{lead.email}}) joined on {{currentDate}}. Welcome sequence initiated.',
+              noteType: 'general',
+              priority: 'normal',
+              visibility: 'all',
+            },
+          },
+        });
+        testEdges.push({
+          id: generateId('edge'),
+          source: lastNodeId,
+          target: actionNodeId,
+          type: 'smoothstep',
+          animated: false,
+        });
+      }
+
+      // 6. Fourth Action: Create Task
+      const taskAction = availableActions.find(a => 
+        (typeof a === 'string' ? a : a.value || a.label || '').includes('task')
+      );
+      
+      if (taskAction) {
+        const actionValue = typeof taskAction === 'string' 
+          ? taskAction 
+          : taskAction.value || taskAction.label || 'create_task';
+        
+        const actionNodeId = generateId('action-task');
+        testNodes.push({
+          id: actionNodeId,
+          type: 'action',
+          position: { x: xPos, y: yPos },
+          data: {
+            label: 'Create Follow-up Task',
+            nodeType: actionValue,
+            description: 'Create task for follow-up',
+            config: {
+              name: 'Follow up with {{lead.name}}',
+              description: 'Schedule a follow-up call with {{lead.name}} ({{lead.email}})',
+              priority: 'MEDIUM',
+              stage: 'LEAD_QUALIFICATION',
+              dueDateOffset: 2,
+              estimatedHours: 1,
+            },
+          },
+        });
+        testEdges.push({
+          id: generateId('edge'),
+          source: lastNodeId,
+          target: actionNodeId,
+          type: 'smoothstep',
+          animated: false,
+        });
+        lastNodeId = actionNodeId;
+        xPos += nodeSpacing;
+      }
+
+      // 7. Fifth Action: Update Lead Status
+      const statusAction = availableActions.find(a => 
+        (typeof a === 'string' ? a : a.value || a.label || '').includes('status')
+      );
+      
+      if (statusAction) {
+        const actionValue = typeof statusAction === 'string' 
+          ? statusAction 
+          : statusAction.value || statusAction.label || 'update_lead_status';
+        
+        const actionNodeId = generateId('action-status');
+        testNodes.push({
+          id: actionNodeId,
+          type: 'action',
+          position: { x: xPos, y: yPos },
+          data: {
+            label: 'Update Lead Status',
+            nodeType: actionValue,
+            description: 'Update lead status to Contacted',
+            config: {
+              status: 'Contacted',
+            },
+          },
+        });
+        testEdges.push({
+          id: generateId('edge'),
+          source: lastNodeId,
+          target: actionNodeId,
+          type: 'smoothstep',
+          animated: false,
+        });
+        lastNodeId = actionNodeId;
+        xPos += nodeSpacing;
+      }
+
+      // 8. Sixth Action: Add Tag
+      const tagAction = availableActions.find(a => 
+        (typeof a === 'string' ? a : a.value || a.label || '').includes('tag')
+      );
+      
+      if (tagAction) {
+        const actionValue = typeof tagAction === 'string' 
+          ? tagAction 
+          : tagAction.value || tagAction.label || 'add_lead_tag';
+        
+        const actionNodeId = generateId('action-tag');
+        testNodes.push({
+          id: actionNodeId,
+          type: 'action',
+          position: { x: xPos, y: yPos - verticalSpacing },
+          data: {
+            label: 'Add Welcome Tag',
+            nodeType: actionValue,
+            description: 'Add tag to lead',
+            config: {
+              tag: 'Welcome Sequence',
+            },
+          },
+        });
+        testEdges.push({
+          id: generateId('edge'),
+          source: lastNodeId,
+          target: actionNodeId,
+          type: 'smoothstep',
+          animated: false,
+        });
+      }
+
+      // 9. Seventh Action: Update Lead Score
+      const scoreAction = availableActions.find(a => 
+        (typeof a === 'string' ? a : a.value || a.label || '').includes('score')
+      );
+      
+      if (scoreAction) {
+        const actionValue = typeof scoreAction === 'string' 
+          ? scoreAction 
+          : scoreAction.value || scoreAction.label || 'update_lead_score';
+        
+        const actionNodeId = generateId('action-score');
+        testNodes.push({
+          id: actionNodeId,
+          type: 'action',
+          position: { x: xPos, y: yPos },
+          data: {
+            label: 'Update Lead Score',
+            nodeType: actionValue,
+            description: 'Increase lead score',
+            config: {
+              score: 10,
+              reason: 'New lead joined - welcome sequence initiated',
+            },
+          },
+        });
+        testEdges.push({
+          id: generateId('edge'),
+          source: lastNodeId,
+          target: actionNodeId,
+          type: 'smoothstep',
+          animated: false,
+        });
+        lastNodeId = actionNodeId;
+        xPos += nodeSpacing;
+      }
+
+      // 10. Eighth Action: Send Internal Notification
+      const notificationAction = availableActions.find(a => 
+        (typeof a === 'string' ? a : a.value || a.label || '').includes('notification')
+      );
+      
+      if (notificationAction) {
+        const actionValue = typeof notificationAction === 'string' 
+          ? notificationAction 
+          : notificationAction.value || notificationAction.label || 'send_internal_notification';
+        
+        const actionNodeId = generateId('action-notification');
+        testNodes.push({
+          id: actionNodeId,
+          type: 'action',
+          position: { x: xPos, y: yPos },
+          data: {
+            label: 'Notify Team',
+            nodeType: actionValue,
+            description: 'Send internal notification',
+            config: {
+              message: 'New lead {{lead.name}} has been added. Welcome sequence completed.',
+              recipients: 'all',
+              notificationType: 'info',
+            },
+          },
+        });
+        testEdges.push({
+          id: generateId('edge'),
+          source: lastNodeId,
+          target: actionNodeId,
+          type: 'smoothstep',
+          animated: false,
+        });
+        lastNodeId = actionNodeId;
+        xPos += nodeSpacing;
+      }
+
+      // 11. Second Delay Node
+      const delayNodeId2 = generateId('delay-2');
+      testNodes.push({
+        id: delayNodeId2,
+        type: 'delay',
+        position: { x: xPos, y: yPos },
+        data: {
+          label: 'Wait 10 seconds',
+          nodeType: 'delay',
+          description: 'Delay before final actions',
+          config: {
+            delaySeconds: 10,
+          },
+        },
+      });
+      testEdges.push({
+        id: generateId('edge'),
+        source: lastNodeId,
+        target: delayNodeId2,
+        type: 'smoothstep',
+        animated: false,
+      });
+      lastNodeId = delayNodeId2;
+      xPos += nodeSpacing;
+
+      // 12. Ninth Action: Create Deal (if available)
+      const dealAction = availableActions.find(a => 
+        (typeof a === 'string' ? a : a.value || a.label || '').includes('deal')
+      );
+      
+      if (dealAction) {
+        const actionValue = typeof dealAction === 'string' 
+          ? dealAction 
+          : dealAction.value || dealAction.label || 'create_deal';
+        
+        const actionNodeId = generateId('action-deal');
+        testNodes.push({
+          id: actionNodeId,
+          type: 'action',
+          position: { x: xPos, y: yPos - verticalSpacing },
+          data: {
+            label: 'Create Initial Deal',
+            nodeType: actionValue,
+            description: 'Create a deal for the new lead',
+            config: {
+              dealName: 'Deal with {{lead.name}}',
+              amount: 1000,
+              currency: 'USD',
+              stage: 'prospecting',
+              description: 'Initial deal created for {{lead.name}}',
+            },
+          },
+        });
+        testEdges.push({
+          id: generateId('edge'),
+          source: lastNodeId,
+          target: actionNodeId,
+          type: 'smoothstep',
+          animated: false,
+        });
+      }
+
+      // 13. Tenth Action: Add to Funnel (if available)
+      const funnelAction = availableActions.find(a => 
+        (typeof a === 'string' ? a : a.value || a.label || '').includes('funnel')
+      );
+      
+      if (funnelAction) {
+        const actionValue = typeof funnelAction === 'string' 
+          ? funnelAction 
+          : funnelAction.value || funnelAction.label || 'add_to_funnel';
+        
+        const actionNodeId = generateId('action-funnel');
+        testNodes.push({
+          id: actionNodeId,
+          type: 'action',
+          position: { x: xPos, y: yPos },
+          data: {
+            label: 'Add to Funnel',
+            nodeType: actionValue,
+            description: 'Add lead to sales funnel',
+            config: {
+              funnelId: '', // Will need to be selected by user
+              stageId: '', // Will need to be selected by user
+            },
+          },
+        });
+        testEdges.push({
+          id: generateId('edge'),
+          source: lastNodeId,
+          target: actionNodeId,
+          type: 'smoothstep',
+          animated: false,
+        });
+        lastNodeId = actionNodeId;
+        xPos += nodeSpacing;
+      }
+
+      // 14. Eleventh Action: Call Webhook (if available)
+      const webhookAction = availableActions.find(a => 
+        (typeof a === 'string' ? a : a.value || a.label || '').includes('webhook')
+      );
+      
+      if (webhookAction) {
+        const actionValue = typeof webhookAction === 'string' 
+          ? webhookAction 
+          : webhookAction.value || webhookAction.label || 'call_webhook';
+        
+        const actionNodeId = generateId('action-webhook');
+        testNodes.push({
+          id: actionNodeId,
+          type: 'action',
+          position: { x: xPos, y: yPos },
+          data: {
+            label: 'Call Webhook',
+            nodeType: actionValue,
+            description: 'Send data to external webhook',
+            config: {
+              url: 'https://example.com/webhook',
+              method: 'POST',
+              payload: JSON.stringify({
+                event: 'lead_created',
+                leadName: '{{lead.name}}',
+                leadEmail: '{{lead.email}}',
+                timestamp: '{{timestamp}}',
+              }, null, 2),
+              timeout: 30,
+            },
+          },
+        });
+        testEdges.push({
+          id: generateId('edge'),
+          source: lastNodeId,
+          target: actionNodeId,
+          type: 'smoothstep',
+          animated: false,
+        });
+      }
+
+      // Update state with test workflow
+      setNodes(testNodes);
+      setEdges(testEdges);
+      setRuleName('Test Workflow - Comprehensive Automation');
+      setRuleDescription('A comprehensive test workflow demonstrating all node types and actions. This workflow includes triggers, actions, delays, and demonstrates the full automation capabilities.');
+
+      toast({
+        title: 'Test Workflow Created!',
+        description: `Created workflow with ${testNodes.length} nodes and ${testEdges.length} connections. Review and save when ready.`,
+        status: 'success',
+        duration: 5000,
+      });
+
+      // Log to console for backend visibility
+      console.log('========================================');
+      console.log('[TEST WORKFLOW] Comprehensive test workflow created successfully!');
+      console.log('========================================');
+      console.log(`[TEST WORKFLOW] Total Nodes: ${testNodes.length}`);
+      console.log(`[TEST WORKFLOW] Total Edges: ${testEdges.length}`);
+      console.log(`[TEST WORKFLOW] Trigger Event: ${triggerEventValue}`);
+      console.log('[TEST WORKFLOW] Node Breakdown:');
+      testNodes.forEach((node, index) => {
+        console.log(`  ${index + 1}. [${node.type.toUpperCase()}] ${node.data.label} (${node.data.nodeType || 'N/A'})`);
+      });
+      console.log('[TEST WORKFLOW] Edge Connections:');
+      testEdges.forEach((edge, index) => {
+        const sourceNode = testNodes.find(n => n.id === edge.source);
+        const targetNode = testNodes.find(n => n.id === edge.target);
+        console.log(`  ${index + 1}. ${sourceNode?.data?.label || edge.source} → ${targetNode?.data?.label || edge.target}`);
+      });
+      console.log('========================================');
+      console.log('[TEST WORKFLOW] This workflow will demonstrate:');
+      console.log('  - Trigger node execution');
+      console.log('  - Multiple action types (WhatsApp, Email, Notes, Tasks, etc.)');
+      console.log('  - Delay node functionality');
+      console.log('  - Sequential workflow execution');
+      console.log('  - Template variable substitution');
+      console.log('  - Backend logging for each node');
+      console.log('========================================');
+
+    } catch (error) {
+      console.error('Error creating test workflow:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create test workflow. Please try again.',
+        status: 'error',
+        duration: 5000,
+      });
+    } finally {
+      setIsCreatingTestWorkflow(false);
+    }
+  };
+
+  const handleSaveAndClose = async () => {
+    await handleSave();
+    if (!hasUnsavedChanges) {
+      onClose();
+    }
+  };
+
+  const handleDiscardAndClose = () => {
+    setHasUnsavedChanges(false);
+    onUnsavedDialogClose();
+    onClose();
+  };
 
   const handleSave = async () => {
     if (!ruleName.trim()) {
@@ -656,18 +1384,56 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
 
     if (onSave) {
       onSave(workflowData);
+      // Update saved state after successful save
+      setLastSavedState({
+        name: ruleName.trim(),
+        description: ruleDescription?.trim() || '',
+        nodes: nodes,
+        edges: edges
+      });
+      setHasUnsavedChanges(false);
+      
+      // If pending close, close after save
+      if (pendingClose) {
+        setPendingClose(false);
+        onUnsavedDialogClose();
+        setTimeout(() => {
+          onClose();
+        }, 300);
+      }
     }
   };
 
+  // Group triggers and actions by category
   const nodeCategories = useMemo(() => {
-    if (!eventsActions) return { triggers: [], actions: [] };
+    if (!eventsActions) return { triggers: {}, actions: {} };
     
     const triggers = (eventsActions.events || []).filter(
       (event) => !shouldHideBillingTrigger(event)
     );
     const actions = eventsActions.actions || [];
     
-    return { triggers, actions };
+    // Group triggers by category
+    const groupedTriggers = {};
+    triggers.forEach(event => {
+      const category = event.category || 'Other';
+      if (!groupedTriggers[category]) {
+        groupedTriggers[category] = [];
+      }
+      groupedTriggers[category].push(event);
+    });
+    
+    // Group actions by category
+    const groupedActions = {};
+    actions.forEach(action => {
+      const category = action.category || 'Other';
+      if (!groupedActions[category]) {
+        groupedActions[category] = [];
+      }
+      groupedActions[category].push(action);
+    });
+    
+    return { triggers: groupedTriggers, actions: groupedActions };
   }, [eventsActions]);
 
   // Get icon for trigger event
@@ -719,53 +1485,130 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
   const filteredTriggers = useMemo(() => {
     if (!searchQuery.trim()) return nodeCategories.triggers;
     const query = searchQuery.toLowerCase();
-    return nodeCategories.triggers.filter(event => {
+    const filtered = {};
+    Object.keys(nodeCategories.triggers).forEach(category => {
+      const categoryItems = nodeCategories.triggers[category].filter(event => {
       const label = typeof event === 'string' ? event : event.label || event.value || '';
-      return label.toLowerCase().includes(query);
+        const desc = typeof event === 'string' ? '' : event.description || '';
+        return label.toLowerCase().includes(query) || desc.toLowerCase().includes(query);
     });
+      if (categoryItems.length > 0) {
+        filtered[category] = categoryItems;
+      }
+    });
+    return filtered;
   }, [nodeCategories.triggers, searchQuery]);
 
   const filteredActions = useMemo(() => {
     if (!searchQuery.trim()) return nodeCategories.actions;
     const query = searchQuery.toLowerCase();
-    return nodeCategories.actions.filter(action => {
+    const filtered = {};
+    Object.keys(nodeCategories.actions).forEach(category => {
+      const categoryItems = nodeCategories.actions[category].filter(action => {
       const label = typeof action === 'string' ? action : action.label || action.value || '';
-      return label.toLowerCase().includes(query);
+        const desc = typeof action === 'string' ? '' : action.description || '';
+        return label.toLowerCase().includes(query) || desc.toLowerCase().includes(query);
     });
+      if (categoryItems.length > 0) {
+        filtered[category] = categoryItems;
+      }
+    });
+    return filtered;
   }, [nodeCategories.actions, searchQuery]);
 
   return (
-    <Box w="100%" h="100vh" bg="gray.50" position="relative" display="flex" flexDirection="column">
-      {/* Top Toolbar */}
+    <Box 
+      w="100%" 
+      h="100%" 
+      bg="gray.50" 
+      position="relative"
+      display="flex" 
+      flexDirection="column"
+    >
+      {/* Top Toolbar - Elegant & Minimal */}
       <Box
         bg="white"
         borderBottom="1px"
-        borderColor="gray.200"
-        p={4}
+        borderColor="gray.100"
+        px={6}
+        py={4}
         zIndex={10}
-        boxShadow="sm"
         flexShrink={0}
       >
-        <HStack justify="space-between" align="center">
-          <HStack spacing={4} flex={1}>
+        <HStack justify="space-between" align="center" spacing={6}>
+          <HStack spacing={4} flex={1} align="center">
+            <VStack align="start" spacing={1} flex={1}>
+              <FormControl>
             <Input
-              placeholder="Rule Name"
+                  placeholder="Workflow name"
               value={ruleName}
               onChange={(e) => setRuleName(e.target.value)}
-              maxW="300px"
-              size="md"
-            />
+                  variant="filled"
+                  fontSize="lg"
+                  fontWeight="600"
+                  color="gray.800"
+                  bg="gray.50"
+                  border="1px"
+                  borderColor="transparent"
+                  _placeholder={{ color: 'gray.400', fontWeight: '400' }}
+                  _hover={{ bg: 'gray.100', borderColor: 'gray.200' }}
+                  _focus={{ bg: 'white', borderColor: 'blue.300', boxShadow: '0 0 0 1px var(--chakra-colors-blue-300)' }}
+                  px={3}
+                  py={2}
+                  maxW="400px"
+                  borderRadius="md"
+                />
+              </FormControl>
+              <FormControl>
+                <Input
+                  placeholder="Add description (optional)"
+                  value={ruleDescription}
+                  onChange={(e) => setRuleDescription(e.target.value)}
+                  variant="filled"
+                  fontSize="xs"
+                  fontWeight="400"
+                  color="gray.500"
+                  bg="gray.50"
+                  border="1px"
+                  borderColor="transparent"
+                  _placeholder={{ color: 'gray.400' }}
+                  _hover={{ bg: 'gray.100', borderColor: 'gray.200' }}
+                  _focus={{ bg: 'white', borderColor: 'blue.300', boxShadow: '0 0 0 1px var(--chakra-colors-blue-300)' }}
+                  px={3}
+                  py={1.5}
+                  maxW="400px"
+                  borderRadius="md"
+                />
+              </FormControl>
+            </VStack>
+          </HStack>
+          <HStack spacing={3} align="center">
+            <Button
+              leftIcon={<FiZap />}
+              variant="outline"
+              size="sm"
+              onClick={handleCreateTestWorkflow}
+              colorScheme="purple"
+              fontWeight="500"
+              isLoading={isCreatingTestWorkflow}
+              loadingText="Creating..."
+            >
+              Create Test Workflow
+            </Button>
             <Button
               leftIcon={<FiPlus />}
-              colorScheme="blue"
+              variant="ghost"
               size="sm"
               onClick={onNodePaletteOpen}
+              colorScheme="blue"
+              fontWeight="500"
             >
               Add Node
             </Button>
-            <Button
-              leftIcon={<FiSettings />}
-              variant="outline"
+            <IconButton
+              icon={<FiSettings />}
+              aria-label="Configure Node"
+              variant="ghost"
               size="sm"
               onClick={() => {
                 if (selectedNode) {
@@ -773,22 +1616,30 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                 }
               }}
               isDisabled={!selectedNode}
-            >
-              Configure
-            </Button>
-          </HStack>
-          <HStack spacing={2}>
-            <Button variant="outline" size="sm" onClick={onClose}>
-              Cancel
+              colorScheme="gray"
+            />
+            <Divider orientation="vertical" h="24px" />
+            <HStack spacing={2}>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleClose}
+                colorScheme="gray"
+                fontWeight="500"
+              >
+                Close
             </Button>
             <Button
               leftIcon={<FiSave />}
-              colorScheme="green"
+                colorScheme="blue"
               size="sm"
               onClick={handleSave}
+                fontWeight="500"
+                borderRadius="md"
             >
-              Save Workflow
+                Save
             </Button>
+            </HStack>
           </HStack>
         </HStack>
       </Box>
@@ -802,6 +1653,8 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onConnectStart={onConnectStart}
+            onConnectEnd={onConnectEnd}
             onNodeClick={onNodeClick}
             nodeTypes={nodeTypes}
             rule={rule}
@@ -851,19 +1704,35 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
               <TabPanels>
                 {/* Triggers Tab */}
                 <TabPanel px={0} pt={4}>
-                  <SimpleGrid columns={1} spacing={3}>
-                    {filteredTriggers.length === 0 ? (
+                  <VStack spacing={2} align="stretch" maxH="calc(100vh - 300px)" overflowY="auto">
+                    {Object.keys(filteredTriggers).length === 0 ? (
                       <Text color="gray.500" textAlign="center" py={8}>
                         No triggers found matching "{searchQuery}"
                       </Text>
-                    ) : (
-                      filteredTriggers.map((event, index) => {
+                    ) : searchQuery.trim() ? (
+                      // When searching, show all results in groups without accordion
+                      Object.keys(filteredTriggers).map((category) => {
+                        const simpleCategory = category
+                          .replace('Lead & Customer Lifecycle', 'Leads')
+                          .replace('Funnel & Conversion', 'Funnels')
+                          .replace('Appointment & Calendar', 'Appointments')
+                          .replace('Task & System', 'Tasks')
+                          .replace('Payment & Subscription', 'Payments');
+                        
+                        return (
+                          <Box key={category} mb={4}>
+                            <Text fontSize="xs" fontWeight="500" color="gray.500" textTransform="uppercase" mb={2} px={2}>
+                              {simpleCategory}
+                            </Text>
+                            <VStack spacing={2} align="stretch">
+                              {filteredTriggers[category].map((event, index) => {
                         const eventLabel = typeof event === 'string' ? event : event.label || event.value;
                         const eventValue = typeof event === 'string' ? event : event.value || event.label;
+                                const eventDesc = typeof event === 'string' ? '' : event.description || '';
                         const TriggerIcon = getTriggerIcon(eventValue);
                         return (
                           <Card
-                            key={index}
+                                    key={`${category}-${index}`}
                             cursor="pointer"
                             onClick={() => {
                               addNode('trigger', event);
@@ -880,41 +1749,155 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                             bg="white"
                             p={3}
                           >
-                            <HStack spacing={3}>
+                                    <HStack spacing={3} align="start">
                               <Box
                                 p={2}
                                 borderRadius="md"
                                 bg="blue.50"
                                 color="blue.600"
+                                        flexShrink={0}
                               >
                                 <TriggerIcon size={18} />
                               </Box>
+                                      <VStack align="start" spacing={0.5} flex={1}>
                               <Text fontSize="sm" fontWeight="600" color="gray.700">
                                 {eventLabel}
                               </Text>
+                                        {eventDesc && (
+                                          <Text fontSize="xs" color="gray.500" noOfLines={1}>
+                                            {eventDesc}
+                                          </Text>
+                                        )}
+                                      </VStack>
                             </HStack>
                           </Card>
+                                );
+                              })}
+                            </VStack>
+                          </Box>
                         );
                       })
+                    ) : (
+                      // When not searching, show accordion
+                      <Accordion allowMultiple defaultIndex={[]}>
+                        {Object.keys(filteredTriggers).map((category) => {
+                          const simpleCategory = category
+                            .replace('Lead & Customer Lifecycle', 'Leads')
+                            .replace('Funnel & Conversion', 'Funnels')
+                            .replace('Appointment & Calendar', 'Appointments')
+                            .replace('Task & System', 'Tasks')
+                            .replace('Payment & Subscription', 'Payments');
+                          
+                          return (
+                            <AccordionItem key={category} border="none" mb={2}>
+                              <AccordionButton
+                                px={2}
+                                py={3}
+                                bg="gray.50"
+                                borderRadius="md"
+                                minH="44px"
+                                _hover={{ bg: 'gray.100' }}
+                                _expanded={{ bg: 'blue.50', color: 'blue.700' }}
+                              >
+                                <Box flex="1" textAlign="left">
+                                  <Text fontSize="xs" fontWeight="500" textTransform="uppercase">
+                                    {simpleCategory}
+                                  </Text>
+                                </Box>
+                                <AccordionIcon />
+                              </AccordionButton>
+                              <AccordionPanel px={2} pt={2} pb={0}>
+                                <VStack spacing={2} align="stretch">
+                                  {filteredTriggers[category].map((event, index) => {
+                                    const eventLabel = typeof event === 'string' ? event : event.label || event.value;
+                                    const eventValue = typeof event === 'string' ? event : event.value || event.label;
+                                    const eventDesc = typeof event === 'string' ? '' : event.description || '';
+                                    const TriggerIcon = getTriggerIcon(eventValue);
+                                    return (
+                                      <Card
+                                        key={`${category}-${index}`}
+                                        cursor="pointer"
+                                        onClick={() => {
+                                          addNode('trigger', event);
+                                          setSearchQuery('');
+                                        }}
+                                        _hover={{
+                                          borderColor: 'blue.300',
+                                          boxShadow: 'md',
+                                          transform: 'translateY(-1px)'
+                                        }}
+                                        transition="all 0.2s"
+                                        border="1px"
+                                        borderColor="gray.200"
+                                        bg="white"
+                                        p={3}
+                                      >
+                                        <HStack spacing={3} align="start">
+                                          <Box
+                                            p={2}
+                                            borderRadius="md"
+                                            bg="blue.50"
+                                            color="blue.600"
+                                            flexShrink={0}
+                                          >
+                                            <TriggerIcon size={18} />
+                                          </Box>
+                                          <VStack align="start" spacing={0.5} flex={1}>
+                                            <Text fontSize="sm" fontWeight="600" color="gray.700">
+                                              {eventLabel}
+                                            </Text>
+                                            {eventDesc && (
+                                              <Text fontSize="xs" color="gray.500" noOfLines={1}>
+                                                {eventDesc}
+                                              </Text>
+                                            )}
+                                          </VStack>
+                                        </HStack>
+                                      </Card>
+                                    );
+                                  })}
+                                </VStack>
+                              </AccordionPanel>
+                            </AccordionItem>
+                          );
+                        })}
+                      </Accordion>
                     )}
-                  </SimpleGrid>
+                  </VStack>
                 </TabPanel>
 
                 {/* Actions Tab */}
                 <TabPanel px={0} pt={4}>
-                  <SimpleGrid columns={1} spacing={3}>
-                    {filteredActions.length === 0 ? (
+                  <VStack spacing={2} align="stretch" maxH="calc(100vh - 300px)" overflowY="auto">
+                    {Object.keys(filteredActions).length === 0 ? (
                       <Text color="gray.500" textAlign="center" py={8}>
                         No actions found matching "{searchQuery}"
                       </Text>
-                    ) : (
-                      filteredActions.map((action, index) => {
+                    ) : searchQuery.trim() ? (
+                      // When searching, show all results in groups without accordion
+                      Object.keys(filteredActions).map((category) => {
+                        const simpleCategory = category
+                          .replace('Lead Data & Funnel Actions', 'Lead Actions')
+                          .replace('Communication Actions', 'Messages')
+                          .replace('Task & Workflow Actions', 'Tasks')
+                          .replace('Zoom Integration Actions', 'Zoom')
+                          .replace('Payment Actions', 'Payments')
+                          .replace('System Actions', 'System');
+                        
+                        return (
+                          <Box key={category} mb={4}>
+                            <Text fontSize="xs" fontWeight="500" color="gray.500" textTransform="uppercase" mb={2} px={2}>
+                              {simpleCategory}
+                            </Text>
+                            <VStack spacing={2} align="stretch">
+                              {filteredActions[category].map((action, index) => {
                         const actionLabel = typeof action === 'string' ? action : action.label || action.value;
                         const actionValue = typeof action === 'string' ? action : action.value || action.label;
+                                const actionDesc = typeof action === 'string' ? '' : action.description || '';
                         const ActionIcon = getActionIcon(actionValue);
                         return (
                           <Card
-                            key={index}
+                                    key={`${category}-${index}`}
                             cursor="pointer"
                             onClick={() => {
                               addNode('action', action);
@@ -931,41 +1914,149 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                             bg="white"
                             p={3}
                           >
-                            <HStack spacing={3}>
+                                    <HStack spacing={3} align="start">
                               <Box
                                 p={2}
                                 borderRadius="md"
                                 bg="green.50"
                                 color="green.600"
+                                        flexShrink={0}
                               >
                                 <ActionIcon size={18} />
                               </Box>
+                                      <VStack align="start" spacing={0.5} flex={1}>
                               <Text fontSize="sm" fontWeight="600" color="gray.700">
                                 {actionLabel}
                               </Text>
+                                        {actionDesc && (
+                                          <Text fontSize="xs" color="gray.500" noOfLines={1}>
+                                            {actionDesc}
+                                          </Text>
+                                        )}
+                                      </VStack>
                             </HStack>
                           </Card>
+                                );
+                              })}
+                            </VStack>
+                          </Box>
                         );
                       })
+                    ) : (
+                      // When not searching, show accordion
+                      <Accordion allowMultiple defaultIndex={[]}>
+                        {Object.keys(filteredActions).map((category) => {
+                          const simpleCategory = category
+                            .replace('Lead Data & Funnel Actions', 'Lead Actions')
+                            .replace('Communication Actions', 'Messages')
+                            .replace('Task & Workflow Actions', 'Tasks')
+                            .replace('Zoom Integration Actions', 'Zoom')
+                            .replace('Payment Actions', 'Payments')
+                            .replace('System Actions', 'System');
+                          
+                          return (
+                            <AccordionItem key={category} border="none" mb={2}>
+                              <AccordionButton
+                                px={2}
+                                py={3}
+                                bg="gray.50"
+                                borderRadius="md"
+                                minH="44px"
+                                _hover={{ bg: 'gray.100' }}
+                                _expanded={{ bg: 'green.50', color: 'green.700' }}
+                              >
+                                <Box flex="1" textAlign="left">
+                                  <Text fontSize="xs" fontWeight="500" textTransform="uppercase">
+                                    {simpleCategory}
+                                  </Text>
+                                </Box>
+                                <AccordionIcon />
+                              </AccordionButton>
+                              <AccordionPanel px={2} pt={2} pb={0}>
+                                <VStack spacing={2} align="stretch">
+                                  {filteredActions[category].map((action, index) => {
+                                    const actionLabel = typeof action === 'string' ? action : action.label || action.value;
+                                    const actionValue = typeof action === 'string' ? action : action.value || action.label;
+                                    const actionDesc = typeof action === 'string' ? '' : action.description || '';
+                                    const ActionIcon = getActionIcon(actionValue);
+                                    return (
+                                      <Card
+                                        key={`${category}-${index}`}
+                                        cursor="pointer"
+                                        onClick={() => {
+                                          addNode('action', action);
+                                          setSearchQuery('');
+                                        }}
+                                        _hover={{
+                                          borderColor: 'green.300',
+                                          boxShadow: 'md',
+                                          transform: 'translateY(-1px)'
+                                        }}
+                                        transition="all 0.2s"
+                                        border="1px"
+                                        borderColor="gray.200"
+                                        bg="white"
+                                        p={3}
+                                      >
+                                        <HStack spacing={3} align="start">
+                                          <Box
+                                            p={2}
+                                            borderRadius="md"
+                                            bg="green.50"
+                                            color="green.600"
+                                            flexShrink={0}
+                                          >
+                                            <ActionIcon size={18} />
+                                          </Box>
+                                          <VStack align="start" spacing={0.5} flex={1}>
+                                            <Text fontSize="sm" fontWeight="600" color="gray.700">
+                                              {actionLabel}
+                                            </Text>
+                                            {actionDesc && (
+                                              <Text fontSize="xs" color="gray.500" noOfLines={1}>
+                                                {actionDesc}
+                                              </Text>
+                                            )}
+                                          </VStack>
+                                        </HStack>
+                                      </Card>
+                                    );
+                                  })}
+                                </VStack>
+                              </AccordionPanel>
+                            </AccordionItem>
+                          );
+                        })}
+                      </Accordion>
                     )}
-                  </SimpleGrid>
+                  </VStack>
                 </TabPanel>
 
                 {/* Flow Control Tab */}
                 <TabPanel px={0} pt={4}>
-                  <SimpleGrid columns={1} spacing={3}>
+                  <VStack spacing={2} align="stretch" maxH="calc(100vh - 300px)" overflowY="auto">
                     {(() => {
-                      const flowControlItems = [
-                        { label: 'Delay', type: 'delay', icon: FiClock, color: 'orange', data: { label: 'Delay', delay: 0 } },
-                        { label: 'Condition', type: 'condition', icon: FiFilter, color: 'purple', data: { label: 'Condition' } },
-                        { label: 'Message Sequence', type: 'sequence', icon: FiMessageSquare, color: 'pink', data: { label: 'Message Sequence', sequenceSteps: [] } },
-                      ];
+                      const flowControlItems = {
+                        'Flow Control': [
+                          { label: 'Delay', type: 'delay', icon: FiClock, color: 'orange', data: { label: 'Delay', delay: 0 }, description: 'Wait for a specified amount of time before continuing' },
+                          { label: 'Condition', type: 'condition', icon: FiFilter, color: 'purple', data: { label: 'Condition' }, description: 'Branch workflow based on conditions (if/else)' },
+                          { label: 'Message Sequence', type: 'sequence', icon: FiMessageSquare, color: 'pink', data: { label: 'Message Sequence', sequenceSteps: [] }, description: 'Send a sequence of messages with delays' },
+                        ]
+                      };
                       
-                      const filtered = flowControlItems.filter(item => 
-                        !searchQuery.trim() || item.label.toLowerCase().includes(searchQuery.toLowerCase())
-                      );
+                      const filtered = {};
+                      Object.keys(flowControlItems).forEach(category => {
+                        const categoryItems = flowControlItems[category].filter(item => 
+                          !searchQuery.trim() || 
+                          item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
+                        );
+                        if (categoryItems.length > 0) {
+                          filtered[category] = categoryItems;
+                        }
+                      });
 
-                      if (filtered.length === 0) {
+                      if (Object.keys(filtered).length === 0) {
                         return (
                           <Text color="gray.500" textAlign="center" py={8}>
                             No flow control items found matching "{searchQuery}"
@@ -973,11 +2064,21 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                         );
                       }
 
-                      return filtered.map((item, index) => {
+                      return searchQuery.trim() ? (
+                        // When searching, show all results in groups without accordion
+                        Object.keys(filtered).map((category) => {
+                          const simpleCategory = category.replace('Flow Control', 'Flow');
+                          return (
+                            <Box key={category} mb={4}>
+                              <Text fontSize="xs" fontWeight="500" color="gray.500" textTransform="uppercase" mb={2} px={2}>
+                                {simpleCategory}
+                              </Text>
+                              <VStack spacing={2} align="stretch">
+                                {filtered[category].map((item, index) => {
                         const IconComponent = item.icon;
                         return (
                           <Card
-                            key={index}
+                                      key={`${category}-${index}`}
                             cursor="pointer"
                             onClick={() => {
                               addNode(item.type, item.data);
@@ -994,24 +2095,113 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                             bg="white"
                             p={3}
                           >
-                            <HStack spacing={3}>
+                                      <HStack spacing={3} align="start">
                               <Box
                                 p={2}
                                 borderRadius="md"
                                 bg={`${item.color}.50`}
                                 color={`${item.color}.600`}
+                                          flexShrink={0}
                               >
                                 <IconComponent size={18} />
                               </Box>
+                                        <VStack align="start" spacing={0.5} flex={1}>
                               <Text fontSize="sm" fontWeight="600" color="gray.700">
                                 {item.label}
                               </Text>
+                                          {item.description && (
+                                            <Text fontSize="xs" color="gray.500" noOfLines={1}>
+                                              {item.description}
+                                            </Text>
+                                          )}
+                                        </VStack>
                             </HStack>
                           </Card>
                         );
-                      });
+                                })}
+                              </VStack>
+                            </Box>
+                          );
+                        })
+                      ) : (
+                        // When not searching, show accordion
+                        <Accordion allowMultiple defaultIndex={[]}>
+                          {Object.keys(filtered).map((category) => {
+                            const simpleCategory = category.replace('Flow Control', 'Flow');
+                            return (
+                              <AccordionItem key={category} border="none" mb={2}>
+                                <AccordionButton
+                                  px={2}
+                                  py={3}
+                                  bg="gray.50"
+                                  borderRadius="md"
+                                  minH="44px"
+                                  _hover={{ bg: 'gray.100' }}
+                                  _expanded={{ bg: 'purple.50', color: 'purple.700' }}
+                                >
+                                  <Box flex="1" textAlign="left">
+                                    <Text fontSize="xs" fontWeight="500" textTransform="uppercase">
+                                      {simpleCategory}
+                                    </Text>
+                                  </Box>
+                                  <AccordionIcon />
+                                </AccordionButton>
+                                <AccordionPanel px={2} pt={2} pb={0}>
+                                  <VStack spacing={2} align="stretch">
+                                    {filtered[category].map((item, index) => {
+                                      const IconComponent = item.icon;
+                                      return (
+                                        <Card
+                                          key={`${category}-${index}`}
+                                          cursor="pointer"
+                                          onClick={() => {
+                                            addNode(item.type, item.data);
+                                            setSearchQuery('');
+                                          }}
+                                          _hover={{
+                                            borderColor: `${item.color}.300`,
+                                            boxShadow: 'md',
+                                            transform: 'translateY(-1px)'
+                                          }}
+                                          transition="all 0.2s"
+                                          border="1px"
+                                          borderColor="gray.200"
+                                          bg="white"
+                                          p={3}
+                                        >
+                                          <HStack spacing={3} align="start">
+                                            <Box
+                                              p={2}
+                                              borderRadius="md"
+                                              bg={`${item.color}.50`}
+                                              color={`${item.color}.600`}
+                                              flexShrink={0}
+                                            >
+                                              <IconComponent size={18} />
+                                            </Box>
+                                            <VStack align="start" spacing={0.5} flex={1}>
+                                              <Text fontSize="sm" fontWeight="600" color="gray.700">
+                                                {item.label}
+                                              </Text>
+                                              {item.description && (
+                                                <Text fontSize="xs" color="gray.500" noOfLines={1}>
+                                                  {item.description}
+                                                </Text>
+                                              )}
+                                            </VStack>
+                                          </HStack>
+                                        </Card>
+                                      );
+                                    })}
+                                  </VStack>
+                                </AccordionPanel>
+                              </AccordionItem>
+                            );
+                          })}
+                        </Accordion>
+                      );
                     })()}
-                  </SimpleGrid>
+                  </VStack>
                 </TabPanel>
               </TabPanels>
             </Tabs>
@@ -1019,15 +2209,102 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
         </DrawerContent>
       </Drawer>
 
+      {/* Unsaved Changes Dialog */}
+      <AlertDialog
+        isOpen={isUnsavedDialogOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onUnsavedDialogClose}
+        isCentered
+      >
+        <AlertDialogOverlay bg="blackAlpha.300" backdropFilter="blur(4px)" />
+        <AlertDialogContent borderRadius="xl" maxW="400px" boxShadow="xl">
+          <AlertDialogHeader
+            fontSize="lg"
+            fontWeight="600"
+            color="gray.800"
+            pb={2}
+          >
+            Unsaved Changes
+          </AlertDialogHeader>
+          <AlertDialogBody py={4}>
+            <Text color="gray.600" fontSize="sm" lineHeight="1.6">
+              You have unsaved changes. Do you want to save before closing?
+            </Text>
+          </AlertDialogBody>
+          <AlertDialogFooter gap={2} pt={2}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDiscardAndClose}
+              colorScheme="gray"
+              fontWeight="500"
+            >
+              Discard
+            </Button>
+            <Button
+              ref={cancelRef}
+              variant="ghost"
+              size="sm"
+              onClick={onUnsavedDialogClose}
+              colorScheme="gray"
+              fontWeight="500"
+            >
+              Cancel
+            </Button>
+            <Button
+              colorScheme="blue"
+              size="sm"
+              onClick={handleSaveAndClose}
+              fontWeight="500"
+              borderRadius="md"
+            >
+              Save & Close
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Node Configuration Drawer */}
-      <Drawer isOpen={isNodeConfigOpen} placement="right" onClose={onNodeConfigClose} size="md">
-        <DrawerOverlay />
-        <DrawerContent>
-          <DrawerCloseButton />
-          <DrawerHeader>
-            Configure: {selectedNode?.data?.label || 'Node'}
+      <Drawer isOpen={isNodeConfigOpen} placement="right" onClose={onNodeConfigClose} size="lg">
+        <DrawerOverlay bg="blackAlpha.300" backdropFilter="blur(4px)" />
+        <DrawerContent bg="white">
+          <DrawerCloseButton zIndex={10} />
+          <DrawerHeader
+            borderBottom="1px"
+            borderColor="gray.100"
+            pb={4}
+            pt={6}
+            px={6}
+            bg="gray.50"
+          >
+            <VStack align="start" spacing={1}>
+              <HStack spacing={2} align="center">
+                <Box
+                  w={2}
+                  h={2}
+                  borderRadius="full"
+                  bg={
+                    selectedNode?.type === 'trigger'
+                      ? 'blue.500'
+                      : selectedNode?.type === 'action'
+                      ? 'green.500'
+                      : selectedNode?.type === 'delay'
+                      ? 'yellow.500'
+                      : selectedNode?.type === 'condition'
+                      ? 'purple.500'
+                      : 'gray.500'
+                  }
+                />
+                <Text fontSize="lg" fontWeight="600" color="gray.800">
+                  Configure Node
+                </Text>
+              </HStack>
+              <Text fontSize="sm" color="gray.500" fontWeight="400">
+                {selectedNode?.data?.label || selectedNode?.data?.nodeType || 'Node'}
+              </Text>
+            </VStack>
           </DrawerHeader>
-          <DrawerBody>
+          <DrawerBody px={6} py={6} overflowY="auto">
             {selectedNode && (
               <NodeConfigurationPanel
                 node={selectedNode}
@@ -1045,6 +2322,197 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
         </DrawerContent>
       </Drawer>
     </Box>
+  );
+};
+
+// Professional Variable Tooltip Component
+const VariableTooltip = ({ triggerEvent, onInsert, fieldName }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const getAllVariables = () => {
+    const general = [
+      { path: '{{currentDate}}', description: 'Current date (YYYY-MM-DD)', category: 'System' },
+      { path: '{{currentTime}}', description: 'Current time (HH:MM:SS)', category: 'System' },
+      { path: '{{currentDateTime}}', description: 'Current date and time', category: 'System' },
+      { path: '{{timestamp}}', description: 'Unix timestamp', category: 'System' },
+    ];
+
+    const lead = [
+      { path: '{{lead.name}}', description: 'Lead full name', category: 'Lead' },
+      { path: '{{lead.firstName}}', description: 'Lead first name', category: 'Lead' },
+      { path: '{{lead.lastName}}', description: 'Lead last name', category: 'Lead' },
+      { path: '{{lead.email}}', description: 'Lead email address', category: 'Lead' },
+      { path: '{{lead.phone}}', description: 'Lead phone number', category: 'Lead' },
+      { path: '{{lead.countryCode}}', description: 'Lead country code', category: 'Lead' },
+      { path: '{{lead.status}}', description: 'Lead status', category: 'Lead' },
+      { path: '{{lead.temperature}}', description: 'Lead temperature (Hot/Warm/Cold)', category: 'Lead' },
+      { path: '{{lead.source}}', description: 'Lead source', category: 'Lead' },
+      { path: '{{lead.score}}', description: 'Lead score', category: 'Lead' },
+      { path: '{{lead.funnelId}}', description: 'Lead funnel ID', category: 'Lead' },
+      { path: '{{lead.stage}}', description: 'Lead stage', category: 'Lead' },
+    ];
+
+    const coach = [
+      { path: '{{coach.name}}', description: 'Coach name', category: 'Coach' },
+      { path: '{{coach.email}}', description: 'Coach email', category: 'Coach' },
+      { path: '{{coach.company}}', description: 'Coach company', category: 'Coach' },
+    ];
+
+    const staff = [
+      { path: '{{assignedStaff.name}}', description: 'Assigned staff name', category: 'Staff' },
+      { path: '{{assignedStaff.email}}', description: 'Assigned staff email', category: 'Staff' },
+    ];
+
+    const appointment = [
+      { path: '{{appointment.startTime}}', description: 'Appointment start time', category: 'Appointment' },
+      { path: '{{appointment.endTime}}', description: 'Appointment end time', category: 'Appointment' },
+      { path: '{{appointment.duration}}', description: 'Appointment duration (minutes)', category: 'Appointment' },
+      { path: '{{appointment.type}}', description: 'Appointment type', category: 'Appointment' },
+      { path: '{{appointment.title}}', description: 'Appointment title', category: 'Appointment' },
+    ];
+
+    const payment = [
+      { path: '{{payment.amount}}', description: 'Payment amount', category: 'Payment' },
+      { path: '{{payment.currency}}', description: 'Payment currency', category: 'Payment' },
+      { path: '{{payment.status}}', description: 'Payment status', category: 'Payment' },
+      { path: '{{payment.transactionId}}', description: 'Transaction ID', category: 'Payment' },
+    ];
+
+    let allVars = [...general, ...coach];
+    
+    if (triggerEvent && triggerEvent.includes('lead')) {
+      allVars = [...allVars, ...lead, ...staff];
+    }
+    if (triggerEvent && triggerEvent.includes('appointment')) {
+      allVars = [...allVars, ...appointment];
+    }
+    if (triggerEvent && triggerEvent.includes('payment')) {
+      allVars = [...allVars, ...payment];
+    }
+
+    return allVars;
+  };
+
+  const variables = getAllVariables();
+  const filteredVars = searchTerm
+    ? variables.filter(v => 
+        v.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        v.description.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : variables;
+
+  const groupedVars = filteredVars.reduce((acc, v) => {
+    if (!acc[v.category]) acc[v.category] = [];
+    acc[v.category].push(v);
+    return acc;
+  }, {});
+
+  const handleInsert = (variable) => {
+    if (onInsert) {
+      onInsert(variable);
+    }
+  };
+
+  return (
+    <PopoverContent
+      w="500px"
+      maxH="600px"
+      borderRadius="xl"
+      boxShadow="xl"
+      border="1px"
+      borderColor="gray.200"
+      _focus={{ boxShadow: 'xl' }}
+    >
+      <PopoverArrow />
+      <PopoverHeader
+        borderBottom="1px"
+        borderColor="gray.100"
+        pb={3}
+        pt={4}
+        px={4}
+      >
+        <VStack align="stretch" spacing={2}>
+          <Text fontSize="sm" fontWeight="600" color="gray.800">
+            Available Variables
+          </Text>
+          <InputGroup size="sm">
+            <InputLeftElement pointerEvents="none">
+              <FiSearch color="gray.400" />
+            </InputLeftElement>
+            <Input
+              placeholder="Search variables..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              bg="gray.50"
+              borderColor="gray.200"
+              _focus={{ bg: 'white', borderColor: 'blue.300' }}
+            />
+          </InputGroup>
+        </VStack>
+      </PopoverHeader>
+      <PopoverBody p={0} maxH="500px" overflowY="auto">
+        <VStack align="stretch" spacing={0} divider={<Divider />}>
+          {Object.entries(groupedVars).map(([category, vars]) => (
+            <Box key={category}>
+              <Box
+                px={4}
+                py={2}
+                bg="gray.50"
+                borderBottom="1px"
+                borderColor="gray.100"
+              >
+                <Text fontSize="xs" fontWeight="600" color="gray.600" textTransform="uppercase" letterSpacing="wide">
+                  {category}
+                </Text>
+              </Box>
+              <VStack align="stretch" spacing={0}>
+                {vars.map((v, idx) => (
+                  <Button
+                    key={idx}
+                    variant="ghost"
+                    size="sm"
+                    justifyContent="flex-start"
+                    borderRadius="none"
+                    px={4}
+                    py={3}
+                    h="auto"
+                    onClick={() => handleInsert(v.path)}
+                    _hover={{ bg: 'blue.50' }}
+                    _active={{ bg: 'blue.100' }}
+                  >
+                    <HStack spacing={3} align="start" w="100%">
+                      <Code
+                        fontSize="xs"
+                        color="blue.600"
+                        bg="blue.50"
+                        px={2}
+                        py={1}
+                        borderRadius="md"
+                        fontWeight="600"
+                      >
+                        {v.path}
+                      </Code>
+                      <VStack align="start" spacing={0} flex={1}>
+                        <Text fontSize="xs" color="gray.700" fontWeight="500">
+                          {v.description}
+                        </Text>
+                      </VStack>
+                    </HStack>
+                  </Button>
+                ))}
+              </VStack>
+            </Box>
+          ))}
+        </VStack>
+        {filteredVars.length === 0 && (
+          <Box p={4} textAlign="center">
+            <Text fontSize="sm" color="gray.500">
+              No variables found
+            </Text>
+          </Box>
+        )}
+      </PopoverBody>
+    </PopoverContent>
   );
 };
 
@@ -1075,7 +2543,7 @@ const NodeConfigurationPanel = ({ node, onUpdate, onDelete, builderResources, al
     if (onClose) {
       setTimeout(() => {
         onClose();
-      }, 500); // Small delay to show success message
+      }, 300);
     }
   };
 
@@ -1108,17 +2576,80 @@ const NodeConfigurationPanel = ({ node, onUpdate, onDelete, builderResources, al
 
       case 'delay':
         return (
-          <VStack spacing={4} align="stretch">
+          <VStack spacing={5} align="stretch">
+            <SimpleGrid columns={3} spacing={4}>
             <FormControl>
-              <FormLabel>Delay (seconds)</FormLabel>
+                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                  Hours
+                </FormLabel>
               <NumberInput
-                value={config.delay || 0}
-                onChange={(value) => setConfig({ ...config, delay: parseInt(value) || 0 })}
+                  value={config.delayHours || 0}
+                  onChange={(value) => setConfig({ ...config, delayHours: parseInt(value) || 0 })}
                 min={0}
               >
-                <NumberInputField />
+                  <NumberInputField
+                    bg="white"
+                    borderColor="gray.200"
+                    _hover={{ borderColor: 'gray.300' }}
+                    _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                    borderRadius="md"
+                  />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
               </NumberInput>
             </FormControl>
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                  Minutes
+                </FormLabel>
+                <NumberInput
+                  value={config.delayMinutes || 0}
+                  onChange={(value) => setConfig({ ...config, delayMinutes: parseInt(value) || 0 })}
+                  min={0}
+                  max={59}
+                >
+                  <NumberInputField
+                    bg="white"
+                    borderColor="gray.200"
+                    _hover={{ borderColor: 'gray.300' }}
+                    _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                    borderRadius="md"
+                  />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              </FormControl>
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                  Seconds
+                </FormLabel>
+                <NumberInput
+                  value={config.delaySeconds || 0}
+                  onChange={(value) => setConfig({ ...config, delaySeconds: parseInt(value) || 0 })}
+                  min={0}
+                  max={59}
+                >
+                  <NumberInputField
+                    bg="white"
+                    borderColor="gray.200"
+                    _hover={{ borderColor: 'gray.300' }}
+                    _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                    borderRadius="md"
+                  />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              </FormControl>
+            </SimpleGrid>
+            <FormHelperText fontSize="xs" color="gray.500">
+              The workflow will wait for the specified duration before proceeding to the next node
+            </FormHelperText>
           </VStack>
         );
 
@@ -1148,37 +2679,62 @@ const NodeConfigurationPanel = ({ node, onUpdate, onDelete, builderResources, al
   };
 
   return (
-    <VStack spacing={4} align="stretch">
+    <VStack spacing={6} align="stretch">
+      {/* Node Label Section */}
+      <Box>
       <FormControl>
-        <FormLabel>Node Label</FormLabel>
+          <FormLabel fontSize="sm" fontWeight="600" color="gray.700" mb={2}>
+            Node Label
+          </FormLabel>
         <Input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="Enter node label"
-        />
+            placeholder="Enter a descriptive label for this node"
+            bg="white"
+            borderColor="gray.200"
+            _hover={{ borderColor: 'gray.300' }}
+            _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+            borderRadius="md"
+          />
+          <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+            This label will be displayed on the node in the workflow
+          </FormHelperText>
       </FormControl>
+      </Box>
 
-      <Divider />
+      <Divider borderColor="gray.200" />
 
+      {/* Configuration Fields */}
+      <Box>
+        <Text fontSize="sm" fontWeight="600" color="gray.700" mb={4}>
+          Configuration
+        </Text>
       {renderConfigFields()}
+      </Box>
 
-      <Divider />
+      <Divider borderColor="gray.200" />
 
-      <HStack spacing={2}>
+      {/* Action Buttons */}
+      <HStack spacing={3} pt={2}>
         <Button
           leftIcon={<FiTrash2 />}
           colorScheme="red"
-          variant="outline"
+          variant="ghost"
           onClick={onDelete}
           flex={1}
+          fontWeight="500"
+          borderRadius="md"
         >
-          Delete Node
+          Delete
         </Button>
         <Button
           leftIcon={<FiCheck />}
-          colorScheme="green"
+          colorScheme="blue"
           onClick={handleSave}
           flex={1}
+          fontWeight="500"
+          borderRadius="md"
+          boxShadow="sm"
         >
           Save Changes
         </Button>
@@ -1189,39 +2745,7 @@ const NodeConfigurationPanel = ({ node, onUpdate, onDelete, builderResources, al
 
 // Action Configuration Fields Component
 const ActionConfigFields = ({ actionType, config, onChange, builderResources, triggerEvent }) => {
-  const [showVariables, setShowVariables] = useState(false);
-  const [variableSuggestions, setVariableSuggestions] = useState([]);
-  const [activeField, setActiveField] = useState(null);
-
-  // Get available variables based on trigger event
-  const getAvailableVariables = (event) => {
-    const generalVariables = [
-      { path: '{{currentDate}}', description: 'Current date (YYYY-MM-DD)' },
-      { path: '{{currentTime}}', description: 'Current time (HH:MM:SS)' },
-      { path: '{{currentDateTime}}', description: 'Current date and time' },
-      { path: '{{timestamp}}', description: 'Unix timestamp' }
-    ];
-
-    const leadVariables = [
-      { path: '{{lead.name}}', description: 'Lead full name' },
-      { path: '{{lead.firstName}}', description: 'Lead first name' },
-      { path: '{{lead.lastName}}', description: 'Lead last name' },
-      { path: '{{lead.email}}', description: 'Lead email address' },
-      { path: '{{lead.phone}}', description: 'Lead phone number' },
-      { path: '{{lead.status}}', description: 'Lead status' },
-      { path: '{{lead.temperature}}', description: 'Lead temperature (Hot/Warm/Cold)' },
-      { path: '{{lead.source}}', description: 'Lead source' },
-      { path: '{{lead.score}}', description: 'Lead score' }
-    ];
-
-    let eventVariables = [...generalVariables];
-    if (event && event.includes('lead')) {
-      eventVariables = [...eventVariables, ...leadVariables];
-    }
-    return eventVariables;
-  };
-
-  const availableVariables = getAvailableVariables(triggerEvent);
+  const [activeVariableField, setActiveVariableField] = useState(null);
 
   const updateField = (field, value) => {
     onChange({ ...config, [field]: value });
@@ -1229,102 +2753,155 @@ const ActionConfigFields = ({ actionType, config, onChange, builderResources, tr
 
   const insertVariable = (variable, fieldName) => {
     const currentValue = config[fieldName] || '';
-    const textarea = document.getElementById(`action-config-${fieldName}`);
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
+    const input = document.getElementById(`action-config-${fieldName}`);
+    if (input) {
+      const start = input.selectionStart || 0;
+      const end = input.selectionEnd || 0;
       const newValue = currentValue.substring(0, start) + variable + currentValue.substring(end);
       updateField(fieldName, newValue);
       setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(start + variable.length, start + variable.length);
+        input.focus();
+        const newPos = start + variable.length;
+        input.setSelectionRange(newPos, newPos);
       }, 0);
     } else {
       updateField(fieldName, currentValue + variable);
     }
-    setShowVariables(false);
+    setActiveVariableField(null);
   };
 
-  const handleVariableInput = (fieldName, value) => {
-    updateField(fieldName, value);
-    if (value.includes('{{')) {
-      const searchTerm = value.substring(value.lastIndexOf('{{') + 2).toLowerCase();
-      const filtered = availableVariables.filter(v =>
-        v.path.toLowerCase().includes(searchTerm) ||
-        v.description.toLowerCase().includes(searchTerm)
-      );
-      setVariableSuggestions(filtered);
-      setActiveField(fieldName);
-      setShowVariables(true);
-    } else {
-      setShowVariables(false);
-    }
-  };
-
-  const VariableHelper = ({ fieldName }) => (
-    <Box>
-      {showVariables && activeField === fieldName && (
-        <Box mt={2} p={3} bg="blue.50" borderRadius="md" border="1px" borderColor="blue.200">
-          <Text fontSize="xs" fontWeight="bold" mb={2}>Available Variables:</Text>
-          <VStack align="stretch" spacing={1} maxH="200px" overflowY="auto">
-            {(variableSuggestions.length > 0 ? variableSuggestions : availableVariables).map((v, i) => (
-              <Button
-                key={i}
-                size="xs"
+  // Variable Input Field Component
+  const VariableInput = ({ fieldName, value, onChange, placeholder, type = 'input', rows = 4, ...props }) => {
+    const isTextarea = type === 'textarea';
+    const InputComponent = isTextarea ? Textarea : Input;
+    
+    return (
+      <FormControl>
+        <HStack spacing={2} align="center" mb={2}>
+          <FormLabel fontSize="sm" fontWeight="600" color="gray.700" mb={0} flex={1}>
+            {props.label || fieldName}
+          </FormLabel>
+          <Popover
+            isOpen={activeVariableField === fieldName}
+            onOpen={() => setActiveVariableField(fieldName)}
+            onClose={() => setActiveVariableField(null)}
+            placement="left"
+            closeOnBlur={true}
+          >
+            <PopoverTrigger>
+              <IconButton
+                icon={<FiInfo />}
+                size="sm"
                 variant="ghost"
-                justifyContent="flex-start"
-                onClick={() => insertVariable(v.path, fieldName)}
-                leftIcon={<Code fontSize="xs" />}
-              >
-                <VStack align="start" spacing={0}>
-                  <Text fontSize="xs" fontWeight="bold">{v.path}</Text>
-                  <Text fontSize="xs" color="gray.600">{v.description}</Text>
-                </VStack>
-              </Button>
-            ))}
-          </VStack>
-        </Box>
-      )}
-    </Box>
-  );
+                colorScheme="blue"
+                aria-label="Show variables"
+                borderRadius="md"
+                _hover={{ bg: 'blue.50', color: 'blue.600' }}
+              />
+            </PopoverTrigger>
+            <VariableTooltip
+              triggerEvent={triggerEvent}
+              onInsert={(variable) => insertVariable(variable, fieldName)}
+              fieldName={fieldName}
+            />
+          </Popover>
+        </HStack>
+        <InputComponent
+          id={`action-config-${fieldName}`}
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          bg="white"
+          borderColor="gray.200"
+          _hover={{ borderColor: 'gray.300' }}
+          _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+          borderRadius="md"
+          rows={isTextarea ? rows : undefined}
+          fontSize="sm"
+          {...props}
+        />
+        {props.helperText && (
+          <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+            {props.helperText}
+          </FormHelperText>
+        )}
+      </FormControl>
+    );
+  };
 
   switch (actionType) {
     case 'add_note_to_lead':
       return (
-        <VStack spacing={4} align="stretch">
-          <FormControl>
-            <FormLabel>
-              Note Content
-              <Tooltip label="Click info icon to see available variables">
-                <IconButton
-                  icon={<FiInfo />}
-                  size="xs"
-                  variant="ghost"
-                  ml={2}
-                  onClick={() => setShowVariables(!showVariables)}
-                />
-              </Tooltip>
-            </FormLabel>
-            <Textarea
-              id={`action-config-note`}
+        <VStack spacing={5} align="stretch">
+          <VariableInput
+            fieldName="note"
+            label="Note Content"
               value={config.note || ''}
-              onChange={(e) => handleVariableInput('note', e.target.value)}
-              placeholder="Enter note content. Use {{lead.name}} for dynamic values"
-              rows={4}
-            />
-            <VariableHelper fieldName="note" />
-          </FormControl>
+            onChange={(value) => updateField('note', value)}
+            placeholder="Enter note content. Use variables for dynamic values"
+            type="textarea"
+            rows={6}
+            helperText="This note will be added to the lead's activity timeline"
+          />
+          <SimpleGrid columns={2} spacing={4}>
           <FormControl>
-            <FormLabel>Note Type</FormLabel>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Note Type
+              </FormLabel>
             <Select
               value={config.noteType || 'general'}
               onChange={(e) => updateField('noteType', e.target.value)}
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
             >
               <option value="general">General</option>
               <option value="call">Call</option>
               <option value="meeting">Meeting</option>
               <option value="followup">Follow-up</option>
               <option value="important">Important</option>
+                <option value="reminder">Reminder</option>
+                <option value="internal">Internal</option>
+              </Select>
+            </FormControl>
+            <FormControl>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Visibility
+              </FormLabel>
+              <Select
+                value={config.visibility || 'all'}
+                onChange={(e) => updateField('visibility', e.target.value)}
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
+              >
+                <option value="all">All Staff</option>
+                <option value="coach">Coach Only</option>
+                <option value="assigned">Assigned Staff Only</option>
+              </Select>
+            </FormControl>
+          </SimpleGrid>
+          <FormControl>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Priority
+            </FormLabel>
+            <Select
+              value={config.priority || 'normal'}
+              onChange={(e) => updateField('priority', e.target.value)}
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
+            >
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
             </Select>
           </FormControl>
         </VStack>
@@ -1332,32 +2909,38 @@ const ActionConfigFields = ({ actionType, config, onChange, builderResources, tr
 
     case 'create_task':
       return (
-        <VStack spacing={4} align="stretch">
-          <FormControl isRequired>
-            <FormLabel>Task Name</FormLabel>
-            <Input
-              id={`action-config-name`}
+        <VStack spacing={5} align="stretch">
+          <VariableInput
+            fieldName="name"
+            label="Task Name"
               value={config.name || ''}
-              onChange={(e) => handleVariableInput('name', e.target.value)}
+            onChange={(value) => updateField('name', value)}
               placeholder="e.g., Follow up with {{lead.name}}"
-            />
-          </FormControl>
-          <FormControl>
-            <FormLabel>Description</FormLabel>
-            <Textarea
-              id={`action-config-description`}
+            helperText="A clear, descriptive name for the task"
+          />
+          <VariableInput
+            fieldName="description"
+            label="Task Description"
               value={config.description || ''}
-              onChange={(e) => handleVariableInput('description', e.target.value)}
-              placeholder="Task description"
-              rows={3}
-            />
-          </FormControl>
+            onChange={(value) => updateField('description', value)}
+            placeholder="Detailed description of what needs to be done"
+            type="textarea"
+            rows={4}
+            helperText="Provide context and any specific instructions"
+          />
           <SimpleGrid columns={2} spacing={4}>
             <FormControl>
-              <FormLabel>Priority</FormLabel>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Priority
+              </FormLabel>
               <Select
                 value={config.priority || 'MEDIUM'}
                 onChange={(e) => updateField('priority', e.target.value)}
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
               >
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
@@ -1366,25 +2949,41 @@ const ActionConfigFields = ({ actionType, config, onChange, builderResources, tr
               </Select>
             </FormControl>
             <FormControl>
-              <FormLabel>Stage</FormLabel>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Stage
+              </FormLabel>
               <Select
                 value={config.stage || 'LEAD_GENERATION'}
                 onChange={(e) => updateField('stage', e.target.value)}
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
               >
                 <option value="LEAD_GENERATION">Lead Generation</option>
                 <option value="LEAD_QUALIFICATION">Lead Qualification</option>
                 <option value="PROPOSAL">Proposal</option>
                 <option value="CLOSING">Closing</option>
                 <option value="ONBOARDING">Onboarding</option>
+                <option value="FOLLOW_UP">Follow Up</option>
+                <option value="CUSTOMER_SUCCESS">Customer Success</option>
               </Select>
             </FormControl>
           </SimpleGrid>
           <FormControl>
-            <FormLabel>Assign To</FormLabel>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Assign To
+            </FormLabel>
             <Select
               value={config.assignedTo || ''}
               onChange={(e) => updateField('assignedTo', e.target.value)}
               placeholder="Select staff (optional, defaults to coach)"
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
             >
               <option value="">Coach (Me)</option>
               {(builderResources?.staff || []).map(staff => (
@@ -1393,50 +2992,83 @@ const ActionConfigFields = ({ actionType, config, onChange, builderResources, tr
                 </option>
               ))}
             </Select>
+            <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+              Leave empty to assign to the coach
+            </FormHelperText>
           </FormControl>
+          <SimpleGrid columns={2} spacing={4}>
           <FormControl>
-            <FormLabel>Due Date Offset (days)</FormLabel>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Due Date Offset (days)
+              </FormLabel>
             <NumberInput
               value={config.dueDateOffset || 7}
               onChange={(value) => updateField('dueDateOffset', parseInt(value) || 7)}
               min={0}
             >
-              <NumberInputField />
+                <NumberInputField
+                  bg="white"
+                  borderColor="gray.200"
+                  _hover={{ borderColor: 'gray.300' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                  borderRadius="md"
+                />
               <NumberInputStepper>
                 <NumberIncrementStepper />
                 <NumberDecrementStepper />
               </NumberInputStepper>
             </NumberInput>
-            <FormHelperText>Days from now (e.g., 7 = 7 days from trigger)</FormHelperText>
+              <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                Days from trigger event
+              </FormHelperText>
           </FormControl>
           <FormControl>
-            <FormLabel>Estimated Hours</FormLabel>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Estimated Hours
+              </FormLabel>
             <NumberInput
               value={config.estimatedHours || 1}
               onChange={(value) => updateField('estimatedHours', parseFloat(value) || 1)}
               min={0.5}
               step={0.5}
             >
-              <NumberInputField />
+                <NumberInputField
+                  bg="white"
+                  borderColor="gray.200"
+                  _hover={{ borderColor: 'gray.300' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                  borderRadius="md"
+                />
               <NumberInputStepper>
                 <NumberIncrementStepper />
                 <NumberDecrementStepper />
               </NumberInputStepper>
             </NumberInput>
+              <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                Time estimate for completion
+              </FormHelperText>
           </FormControl>
+          </SimpleGrid>
         </VStack>
       );
 
     case 'send_whatsapp_message':
     case 'send_sms_message':
       return (
-        <VStack spacing={4} align="stretch">
+        <VStack spacing={5} align="stretch">
           <FormControl>
-            <FormLabel>Message Template</FormLabel>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Message Template
+            </FormLabel>
             <Select
               value={config.templateId || ''}
               onChange={(e) => updateField('templateId', e.target.value)}
               placeholder="Select template (optional)"
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
             >
               <option value="">Custom Message</option>
               {(builderResources?.messageTemplates || [])
@@ -1447,41 +3079,110 @@ const ActionConfigFields = ({ actionType, config, onChange, builderResources, tr
                   </option>
                 ))}
             </Select>
+            <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+              Using a template ensures compliance with messaging platform requirements
+            </FormHelperText>
           </FormControl>
-          <FormControl isRequired>
-            <FormLabel>
-              Message
-              <Tooltip label="Click info icon to see available variables">
-                <IconButton
-                  icon={<FiInfo />}
-                  size="xs"
-                  variant="ghost"
-                  ml={2}
-                  onClick={() => setShowVariables(!showVariables)}
-                />
-              </Tooltip>
+          <VariableInput
+            fieldName="message"
+            label="Message Content"
+            value={config.message || ''}
+            onChange={(value) => updateField('message', value)}
+            placeholder="Enter your message. Use variables for personalization"
+            type="textarea"
+            rows={8}
+            helperText={`Max ${actionType === 'send_whatsapp_message' ? '4096' : '1600'} characters`}
+          />
+          <SimpleGrid columns={2} spacing={4}>
+            <FormControl>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Phone Number
             </FormLabel>
-            <Textarea
-              id={`action-config-message`}
-              value={config.message || ''}
-              onChange={(e) => handleVariableInput('message', e.target.value)}
-              placeholder="Enter message. Use {{lead.name}} for dynamic values"
-              rows={6}
-            />
-            <VariableHelper fieldName="message" />
+              <Input
+                value={config.phoneNumber || '{{lead.phone}}'}
+                onChange={(e) => updateField('phoneNumber', e.target.value)}
+                placeholder="{{lead.phone}}"
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
+              />
           </FormControl>
+            <FormControl>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Country Code
+              </FormLabel>
+              <Input
+                value={config.countryCode || '{{lead.countryCode}}'}
+                onChange={(e) => updateField('countryCode', e.target.value)}
+                placeholder="{{lead.countryCode}}"
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
+              />
+            </FormControl>
+          </SimpleGrid>
+          {actionType === 'send_whatsapp_message' && (
+            <>
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                  Media URL (Optional)
+                </FormLabel>
+                <Input
+                  value={config.mediaUrl || ''}
+                  onChange={(e) => updateField('mediaUrl', e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  bg="white"
+                  borderColor="gray.200"
+                  _hover={{ borderColor: 'gray.300' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                  borderRadius="md"
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                  Media Type
+                </FormLabel>
+                <Select
+                  value={config.mediaType || 'none'}
+                  onChange={(e) => updateField('mediaType', e.target.value)}
+                  bg="white"
+                  borderColor="gray.200"
+                  _hover={{ borderColor: 'gray.300' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                  borderRadius="md"
+                >
+                  <option value="none">No Media</option>
+                  <option value="image">Image</option>
+                  <option value="video">Video</option>
+                  <option value="document">Document</option>
+                  <option value="audio">Audio</option>
+                </Select>
+              </FormControl>
+            </>
+          )}
         </VStack>
       );
 
     case 'send_email_message':
       return (
-        <VStack spacing={4} align="stretch">
+        <VStack spacing={5} align="stretch">
           <FormControl>
-            <FormLabel>Email Template</FormLabel>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Email Template
+            </FormLabel>
             <Select
               value={config.templateId || ''}
               onChange={(e) => updateField('templateId', e.target.value)}
               placeholder="Select template (optional)"
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
             >
               <option value="">Custom Email</option>
               {(builderResources?.messageTemplates || [])
@@ -1492,37 +3193,84 @@ const ActionConfigFields = ({ actionType, config, onChange, builderResources, tr
                   </option>
                 ))}
             </Select>
+            <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+              Templates ensure consistent branding and formatting
+            </FormHelperText>
           </FormControl>
-          <FormControl isRequired>
-            <FormLabel>Subject</FormLabel>
-            <Input
-              id={`action-config-subject`}
+          <SimpleGrid columns={2} spacing={4}>
+            <VariableInput
+              fieldName="to"
+              label="Recipient Email"
+              value={config.to || '{{lead.email}}'}
+              onChange={(value) => updateField('to', value)}
+              placeholder="{{lead.email}}"
+              helperText="Email address of the recipient"
+            />
+            <VariableInput
+              fieldName="subject"
+              label="Subject Line"
               value={config.subject || ''}
-              onChange={(e) => handleVariableInput('subject', e.target.value)}
-              placeholder="Email subject"
+              onChange={(value) => updateField('subject', value)}
+              placeholder="Email subject line"
+              helperText="Keep it concise and engaging"
+            />
+          </SimpleGrid>
+          <VariableInput
+            fieldName="body"
+            label="Email Body"
+            value={config.body || ''}
+            onChange={(value) => updateField('body', value)}
+            placeholder="Enter email body. HTML is supported"
+            type="textarea"
+            rows={10}
+            helperText="You can use HTML formatting. Max 100KB"
+          />
+          <SimpleGrid columns={2} spacing={4}>
+            <FormControl>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                From Name
+              </FormLabel>
+              <Input
+                value={config.fromName || '{{coach.name}}'}
+                onChange={(e) => updateField('fromName', e.target.value)}
+                placeholder="{{coach.name}}"
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
             />
           </FormControl>
-          <FormControl isRequired>
-            <FormLabel>
-              Body
-              <Tooltip label="Click info icon to see available variables">
-                <IconButton
-                  icon={<FiInfo />}
-                  size="xs"
-                  variant="ghost"
-                  ml={2}
-                  onClick={() => setShowVariables(!showVariables)}
-                />
-              </Tooltip>
+            <FormControl>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                From Email
+              </FormLabel>
+              <Input
+                value={config.fromEmail || '{{coach.email}}'}
+                onChange={(e) => updateField('fromEmail', e.target.value)}
+                placeholder="{{coach.email}}"
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
+              />
+            </FormControl>
+          </SimpleGrid>
+          <FormControl>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Reply-To Email
             </FormLabel>
-            <Textarea
-              id={`action-config-body`}
-              value={config.body || ''}
-              onChange={(e) => handleVariableInput('body', e.target.value)}
-              placeholder="Email body. Use {{lead.name}} for dynamic values"
-              rows={8}
+            <Input
+              value={config.replyTo || ''}
+              onChange={(e) => updateField('replyTo', e.target.value)}
+              placeholder="support@example.com"
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
             />
-            <VariableHelper fieldName="body" />
           </FormControl>
         </VStack>
       );
@@ -1698,11 +3446,855 @@ const ActionConfigFields = ({ actionType, config, onChange, builderResources, tr
         </VStack>
       );
 
+    case 'remove_lead_tag':
+      return (
+        <FormControl isRequired>
+          <FormLabel>Tag Name</FormLabel>
+          <Input
+            value={config.tag || ''}
+            onChange={(e) => updateField('tag', e.target.value)}
+            placeholder="Enter tag name to remove"
+          />
+        </FormControl>
+      );
+
+    case 'remove_from_funnel':
+      return (
+        <FormControl isRequired>
+          <FormLabel>Funnel</FormLabel>
+          <Select
+            value={config.funnelId || ''}
+            onChange={(e) => updateField('funnelId', e.target.value)}
+            placeholder="Select funnel"
+          >
+            {(builderResources?.funnels || []).map(funnel => (
+              <option key={funnel.id} value={funnel.id}>
+                {funnel.name}
+              </option>
+            ))}
+          </Select>
+        </FormControl>
+      );
+
+    case 'update_lead_field':
+      return (
+        <VStack spacing={5} align="stretch">
+          <FormControl isRequired>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Field Name
+            </FormLabel>
+            <Select
+              value={config.field || ''}
+              onChange={(e) => updateField('field', e.target.value)}
+              placeholder="Select field to update"
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
+            >
+              <option value="status">Status</option>
+              <option value="temperature">Temperature</option>
+              <option value="source">Source</option>
+              <option value="score">Score</option>
+              <option value="custom">Custom Field</option>
+            </Select>
+            <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+              Select the lead field you want to update
+            </FormHelperText>
+          </FormControl>
+          {config.field === 'custom' && (
+            <FormControl>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Custom Field Name
+              </FormLabel>
+              <Input
+                value={config.customFieldName || ''}
+                onChange={(e) => updateField('customFieldName', e.target.value)}
+                placeholder="Enter custom field name"
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
+              />
+            </FormControl>
+          )}
+          <VariableInput
+            fieldName="value"
+            label="Field Value"
+            value={config.value || ''}
+            onChange={(value) => updateField('value', value)}
+            placeholder="Enter the new value"
+            helperText="Use variables for dynamic values"
+          />
+        </VStack>
+      );
+
+    case 'create_deal':
+      return (
+        <VStack spacing={5} align="stretch">
+          <VariableInput
+            fieldName="dealName"
+            label="Deal Name"
+            value={config.dealName || ''}
+            onChange={(value) => updateField('dealName', value)}
+            placeholder="e.g., Deal with {{lead.name}}"
+            helperText="A descriptive name for this deal"
+          />
+          <SimpleGrid columns={2} spacing={4}>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Amount
+              </FormLabel>
+              <NumberInput
+                value={config.amount || 0}
+                onChange={(value) => updateField('amount', parseFloat(value) || 0)}
+                min={0}
+              >
+                <NumberInputField
+                  bg="white"
+                  borderColor="gray.200"
+                  _hover={{ borderColor: 'gray.300' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                  borderRadius="md"
+                />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+            </FormControl>
+            <FormControl>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Currency
+              </FormLabel>
+              <Select
+                value={config.currency || 'USD'}
+                onChange={(e) => updateField('currency', e.target.value)}
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
+              >
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="INR">INR</option>
+              </Select>
+            </FormControl>
+          </SimpleGrid>
+          <FormControl>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Stage
+            </FormLabel>
+            <Select
+              value={config.stage || 'prospecting'}
+              onChange={(e) => updateField('stage', e.target.value)}
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
+            >
+              <option value="prospecting">Prospecting</option>
+              <option value="qualification">Qualification</option>
+              <option value="proposal">Proposal</option>
+              <option value="negotiation">Negotiation</option>
+              <option value="closed-won">Closed Won</option>
+              <option value="closed-lost">Closed Lost</option>
+            </Select>
+          </FormControl>
+          <VariableInput
+            fieldName="description"
+            label="Deal Description"
+            value={config.description || ''}
+            onChange={(value) => updateField('description', value)}
+            placeholder="Additional details about the deal"
+            type="textarea"
+            rows={4}
+            helperText="Optional description or notes"
+          />
+        </VStack>
+      );
+
+    case 'send_internal_notification':
+      return (
+        <VStack spacing={5} align="stretch">
+          <VariableInput
+            fieldName="message"
+            label="Notification Message"
+            value={config.message || ''}
+            onChange={(value) => updateField('message', value)}
+            placeholder="Enter notification message"
+            type="textarea"
+            rows={5}
+            helperText="This notification will be sent to selected recipients"
+          />
+          <FormControl>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Recipients
+            </FormLabel>
+            <Select
+              value={config.recipients || 'all'}
+              onChange={(e) => updateField('recipients', e.target.value)}
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
+            >
+              <option value="self">Send to Self (Coach) - For Testing</option>
+              <option value="all">All Staff</option>
+              <option value="coach">Coach Only</option>
+              <option value="assigned">Assigned Staff Only</option>
+              {(builderResources?.staff || []).map(staff => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.name}
+                </option>
+              ))}
+            </Select>
+            <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+              Select who should receive this notification. Use "Send to Self" to test the notification system.
+            </FormHelperText>
+          </FormControl>
+          <FormControl>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Notification Type
+            </FormLabel>
+            <Select
+              value={config.notificationType || 'info'}
+              onChange={(e) => updateField('notificationType', e.target.value)}
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
+            >
+              <option value="info">Info</option>
+              <option value="success">Success</option>
+              <option value="warning">Warning</option>
+              <option value="error">Error</option>
+            </Select>
+          </FormControl>
+        </VStack>
+      );
+
+    case 'send_push_notification':
+      return (
+        <VStack spacing={5} align="stretch">
+          <VariableInput
+            fieldName="title"
+            label="Notification Title"
+            value={config.title || ''}
+            onChange={(value) => updateField('title', value)}
+            placeholder="Enter notification title"
+            helperText="Keep it short and attention-grabbing (max 50 chars)"
+          />
+          <VariableInput
+            fieldName="body"
+            label="Notification Body"
+            value={config.body || ''}
+            onChange={(value) => updateField('body', value)}
+            placeholder="Enter notification message"
+            type="textarea"
+            rows={5}
+            helperText="Main message content (max 200 chars)"
+          />
+          <FormControl>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Priority
+            </FormLabel>
+            <Select
+              value={config.priority || 'normal'}
+              onChange={(e) => updateField('priority', e.target.value)}
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
+            >
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+            </Select>
+          </FormControl>
+        </VStack>
+      );
+
+    case 'schedule_drip_sequence':
+      return (
+        <VStack spacing={4} align="stretch">
+          <FormControl isRequired>
+            <FormLabel>Sequence ID</FormLabel>
+            <Input
+              value={config.sequenceId || ''}
+              onChange={(e) => updateField('sequenceId', e.target.value)}
+              placeholder="Enter sequence ID"
+            />
+          </FormControl>
+          <FormControl>
+            <FormLabel>Delay (hours)</FormLabel>
+            <NumberInput
+              value={config.delay || 0}
+              onChange={(value) => updateField('delay', parseInt(value) || 0)}
+              min={0}
+            >
+              <NumberInputField />
+              <NumberInputStepper>
+                <NumberIncrementStepper />
+                <NumberDecrementStepper />
+              </NumberInputStepper>
+            </NumberInput>
+          </FormControl>
+        </VStack>
+      );
+
+    case 'create_multiple_tasks':
+      return (
+        <Alert status="info">
+          <AlertIcon />
+          Multiple task creation configuration coming soon. For now, use the single task action.
+        </Alert>
+      );
+
+    case 'create_calendar_event':
+      return (
+        <VStack spacing={5} align="stretch">
+          <VariableInput
+            fieldName="title"
+            label="Event Title"
+            value={config.title || ''}
+            onChange={(value) => updateField('title', value)}
+            placeholder="e.g., Meeting with {{lead.name}}"
+            helperText="A clear title for the calendar event"
+          />
+          <SimpleGrid columns={2} spacing={4}>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Start Time Offset (hours)
+              </FormLabel>
+              <NumberInput
+                value={config.startTimeOffset || 0}
+                onChange={(value) => updateField('startTimeOffset', parseInt(value) || 0)}
+                min={0}
+              >
+                <NumberInputField
+                  bg="white"
+                  borderColor="gray.200"
+                  _hover={{ borderColor: 'gray.300' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                  borderRadius="md"
+                />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+              <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                Hours from trigger
+              </FormHelperText>
+            </FormControl>
+            <FormControl>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Duration (minutes)
+              </FormLabel>
+              <NumberInput
+                value={config.duration || 60}
+                onChange={(value) => updateField('duration', parseInt(value) || 60)}
+                min={15}
+                step={15}
+              >
+                <NumberInputField
+                  bg="white"
+                  borderColor="gray.200"
+                  _hover={{ borderColor: 'gray.300' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                  borderRadius="md"
+                />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+            </FormControl>
+          </SimpleGrid>
+          <VariableInput
+            fieldName="description"
+            label="Event Description"
+            value={config.description || ''}
+            onChange={(value) => updateField('description', value)}
+            placeholder="Additional details about the event"
+            type="textarea"
+            rows={4}
+            helperText="Optional description for the calendar event"
+          />
+          <FormControl>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Location
+            </FormLabel>
+            <Input
+              value={config.location || ''}
+              onChange={(e) => updateField('location', e.target.value)}
+              placeholder="Meeting location or video link"
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
+            />
+          </FormControl>
+        </VStack>
+      );
+
+    case 'add_followup_date':
+      return (
+        <VStack spacing={5} align="stretch">
+          <SimpleGrid columns={2} spacing={4}>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Follow-up Date Offset (days)
+              </FormLabel>
+              <NumberInput
+                value={config.followupDateOffset || 7}
+                onChange={(value) => updateField('followupDateOffset', parseInt(value) || 7)}
+                min={0}
+              >
+                <NumberInputField
+                  bg="white"
+                  borderColor="gray.200"
+                  _hover={{ borderColor: 'gray.300' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                  borderRadius="md"
+                />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+              <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                Days from trigger event
+              </FormHelperText>
+            </FormControl>
+            <FormControl>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Time of Day
+              </FormLabel>
+              <Select
+                value={config.timeOfDay || '09:00'}
+                onChange={(e) => updateField('timeOfDay', e.target.value)}
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
+              >
+                <option value="09:00">9:00 AM</option>
+                <option value="10:00">10:00 AM</option>
+                <option value="11:00">11:00 AM</option>
+                <option value="14:00">2:00 PM</option>
+                <option value="15:00">3:00 PM</option>
+                <option value="16:00">4:00 PM</option>
+                <option value="17:00">5:00 PM</option>
+              </Select>
+            </FormControl>
+          </SimpleGrid>
+          <VariableInput
+            fieldName="notes"
+            label="Follow-up Notes"
+            value={config.notes || ''}
+            onChange={(value) => updateField('notes', value)}
+            placeholder="Notes or context for the follow-up"
+            type="textarea"
+            rows={4}
+            helperText="These notes will be associated with the follow-up date"
+          />
+        </VStack>
+      );
+
+    case 'create_zoom_meeting':
+      return (
+        <VStack spacing={5} align="stretch">
+          <VariableInput
+            fieldName="topic"
+            label="Meeting Topic"
+            value={config.topic || ''}
+            onChange={(value) => updateField('topic', value)}
+            placeholder="e.g., Consultation with {{lead.name}}"
+            helperText="A clear topic for the Zoom meeting"
+          />
+          <SimpleGrid columns={2} spacing={4}>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Start Time Offset (hours)
+              </FormLabel>
+              <NumberInput
+                value={config.startTimeOffset || 0}
+                onChange={(value) => updateField('startTimeOffset', parseInt(value) || 0)}
+                min={0}
+              >
+                <NumberInputField
+                  bg="white"
+                  borderColor="gray.200"
+                  _hover={{ borderColor: 'gray.300' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                  borderRadius="md"
+                />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+              <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                Hours from trigger
+              </FormHelperText>
+            </FormControl>
+            <FormControl>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Duration (minutes)
+              </FormLabel>
+              <NumberInput
+                value={config.duration || 60}
+                onChange={(value) => updateField('duration', parseInt(value) || 60)}
+                min={15}
+                step={15}
+              >
+                <NumberInputField
+                  bg="white"
+                  borderColor="gray.200"
+                  _hover={{ borderColor: 'gray.300' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                  borderRadius="md"
+                />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+            </FormControl>
+          </SimpleGrid>
+          <FormControl>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Meeting Password (optional)
+            </FormLabel>
+            <Input
+              value={config.password || ''}
+              onChange={(e) => updateField('password', e.target.value)}
+              placeholder="Leave empty for no password"
+              type="password"
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
+            />
+          </FormControl>
+        </VStack>
+      );
+
+    case 'create_invoice':
+      return (
+        <VStack spacing={5} align="stretch">
+          <SimpleGrid columns={2} spacing={4}>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Amount
+              </FormLabel>
+              <NumberInput
+                value={config.amount || 0}
+                onChange={(value) => updateField('amount', parseFloat(value) || 0)}
+                min={0}
+                precision={2}
+              >
+                <NumberInputField
+                  bg="white"
+                  borderColor="gray.200"
+                  _hover={{ borderColor: 'gray.300' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                  borderRadius="md"
+                />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+            </FormControl>
+            <FormControl>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Currency
+              </FormLabel>
+              <Select
+                value={config.currency || 'USD'}
+                onChange={(e) => updateField('currency', e.target.value)}
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
+              >
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="INR">INR</option>
+              </Select>
+            </FormControl>
+          </SimpleGrid>
+          <VariableInput
+            fieldName="description"
+            label="Invoice Description"
+            value={config.description || ''}
+            onChange={(value) => updateField('description', value)}
+            placeholder="Description of services or products"
+            type="textarea"
+            rows={4}
+            helperText="Detailed description of what the invoice is for"
+          />
+          <FormControl>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Due Date Offset (days)
+            </FormLabel>
+            <NumberInput
+              value={config.dueDateOffset || 30}
+              onChange={(value) => updateField('dueDateOffset', parseInt(value) || 30)}
+              min={0}
+            >
+              <NumberInputField
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
+              />
+              <NumberInputStepper>
+                <NumberIncrementStepper />
+                <NumberDecrementStepper />
+              </NumberInputStepper>
+            </NumberInput>
+            <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+              Days from invoice creation
+            </FormHelperText>
+          </FormControl>
+        </VStack>
+      );
+
+    case 'issue_refund':
+      return (
+        <VStack spacing={5} align="stretch">
+          <SimpleGrid columns={2} spacing={4}>
+            <FormControl isRequired>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Amount
+              </FormLabel>
+              <NumberInput
+                value={config.amount || 0}
+                onChange={(value) => updateField('amount', parseFloat(value) || 0)}
+                min={0}
+                precision={2}
+              >
+                <NumberInputField
+                  bg="white"
+                  borderColor="gray.200"
+                  _hover={{ borderColor: 'gray.300' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                  borderRadius="md"
+                />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+            </FormControl>
+            <FormControl>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Currency
+              </FormLabel>
+              <Select
+                value={config.currency || 'USD'}
+                onChange={(e) => updateField('currency', e.target.value)}
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
+              >
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="INR">INR</option>
+              </Select>
+            </FormControl>
+          </SimpleGrid>
+          <VariableInput
+            fieldName="reason"
+            label="Refund Reason"
+            value={config.reason || ''}
+            onChange={(value) => updateField('reason', value)}
+            placeholder="Reason for issuing the refund"
+            type="textarea"
+            rows={4}
+            helperText="Document the reason for this refund"
+          />
+          <FormControl>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Payment ID (optional)
+            </FormLabel>
+            <Input
+              value={config.paymentId || ''}
+              onChange={(e) => updateField('paymentId', e.target.value)}
+              placeholder="Specific payment ID (leave empty for all)"
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
+            />
+            <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+              Leave empty to refund all payments for this lead
+            </FormHelperText>
+          </FormControl>
+        </VStack>
+      );
+
+    case 'call_webhook':
+      return (
+        <VStack spacing={5} align="stretch">
+          <FormControl isRequired>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Webhook URL
+            </FormLabel>
+            <Input
+              value={config.url || ''}
+              onChange={(e) => updateField('url', e.target.value)}
+              placeholder="https://example.com/webhook"
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
+            />
+            <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+              The endpoint URL to send the webhook request to
+            </FormHelperText>
+          </FormControl>
+          <SimpleGrid columns={2} spacing={4}>
+            <FormControl>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                HTTP Method
+              </FormLabel>
+              <Select
+                value={config.method || 'POST'}
+                onChange={(e) => updateField('method', e.target.value)}
+                bg="white"
+                borderColor="gray.200"
+                _hover={{ borderColor: 'gray.300' }}
+                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                borderRadius="md"
+              >
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+                <option value="DELETE">DELETE</option>
+              </Select>
+            </FormControl>
+            <FormControl>
+              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                Timeout (seconds)
+              </FormLabel>
+              <NumberInput
+                value={config.timeout || 30}
+                onChange={(value) => updateField('timeout', parseInt(value) || 30)}
+                min={5}
+                max={300}
+              >
+                <NumberInputField
+                  bg="white"
+                  borderColor="gray.200"
+                  _hover={{ borderColor: 'gray.300' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                  borderRadius="md"
+                />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+            </FormControl>
+          </SimpleGrid>
+          <VariableInput
+            fieldName="payload"
+            label="Request Payload (JSON)"
+            value={config.payload || ''}
+            onChange={(value) => updateField('payload', value)}
+            placeholder='{"key": "value", "leadName": "{{lead.name}}"}'
+            type="textarea"
+            rows={8}
+            helperText="JSON payload. Use {{variables}} for dynamic values"
+          />
+          <FormControl>
+            <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+              Headers (JSON)
+            </FormLabel>
+            <Textarea
+              value={config.headers || '{"Content-Type": "application/json"}'}
+              onChange={(e) => updateField('headers', e.target.value)}
+              placeholder='{"Authorization": "Bearer token"}'
+              rows={3}
+              fontFamily="mono"
+              fontSize="xs"
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ borderColor: 'gray.300' }}
+              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+              borderRadius="md"
+            />
+            <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+              Optional custom headers in JSON format
+            </FormHelperText>
+          </FormControl>
+        </VStack>
+      );
+
+    case 'trigger_another_automation':
+      return (
+        <VStack spacing={4} align="stretch">
+          <FormControl isRequired>
+            <FormLabel>Automation Rule</FormLabel>
+            <Select
+              value={config.automationRuleId || ''}
+              onChange={(e) => updateField('automationRuleId', e.target.value)}
+              placeholder="Select automation rule"
+            >
+              {(builderResources?.automationRules || []).map(rule => (
+                <option key={rule.id} value={rule.id}>
+                  {rule.name}
+                </option>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl>
+            <FormLabel>Delay (seconds)</FormLabel>
+            <NumberInput
+              value={config.delay || 0}
+              onChange={(value) => updateField('delay', parseInt(value) || 0)}
+              min={0}
+            >
+              <NumberInputField />
+              <NumberInputStepper>
+                <NumberIncrementStepper />
+                <NumberDecrementStepper />
+              </NumberInputStepper>
+            </NumberInput>
+          </FormControl>
+        </VStack>
+      );
+
     default:
       return (
         <Alert status="info">
           <AlertIcon />
-          Configuration for this action type will be available soon.
+          Configuration for "{actionType}" will be available soon. The action will still execute with default settings.
         </Alert>
       );
   }

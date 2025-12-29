@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 // --- CORRECTED: The import name must match the controller's export ---
-const { createRule, getRules, getRuleById, updateRule, deleteRule, getEventsAndActions, getBuilderResources, validateGraphWorkflow } = require('../controllers/automationRuleController'); 
+const { createRule, getRules, getRuleById, updateRule, deleteRule, getEventsAndActions, getBuilderResources, validateGraphWorkflow, assignFunnel, getAnalytics, getRuleByFunnel } = require('../controllers/automationRuleController'); 
 
 // Using unified authentication middleware
 const { 
@@ -35,5 +35,12 @@ router.get('/', requirePermission('automation:read'), getRules);
 router.get('/:id', requirePermission('automation:read'), getRuleById);
 router.put('/:id', requirePermission('automation:update'), updateRule);
 router.delete('/:id', requirePermission('automation:delete'), deleteRule);
+
+// Funnel assignment routes
+router.put('/:id/assign-funnel', requirePermission('automation:update'), assignFunnel);
+router.get('/funnel/:funnelId', requirePermission('automation:read'), getRuleByFunnel);
+
+// Analytics route
+router.get('/:id/analytics', requirePermission('automation:read'), getAnalytics);
 
 module.exports = router;

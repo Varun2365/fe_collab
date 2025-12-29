@@ -183,6 +183,14 @@ const AutomationRuleSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    funnelId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Funnel',
+        default: null,
+        unique: true,
+        sparse: true, // Allow multiple null values
+        index: true
+    },
     triggerEvent: {
         type: String,
         required: true,
@@ -287,6 +295,15 @@ const AutomationRuleSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
+    },
+    lastExecutedAt: {
+        type: Date,
+        default: null,
+        index: true
+    },
+    executionCount: {
+        type: Number,
+        default: 0
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
