@@ -24,7 +24,8 @@ async function setupMetaCredentials(coachId, credentials) {
     } = credentials;
 
     // Check if credentials already exist
-    let coachCredentials = await CoachMarketingCredentials.findOne({ coachId });
+    let coachCredentials = await CoachMarketingCredentials.findOne({ coachId })
+        .select('+encryptionKey +metaAds.accessToken +metaAds.appSecret');
     
     if (!coachCredentials) {
         // Create new credentials record
@@ -34,31 +35,213 @@ async function setupMetaCredentials(coachId, credentials) {
             encryptionKey,
             updatedBy: coachId
         });
+    } else {
+        // COMPLETELY CLEAR ALL PREVIOUS META CREDENTIALS BEFORE SETTING NEW ONES
+        // This ensures no old/corrupted tokens remain
+        console.log(`[MetaCredentials] 🧹 COMPLETELY CLEARING all previous Meta credentials for coach ${coachId}`);
+        console.log(`[MetaCredentials] Old token exists: ${!!coachCredentials.metaAds?.accessToken}`);
+        console.log(`[MetaCredentials] Old appId: ${coachCredentials.metaAds?.appId || 'none'}`);
+        console.log(`[MetaCredentials] Old adAccountId: ${coachCredentials.metaAds?.adAccountId || 'none'}`);
+        
+        // Completely reset metaAds object
+        coachCredentials.metaAds = {
+            accessToken: null,
+            appId: null,
+            appSecret: null,
+            businessAccountId: null,
+            adAccountId: null,
+            facebookPageId: null,
+            instagramAccountId: null,
+            isConnected: false,
+            lastVerified: null,
+            permissions: []
+        };
+        
+        // Mark the entire metaAds object as modified to ensure Mongoose saves the cleared state
+        coachCredentials.markModified('metaAds');
+        
+        // Ensure encryption key exists (generate new one if missing)
+        if (!coachCredentials.encryptionKey) {
+            console.warn(`[MetaCredentials] No encryption key found for coach ${coachId}, generating new one`);
+            coachCredentials.encryptionKey = crypto.randomBytes(32).toString('hex');
+        }
+        
+        // Save the cleared state first to ensure old tokens are completely removed
+        try {
+            await coachCredentials.save();
+            console.log(`[MetaCredentials] ✅ Successfully cleared all old Meta credentials`);
+        } catch (clearError) {
+            console.error(`[MetaCredentials] Error clearing old credentials:`, clearError);
+            // Continue anyway - we'll overwrite with new credentials
+        }
+        
+        // Re-fetch to ensure we have a clean state
+        coachCredentials = await CoachMarketingCredentials.findOne({ coachId })
+            .select('+encryptionKey');
+        
+        if (!coachCredentials) {
+            throw new Error('Failed to retrieve credentials after clearing');
+        }
+        
+        // Re-initialize metaAds as empty
+        coachCredentials.metaAds = {
+            accessToken: null,
+            appId: null,
+            appSecret: null,
+            businessAccountId: null,
+            adAccountId: null,
+            facebookPageId: null,
+            instagramAccountId: null,
+            isConnected: false,
+            lastVerified: null,
+            permissions: []
+        };
     }
 
-    // Update Meta credentials
-    coachCredentials.metaAds = {
-        accessToken,
-        appId,
-        appSecret,
-        businessAccountId,
-        adAccountId,
-        facebookPageId,
-        instagramAccountId,
-        isConnected: false,
-        lastVerified: null,
-        permissions: []
-    };
+    // Always set updatedBy when updating credentials
+    coachCredentials.updatedBy = coachId;
+    coachCredentials.lastUpdated = new Date();
 
-    // Verify credentials
-    const isValid = await verifyMetaCredentials(coachId);
+    // Mark as connected immediately if we have accessToken and appId
+    // This ensures the UI shows it as connected right away, even before verification
+    const shouldBeConnected = !!(accessToken && appId);
     
-    if (isValid) {
-        coachCredentials.metaAds.isConnected = true;
+    console.log(`[MetaCredentials] 🆕 Setting fresh Meta credentials for coach ${coachId}`);
+    
+    // Update Meta credentials - merge instead of replace to preserve existing fields
+    if (accessToken) {
+        // Always encrypt the token - never store plain text tokens
+        // Clear any old token first to avoid conflicts
+        try {
+            console.log(`[MetaCredentials] Encrypting access token for coach ${coachId}, token length: ${accessToken.length}`);
+            
+            // Validate token is not empty
+            if (!accessToken || accessToken.trim().length === 0) {
+                throw new Error('Access token is empty');
+            }
+            
+            // Always encrypt - don't check if it's already encrypted
+            // This ensures we use the current encryption key
+            const encryptedToken = coachCredentials.encrypt(accessToken);
+            if (!encryptedToken) {
+                throw new Error('Failed to encrypt access token - encrypt() returned null');
+            }
+            
+            if (encryptedToken.length < 64) {
+                throw new Error(`Encrypted token is too short (${encryptedToken.length}), encryption may have failed`);
+            }
+            
+            coachCredentials.metaAds.accessToken = encryptedToken;
+            console.log(`[MetaCredentials] Access token encrypted successfully, encrypted length: ${encryptedToken.length}`);
+            
+            // Mark as modified to ensure Mongoose saves it
+            coachCredentials.markModified('metaAds');
+            coachCredentials.markModified('metaAds.accessToken');
+        } catch (encryptError) {
+            console.error(`[MetaCredentials] Error encrypting access token for coach ${coachId}:`, encryptError);
+            console.error(`[MetaCredentials] Error stack:`, encryptError.stack);
+            throw new Error(`Failed to encrypt access token: ${encryptError.message}`);
+        }
+    }
+    if (appId) {
+        coachCredentials.metaAds.appId = appId;
+    }
+    if (appSecret) {
+        coachCredentials.metaAds.appSecret = appSecret;
+    }
+    if (businessAccountId) {
+        coachCredentials.metaAds.businessAccountId = businessAccountId;
+    }
+    if (adAccountId) {
+        coachCredentials.metaAds.adAccountId = adAccountId;
+    }
+    if (facebookPageId) {
+        coachCredentials.metaAds.facebookPageId = facebookPageId;
+    }
+    if (instagramAccountId) {
+        coachCredentials.metaAds.instagramAccountId = instagramAccountId;
+    }
+    
+    // Set connection status
+    coachCredentials.metaAds.isConnected = shouldBeConnected;
+    if (shouldBeConnected) {
         coachCredentials.metaAds.lastVerified = new Date();
     }
+    
+    // Preserve existing permissions if they exist
+    if (!coachCredentials.metaAds.permissions) {
+        coachCredentials.metaAds.permissions = [];
+    }
 
-    await coachCredentials.save();
+    // Save first with isConnected already set
+    console.log(`[MetaCredentials] About to save credentials for coach ${coachId}`);
+    console.log(`[MetaCredentials] Has encryptionKey: ${!!coachCredentials.encryptionKey}`);
+    console.log(`[MetaCredentials] Has accessToken before save: ${!!coachCredentials.metaAds?.accessToken}`);
+    if (coachCredentials.metaAds?.accessToken) {
+        console.log(`[MetaCredentials] accessToken length: ${coachCredentials.metaAds.accessToken.length}`);
+        console.log(`[MetaCredentials] accessToken preview (first 30 chars): ${coachCredentials.metaAds.accessToken.substring(0, 30)}...`);
+    }
+    
+    try {
+        await coachCredentials.save();
+        console.log(`[MetaCredentials] Credentials saved successfully for coach ${coachId}, isConnected: ${coachCredentials.metaAds.isConnected}`);
+    } catch (saveError) {
+        console.error(`[MetaCredentials] Error saving credentials for coach ${coachId}:`, saveError);
+        throw saveError;
+    }
+    
+    // Verify the token was actually saved and can be decrypted
+    const verificationCheck = await CoachMarketingCredentials.findOne({ coachId })
+        .select('+metaAds.accessToken +encryptionKey');
+    if (verificationCheck && verificationCheck.metaAds && verificationCheck.metaAds.accessToken) {
+        console.log(`[MetaCredentials] Verified: Access token was saved successfully for coach ${coachId}`);
+        console.log(`[MetaCredentials] Encrypted token length: ${verificationCheck.metaAds.accessToken.length}`);
+        
+        try {
+            const testDecrypt = verificationCheck.getDecryptedAccessToken();
+            if (testDecrypt) {
+                console.log(`[MetaCredentials] ✅ SUCCESS: Access token can be decrypted successfully for coach ${coachId}`);
+                console.log(`[MetaCredentials] Decrypted token length: ${testDecrypt.length}`);
+                console.log(`[MetaCredentials] Decrypted token preview: ${testDecrypt.substring(0, 20)}...`);
+            } else {
+                console.error(`[MetaCredentials] ❌ WARNING: Access token exists but cannot be decrypted for coach ${coachId}`);
+                console.error(`[MetaCredentials] Has encryptionKey: ${!!verificationCheck.encryptionKey}`);
+                console.error(`[MetaCredentials] EncryptionKey length: ${verificationCheck.encryptionKey?.length || 0}`);
+                throw new Error('Access token was saved but cannot be decrypted. Encryption key may be missing or incorrect.');
+            }
+        } catch (decryptError) {
+            console.error(`[MetaCredentials] ❌ ERROR: Failed to decrypt access token:`, decryptError);
+            throw new Error(`Access token decryption failed: ${decryptError.message}`);
+        }
+    } else {
+        console.error(`[MetaCredentials] ❌ ERROR: Access token was NOT saved for coach ${coachId}`);
+        if (verificationCheck) {
+            console.error(`[MetaCredentials] Verification check - has metaAds: ${!!verificationCheck.metaAds}`);
+            console.error(`[MetaCredentials] Verification check - has accessToken: ${!!verificationCheck.metaAds?.accessToken}`);
+        }
+        throw new Error('Access token was not saved to database');
+    }
+    
+    // Verify credentials in background (but don't fail if verification doesn't work immediately)
+    // This is just to test the token, but we already marked it as connected
+    if (shouldBeConnected) {
+        try {
+            const verificationResult = await verifyMetaCredentials(coachId);
+            
+            if (verificationResult && verificationResult.isValid) {
+                // Update last verified timestamp (isConnected already true)
+                coachCredentials.metaAds.lastVerified = new Date();
+                await coachCredentials.save();
+                console.log(`[MetaCredentials] Verification successful for coach ${coachId}`);
+            } else {
+                console.warn(`[MetaCredentials] Verification failed for coach ${coachId}:`, verificationResult?.error || 'Unknown error');
+                // Keep isConnected as true since we already set it above
+            }
+        } catch (verifyError) {
+            console.error(`[MetaCredentials] Error during verification for coach ${coachId}:`, verifyError);
+            // Keep isConnected as true since we already set it above
+        }
+    }
 
     return {
         isConnected: coachCredentials.metaAds.isConnected,
@@ -246,32 +429,77 @@ async function verifyOpenAICredentials(coachId) {
  * Get credentials status
  */
 async function getCredentialsStatus(coachId) {
-    const credentials = await CoachMarketingCredentials.findOne({ coachId });
-    
-    if (!credentials) {
+    try {
+        console.log(`[CredentialsStatus] Fetching status for coach ${coachId}`);
+        const credentials = await CoachMarketingCredentials.findOne({ coachId });
+        
+        if (!credentials) {
+            console.log(`[CredentialsStatus] No credentials found for coach ${coachId}`);
+            return {
+                meta: { 
+                    isConnected: false, 
+                    hasCredentials: false,
+                    isConfigured: false
+                },
+                openai: { 
+                    isConnected: false, 
+                    hasCredentials: false 
+                },
+                setupComplete: false
+            };
+        }
+
+        // Check if credentials exist - if they do, mark as connected even if verification hasn't run yet
+        const hasAccessToken = !!credentials.metaAds?.accessToken;
+        const hasAppId = !!credentials.metaAds?.appId;
+        const isConfigured = hasAccessToken && hasAppId;
+        
+        // If we have credentials, consider it connected (verification can happen later)
+        const isConnected = credentials.metaAds?.isConnected || (isConfigured && hasAccessToken);
+        
+        const metaStatus = {
+            isConnected: isConnected,
+            hasCredentials: hasAccessToken,
+            isConfigured: isConfigured,
+            lastVerified: credentials.metaAds?.lastVerified || null,
+            businessAccountId: credentials.metaAds?.businessAccountId || null,
+            adAccountId: credentials.metaAds?.adAccountId || null
+        };
+
+        console.log(`[CredentialsStatus] Meta status for coach ${coachId}:`, {
+            isConnected: metaStatus.isConnected,
+            hasCredentials: metaStatus.hasCredentials,
+            isConfigured: metaStatus.isConfigured,
+            hasAccessToken: hasAccessToken,
+            hasAppId: hasAppId,
+            rawIsConnected: credentials.metaAds?.isConnected
+        });
+
         return {
-            meta: { isConnected: false, hasCredentials: false },
-            openai: { isConnected: false, hasCredentials: false },
+            meta: metaStatus,
+            openai: {
+                isConnected: credentials.openAI?.isConnected || false,
+                hasCredentials: !!credentials.openAI?.apiKey,
+                lastVerified: credentials.openAI?.lastVerified || null,
+                modelPreference: credentials.openAI?.modelPreference || 'gpt-4'
+            },
+            setupComplete: (credentials.metaAds?.isConnected || false) && (credentials.openAI?.isConnected || false)
+        };
+    } catch (error) {
+        console.error(`[CredentialsStatus] Error getting credentials status for coach ${coachId}:`, error);
+        return {
+            meta: { 
+                isConnected: false, 
+                hasCredentials: false,
+                isConfigured: false
+            },
+            openai: { 
+                isConnected: false, 
+                hasCredentials: false 
+            },
             setupComplete: false
         };
     }
-
-    return {
-        meta: {
-            isConnected: credentials.metaAds.isConnected,
-            hasCredentials: !!credentials.metaAds.accessToken,
-            lastVerified: credentials.metaAds.lastVerified,
-            businessAccountId: credentials.metaAds.businessAccountId,
-            adAccountId: credentials.metaAds.adAccountId
-        },
-        openai: {
-            isConnected: credentials.openAI.isConnected,
-            hasCredentials: !!credentials.openAI.apiKey,
-            lastVerified: credentials.openAI.lastVerified,
-            modelPreference: credentials.openAI.modelPreference
-        },
-        setupComplete: credentials.metaAds.isConnected && credentials.openAI.isConnected
-    };
 }
 
 // ===== CAMPAIGN ANALYSIS & MANAGEMENT =====
@@ -283,21 +511,93 @@ async function getCampaignAnalysis(coachId, options) {
     const { dateRange, campaignIds, includeInsights, includeRecommendations } = options;
     
     try {
+        // First, try to get campaigns from local database
+        const localCampaigns = await AdCampaign.find({ coachId });
+        
+        // If we have local campaigns, use them
+        if (localCampaigns && localCampaigns.length > 0) {
+            const filteredCampaigns = campaignIds.length > 0 
+                ? localCampaigns.filter(c => campaignIds.includes(c.campaignId))
+                : localCampaigns;
+
+            const analysis = {
+                summary: {
+                    totalCampaigns: filteredCampaigns.length,
+                    activeCampaigns: filteredCampaigns.filter(c => c.status === 'ACTIVE').length,
+                    pausedCampaigns: filteredCampaigns.filter(c => c.status === 'PAUSED').length,
+                    dateRange,
+                    overallMetrics: {
+                        totalImpressions: filteredCampaigns.reduce((sum, c) => sum + (parseFloat(c.impressions) || 0), 0),
+                        totalClicks: filteredCampaigns.reduce((sum, c) => sum + (parseFloat(c.clicks) || 0), 0),
+                        totalSpend: filteredCampaigns.reduce((sum, c) => sum + (parseFloat(c.totalSpent) || 0), 0),
+                        totalConversions: filteredCampaigns.reduce((sum, c) => sum + (parseFloat(c.conversions) || 0), 0)
+                    }
+                },
+                campaigns: filteredCampaigns.map(campaign => ({
+                    id: campaign.campaignId || campaign._id,
+                    name: campaign.name,
+                    status: campaign.status,
+                    objective: campaign.objective,
+                    insights: includeInsights ? {
+                        impressions: campaign.impressions || 0,
+                        clicks: campaign.clicks || 0,
+                        spend: campaign.totalSpent || 0,
+                        conversions: campaign.conversions || 0,
+                        ctr: campaign.impressions > 0 ? ((campaign.clicks || 0) / campaign.impressions * 100).toFixed(2) : '0.00',
+                        cpc: campaign.clicks > 0 ? ((campaign.totalSpent || 0) / campaign.clicks).toFixed(2) : '0.00'
+                    } : null
+                }))
+            };
+
+            return analysis;
+        }
+        
+        // If no local campaigns, try to fetch from Meta API if credentials exist
         const credentials = await CoachMarketingCredentials.findOne({ coachId })
             .select('+metaAds.accessToken +encryptionKey');
         
         if (!credentials || !credentials.metaAds.accessToken) {
-            throw new Error('Meta credentials not found');
+            // Return empty analysis if no credentials
+            return {
+                summary: {
+                    totalCampaigns: 0,
+                    activeCampaigns: 0,
+                    pausedCampaigns: 0,
+                    dateRange,
+                    overallMetrics: {
+                        totalImpressions: 0,
+                        totalClicks: 0,
+                        totalSpend: 0,
+                        totalConversions: 0
+                    }
+                },
+                campaigns: []
+            };
         }
 
         const accessToken = credentials.getDecryptedAccessToken();
         const adAccountId = credentials.metaAds.adAccountId;
         
         if (!adAccountId) {
-            throw new Error('Ad account ID not configured');
+            // Return empty analysis if no ad account
+            return {
+                summary: {
+                    totalCampaigns: 0,
+                    activeCampaigns: 0,
+                    pausedCampaigns: 0,
+                    dateRange,
+                    overallMetrics: {
+                        totalImpressions: 0,
+                        totalClicks: 0,
+                        totalSpend: 0,
+                        totalConversions: 0
+                    }
+                },
+                campaigns: []
+            };
         }
 
-        // Get campaigns
+        // Get campaigns from Meta API
         const campaignsResponse = await axios.get(`${META_ADS_API_BASE}/act_${adAccountId}/campaigns`, {
             params: {
                 access_token: accessToken,
@@ -306,7 +606,7 @@ async function getCampaignAnalysis(coachId, options) {
             }
         });
 
-        const campaigns = campaignsResponse.data.data;
+        const campaigns = campaignsResponse.data.data || [];
         const filteredCampaigns = campaignIds.length > 0 
             ? campaigns.filter(c => campaignIds.includes(c.id))
             : campaigns;
@@ -317,7 +617,13 @@ async function getCampaignAnalysis(coachId, options) {
                 totalCampaigns: filteredCampaigns.length,
                 activeCampaigns: filteredCampaigns.filter(c => c.status === 'ACTIVE').length,
                 pausedCampaigns: filteredCampaigns.filter(c => c.status === 'PAUSED').length,
-                dateRange
+                dateRange,
+                overallMetrics: {
+                    totalImpressions: 0,
+                    totalClicks: 0,
+                    totalSpend: 0,
+                    totalConversions: 0
+                }
             },
             campaigns: []
         };
@@ -359,8 +665,18 @@ async function getCampaignAnalysis(coachId, options) {
                 totalImpressions: campaignsWithInsights.reduce((sum, c) => sum + (parseInt(c.insights.impressions) || 0), 0),
                 totalClicks: campaignsWithInsights.reduce((sum, c) => sum + (parseInt(c.insights.clicks) || 0), 0),
                 totalSpend: campaignsWithInsights.reduce((sum, c) => sum + (parseFloat(c.insights.spend) || 0), 0),
+                totalConversions: campaignsWithInsights.reduce((sum, c) => sum + (parseInt(c.insights.conversions) || 0), 0),
                 averageCTR: campaignsWithInsights.reduce((sum, c) => sum + (parseFloat(c.insights.ctr) || 0), 0) / campaignsWithInsights.length,
                 averageCPC: campaignsWithInsights.reduce((sum, c) => sum + (parseFloat(c.insights.cpc) || 0), 0) / campaignsWithInsights.length
+            };
+        } else {
+            analysis.summary.overallMetrics = {
+                totalImpressions: 0,
+                totalClicks: 0,
+                totalSpend: 0,
+                totalConversions: 0,
+                averageCTR: 0,
+                averageCPC: 0
             };
         }
 
@@ -814,16 +1130,37 @@ async function getMarketingDashboard(coachId, options) {
     const { dateRange, includeAIInsights, includeRecommendations } = options;
     
     try {
-        // Get campaign analysis
-        const campaignAnalysis = await getCampaignAnalysis(coachId, {
-            dateRange,
-            campaignIds: [],
-            includeInsights: true,
-            includeRecommendations
-        });
-
-        // Get credentials status
+        // Get credentials status first
         const credentialsStatus = await getCredentialsStatus(coachId);
+
+        // Get campaign analysis (will return empty if no credentials/campaigns)
+        let campaignAnalysis;
+        try {
+            campaignAnalysis = await getCampaignAnalysis(coachId, {
+                dateRange,
+                campaignIds: [],
+                includeInsights: true,
+                includeRecommendations: includeRecommendations === true || includeRecommendations === 'true'
+            });
+        } catch (error) {
+            console.error('Error getting campaign analysis:', error);
+            // Return empty analysis on error
+            campaignAnalysis = {
+                summary: {
+                    totalCampaigns: 0,
+                    activeCampaigns: 0,
+                    pausedCampaigns: 0,
+                    dateRange,
+                    overallMetrics: {
+                        totalImpressions: 0,
+                        totalClicks: 0,
+                        totalSpend: 0,
+                        totalConversions: 0
+                    }
+                },
+                campaigns: []
+            };
+        }
 
         const dashboard = {
             credentials: credentialsStatus,
@@ -831,20 +1168,57 @@ async function getMarketingDashboard(coachId, options) {
             timestamp: new Date()
         };
 
-        // Add AI insights if requested
-        if (includeAIInsights) {
+        // Add AI insights if requested (optional, don't fail if it errors)
+        if (includeAIInsights === true || includeAIInsights === 'true') {
             try {
                 const aiMarketingService = require('./aiMarketingService');
-                const aiInsights = await aiMarketingService.generateDashboardInsights(coachId, campaignAnalysis);
-                dashboard.aiInsights = aiInsights;
+                if (aiMarketingService && typeof aiMarketingService.generateDashboardInsights === 'function') {
+                    const aiInsights = await aiMarketingService.generateDashboardInsights(coachId, campaignAnalysis);
+                    dashboard.aiInsights = aiInsights;
+                }
             } catch (error) {
-                dashboard.aiInsightsError = error.message;
+                console.error('Error getting AI insights:', error);
+                // Provide user-friendly error message
+                if (error.message?.includes('API key') || error.message?.includes('401') || error.message?.includes('Incorrect API key')) {
+                    dashboard.aiInsightsError = 'OpenAI API key is invalid or expired. Please update your API key in settings to enable AI insights.';
+                } else if (error.message?.includes('rate limit') || error.message?.includes('429')) {
+                    dashboard.aiInsightsError = 'OpenAI API rate limit exceeded. Please try again later.';
+                } else {
+                    dashboard.aiInsightsError = error.message || 'Failed to generate AI insights';
+                }
+                // Don't fail the entire dashboard - AI insights are optional
+                console.warn(`[getMarketingDashboard] AI insights unavailable for coach ${coachId}: ${dashboard.aiInsightsError}`);
             }
         }
 
         return dashboard;
     } catch (error) {
-        throw new Error(`Failed to get marketing dashboard: ${error.message}`);
+        console.error('Error in getMarketingDashboard:', error);
+        // Return minimal dashboard on error
+        return {
+            credentials: {
+                meta: { isConnected: false, hasCredentials: false },
+                openai: { isConnected: false, hasCredentials: false },
+                setupComplete: false
+            },
+            campaigns: {
+                summary: {
+                    totalCampaigns: 0,
+                    activeCampaigns: 0,
+                    pausedCampaigns: 0,
+                    dateRange: dateRange || '30d',
+                    overallMetrics: {
+                        totalImpressions: 0,
+                        totalClicks: 0,
+                        totalSpend: 0,
+                        totalConversions: 0
+                    }
+                },
+                campaigns: []
+            },
+            timestamp: new Date(),
+            error: error.message
+        };
     }
 }
 

@@ -16,8 +16,14 @@ const {
     setupMetaCredentials,
     verifyMetaCredentials,
     getMetaAccountInfo,
+    initiateMetaOAuth,
+    handleMetaOAuthCallback,
     setupOpenAICredentials,
     getCredentialsStatus,
+    getDetailedMetaCredentials,
+    disconnectMeta,
+    getCurrencyPreference,
+    saveCurrencyPreference,
     
     // Campaign Analysis & Management
     getCampaignAnalysis,
@@ -51,7 +57,13 @@ const {
     getAutomationStatus
 } = require('../controllers/marketingV1Controller');
 
-// Apply unified authentication and resource filtering to all routes
+// ===== PUBLIC ROUTES (No Authentication Required) =====
+
+// Meta OAuth callback routes (Public - for redirects from Meta)
+router.get('/credentials/meta/oauth/callback', handleMetaOAuthCallback);
+router.post('/credentials/meta/oauth/callback', handleMetaOAuthCallback);
+
+// Apply unified authentication and resource filtering to all protected routes
 router.use(unifiedCoachAuth(), updateLastActive, filterResourcesByPermission('ads'));
 
 // ===== CREDENTIALS MANAGEMENT =====
@@ -71,11 +83,28 @@ router.post('/credentials/meta/verify', requirePermission('ads:manage'), verifyM
 // Get Meta account information
 router.get('/credentials/meta/account-info', requirePermission('ads:read'), getMetaAccountInfo);
 
+// Meta OAuth initiate endpoint (requires authentication)
+router.post('/credentials/meta/oauth/initiate', requirePermission('ads:manage'), initiateMetaOAuth);
+
 // Setup OpenAI credentials
 router.post('/credentials/openai', requirePermission('ads:manage'), setupOpenAICredentials);
 
 // Get marketing credentials status
 router.get('/credentials/status', requirePermission('ads:read'), getCredentialsStatus);
+
+// Get detailed Meta credentials
+router.get('/credentials/meta/detailed', requirePermission('ads:read'), getDetailedMetaCredentials);
+
+// Disconnect Meta account
+router.delete('/credentials/meta', requirePermission('ads:manage'), disconnectMeta);
+
+// ===== PREFERENCES =====
+
+// Get currency preference
+router.get('/preferences/currency', requirePermission('ads:read'), getCurrencyPreference);
+
+// Save currency preference
+router.post('/preferences/currency', requirePermission('ads:manage'), saveCurrencyPreference);
 
 // ===== CAMPAIGN ANALYSIS & MANAGEMENT =====
 

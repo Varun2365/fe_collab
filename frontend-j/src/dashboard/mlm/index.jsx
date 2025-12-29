@@ -1,7 +1,8 @@
 // MLMDashboard.jsx - Complete Final Version with Enhanced Team Hierarchy (FIXED)
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { getCoachId, getToken, debugAuthState, getLocalStorageAuth } from '../../utils/authUtils';
+import { API_BASE_URL } from '../../config/apiConfig';
 import { 
   Box, 
   Container, 
@@ -124,7 +125,8 @@ import {
 import { 
   FiFileText, FiUser, FiMail, FiPhone, FiCalendar, FiFilter, FiUpload,
   FiEye, FiEdit, FiTrash2, FiCopy, FiUsers, FiMoreVertical, 
-  FiPlay, FiPause, FiBarChart2, FiTrendingUp, FiTarget, FiGlobe
+  FiPlay, FiPause, FiBarChart2, FiTrendingUp, FiTarget, FiGlobe,
+  FiZoomIn, FiZoomOut, FiMaximize2
 } from 'react-icons/fi';
 
 // --- BEAUTIFUL SKELETON COMPONENTS ---
@@ -210,65 +212,51 @@ const useCustomToast = () => {
   }, [toast]);
 };
 
-// --- BEAUTIFUL STATS CARDS ---
+// --- STATS CARDS (Matching AI & Automation Theme) ---
 const StatsCard = ({ title, value, icon, color = "blue", trend, isLoading = false, description }) => {
-  const bgColor = useColorModeValue(`${color}.50`, `${color}.900`);
-  const borderColor = useColorModeValue(`${color}.200`, `${color}.700`);
+  const cardBgColor = useColorModeValue(`${color}.50`, `${color}.900`);
+  const cardBorderColor = useColorModeValue(`${color}.200`, `${color}.700`);
+  const iconBg = useColorModeValue(`${color}.100`, `${color}.800`);
+  const iconColor = useColorModeValue(`${color}.600`, `${color}.300`);
   
   return (
     <Card 
-      bg={bgColor} 
+      bg={cardBgColor} 
       border="1px" 
-      borderColor={borderColor}
-      borderRadius="xl"
-      _hover={{ transform: 'translateY(-3px)', shadow: 'xl', borderColor: `${color}.300` }}
-      transition="all 0.3s"
-      position="relative"
-      overflow="hidden"
-      boxShadow="md"
+      borderColor={cardBorderColor}
+      borderRadius="7px"
+      _hover={{ borderColor: `${color}.300`, boxShadow: 'sm' }}
+      transition="all 0.2s"
+      boxShadow="none"
+      flex="1"
     >
-      <CardBody p={6}>
-        <HStack spacing={4} align="center" w="full">
+      <CardBody p={4}>
+        <HStack spacing={3} align="center">
           <Box
-            p={4}
-            bg={`${color}.100`}
-            borderRadius="xl"
-            color={`${color}.600`}
-            boxShadow="md"
-            _groupHover={{ transform: 'scale(1.1)', bg: `${color}.200` }}
-            transition="all 0.3s"
+            p={2.5}
+            bg={iconBg}
+            borderRadius="7px"
+            color={iconColor}
           >
             {icon}
           </Box>
-          <VStack align="start" spacing={1} flex={1}>
-            <Text fontSize="sm" color={`${color}.700`} fontWeight="medium" textTransform="uppercase" letterSpacing="wide">
+          <VStack align="start" spacing={0} flex={1}>
+            <Text fontSize="xs" color={`${color}.600`} fontWeight="600" textTransform="uppercase" letterSpacing="0.5px">
               {title}
             </Text>
             {isLoading ? (
-              <Skeleton height="28px" width="70px" />
+              <Skeleton height="28px" width="80px" mt={1} />
             ) : (
-              <Text fontSize="3xl" fontWeight="bold" color={`${color}.800`}>
+              <Text fontSize="xl" fontWeight="700" color={`${color}.800`} mt={1}>
                 {value}
               </Text>
             )}
             {description && (
-              <Text fontSize="xs" color={`${color}.600`}>
+              <Text fontSize="xs" color={`${color}.600`} mt={0.5}>
                 {description}
               </Text>
             )}
           </VStack>
-          {trend && (
-            <Badge 
-              colorScheme={trend > 0 ? 'green' : 'red'} 
-              variant="solid" 
-              size="sm"
-              borderRadius="full"
-              px={3}
-              py={1}
-            >
-              {trend > 0 ? '+' : ''}{trend}%
-            </Badge>
-          )}
         </HStack>
       </CardBody>
     </Card>
@@ -922,32 +910,8 @@ const HierarchyOverview = ({
   const processedHierarchy = useMemo(() => {
     // If no real data, use sample data
     if (!hierarchyData) {
-      console.log('📱 Using sample data for demonstration');
-      console.log('💡 Sample data includes:');
-      console.log('   - Head Coach: Varun Kumar');
-      console.log('   - Level 1: 4 Direct Team Members');
-      console.log('   - Level 2: 5 Second Level Members');
-      console.log('   - Level 3: 3 Third Level Members');
-      console.log('   - Total: 13 Team Members');
-      console.log('🎬 Animation Sequence:');
-      console.log('   0.1s: Head Coach Icon appears');
-      console.log('   0.2s: Tree container fades in');
-      console.log('   0.3s: Root node appears');
-      console.log('   0.5s: Level 1 nodes appear');
-      console.log('   0.5s: Root connection line starts drawing');
-      console.log('   1.0s: Horizontal distribution line appears');
-      console.log('   1.2s: Level 1 connection lines start drawing');
-      console.log('   1.3s: Level 1 connection points appear');
-      console.log('   1.4s: Level 2 horizontal line appears');
-      console.log('   1.5s: Level 2 connection lines start drawing');
-      console.log('   1.6s: Level 2 connection points appear');
-      console.log('   1.7s: Level 3 horizontal line appears');
-      console.log('   1.8s: Level 3 connection lines start drawing');
-      console.log('   1.9s: Level 3 connection points appear');
       return sampleHierarchyData;
     }
-    
-    console.log('🔍 Processing real hierarchy data:', hierarchyData);
     
     // Handle the new data structure with downlineHierarchy
     if (hierarchyData.downlineHierarchy && Array.isArray(hierarchyData.downlineHierarchy)) {
@@ -973,7 +937,6 @@ const HierarchyOverview = ({
         }))
       };
       
-      console.log('✅ Processed root node:', rootNode);
       return rootNode;
     }
     
@@ -1008,7 +971,6 @@ const HierarchyOverview = ({
     }
     
     // If all else fails, return sample data
-    console.log('⚠️ Falling back to sample data');
     return sampleHierarchyData;
   }, [hierarchyData]);
 
@@ -2280,23 +2242,13 @@ const MLMDashboard = () => {
   
   // Debug authentication state and set fallback
   useEffect(() => {
-    console.log('🔍 MLM Dashboard - Authentication Debug:');
-    console.log('Full authState:', authState);
-    console.log('Coach ID:', coachId);
-    console.log('Token:', token);
-    console.log('User:', user);
-    console.log('Is Authenticated:', !!(coachId && token));
-    
     // Check localStorage as fallback
     const localAuth = getLocalStorageAuth();
-    console.log('LocalStorage Auth:', localAuth);
     
     // Use Redux data if available, otherwise fallback to localStorage
     const finalCoachId = coachId || localAuth.coachId;
     const finalToken = token || localAuth.token;
     const finalUser = user || localAuth.user;
-    
-    console.log('Final Auth Data:', { finalCoachId, finalToken, finalUser });
     
     setEffectiveAuth({
       coachId: finalCoachId,
@@ -2305,21 +2257,26 @@ const MLMDashboard = () => {
     });
     
     if (!finalCoachId || !finalToken) {
-      console.warn('⚠️ Missing authentication data in MLM Dashboard');
       toast('Authentication data not available. Please log in again.', 'warning');
-    } else {
-      console.log('✅ Authentication data available for MLM Dashboard');
     }
   }, [authState, coachId, token, user, toast]);
   
   // State Management
   const [activeTab, setActiveTab] = useState(0);
+  const [performanceSubTab, setPerformanceSubTab] = useState(0); // Sub-tab for performance metrics
   const [loading, setLoading] = useState(false);
   const [downlineData, setDownlineData] = useState([]);
   const [hierarchyData, setHierarchyData] = useState(null);
   const [teamPerformance, setTeamPerformance] = useState(null);
   const [reports, setReports] = useState([]);
   const [hierarchyLevels, setHierarchyLevels] = useState([]);
+  const [commissions, setCommissions] = useState([]);
+  const [commissionSummary, setCommissionSummary] = useState({ totalEarned: 0, pendingAmount: 0, totalCommissions: 0 });
+  const [adminRequests, setAdminRequests] = useState([]);
+  const [coachPerformance, setCoachPerformance] = useState(null);
+  const [salesPerformance, setSalesPerformance] = useState(null);
+  const [clientPerformance, setClientPerformance] = useState(null);
+  const [leadPerformance, setLeadPerformance] = useState(null);
 
   // Calculate hierarchy stats for team performance fallback
   const hierarchyStats = useMemo(() => {
@@ -2357,7 +2314,6 @@ const MLMDashboard = () => {
     };
     
     const stats = calculateStats(hierarchyData);
-    console.log('📊 Calculated hierarchy stats:', stats);
     return stats;
   }, [hierarchyData]);
   const [selectedCoach, setSelectedCoach] = useState(null);
@@ -2365,6 +2321,131 @@ const MLMDashboard = () => {
   const [performanceFilter, setPerformanceFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCoaches, setSelectedCoaches] = useState(new Set());
+  const [showDummyData, setShowDummyData] = useState(false);
+  const [treeZoom, setTreeZoom] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [treePosition, setTreePosition] = useState({ x: 0, y: 0 });
+
+  // Sample data for demonstration
+  const sampleHierarchyData = {
+    name: 'Varun Kumar',
+    email: 'varun.kumar@mlmnetwork.com',
+    _id: 'sample-root-001',
+    isActive: true,
+    currentLevel: 0,
+    teamRankName: 'Head Coach',
+    downline: [
+      {
+        _id: 'sample-l1-001',
+        name: 'Priya Sharma',
+        email: 'priya.sharma@mlmnetwork.com',
+        isActive: true,
+        currentLevel: 1,
+        teamRankName: 'Senior Coach',
+        performance: {
+          performanceScore: 85,
+          activityStreak: 12,
+          isActive: true
+        },
+        downline: [
+          {
+            _id: 'sample-l2-001',
+            name: 'Rahul Verma',
+            email: 'rahul.verma@mlmnetwork.com',
+            isActive: true,
+            currentLevel: 2,
+            teamRankName: 'Coach',
+            performance: {
+              performanceScore: 72,
+              activityStreak: 8,
+              isActive: true
+            },
+            downline: []
+          },
+          {
+            _id: 'sample-l2-002',
+            name: 'Meera Kapoor',
+            email: 'meera.kapoor@mlmnetwork.com',
+            isActive: true,
+            currentLevel: 2,
+            teamRankName: 'Coach',
+            performance: {
+              performanceScore: 78,
+              activityStreak: 15,
+              isActive: true
+            },
+            downline: []
+          }
+        ]
+      },
+      {
+        _id: 'sample-l1-002',
+        name: 'Amit Patel',
+        email: 'amit.patel@mlmnetwork.com',
+        isActive: true,
+        currentLevel: 1,
+        teamRankName: 'Senior Coach',
+        performance: {
+          performanceScore: 92,
+          activityStreak: 25,
+          isActive: true
+        },
+        downline: [
+          {
+            _id: 'sample-l2-003',
+            name: 'Neha Gupta',
+            email: 'neha.gupta@mlmnetwork.com',
+            isActive: true,
+            currentLevel: 2,
+            teamRankName: 'Coach',
+            performance: {
+              performanceScore: 81,
+              activityStreak: 18,
+              isActive: true
+            },
+            downline: []
+          }
+        ]
+      },
+      {
+        _id: 'sample-l1-003',
+        name: 'Kavita Singh',
+        email: 'kavita.singh@mlmnetwork.com',
+        isActive: true,
+        currentLevel: 1,
+        teamRankName: 'Senior Coach',
+        performance: {
+          performanceScore: 88,
+          activityStreak: 20,
+          isActive: true
+        },
+        downline: []
+      },
+      {
+        _id: 'sample-l1-004',
+        name: 'Deepak Sharma',
+        email: 'deepak.sharma@mlmnetwork.com',
+        isActive: false,
+        currentLevel: 1,
+        teamRankName: 'Senior Coach',
+        performance: {
+          performanceScore: 62,
+          activityStreak: 4,
+          isActive: false
+        },
+        downline: []
+      }
+    ]
+  };
+  
+  // Request deduplication - prevent multiple simultaneous calls
+  const fetchingRef = useRef({
+    hierarchy: false,
+    downline: false,
+    teamPerformance: false,
+    reports: false
+  });
   
   // Tree Layout State
   const [nodeSpacing, setNodeSpacing] = useState(6);
@@ -2410,12 +2491,11 @@ const MLMDashboard = () => {
     endDate: ''
   });
 
-  const BASE_URL = 'https://api.funnelseye.com';
+  const BASE_URL = API_BASE_URL;
 
   // API Headers - ENHANCED with fallback authentication
   const getHeaders = () => {
     const authData = effectiveAuth;
-    console.log('🔑 Using auth data for headers:', authData);
     
     return {
       'Authorization': `Bearer ${authData.token}`,
@@ -2428,7 +2508,6 @@ const MLMDashboard = () => {
 
   // API Functions
   const fetchHierarchyLevels = async () => {
-    console.log('🚀 MLM API Call - fetchHierarchyLevels');
     try {
       const response = await fetch(`${BASE_URL}/api/advanced-mlm/hierarchy-levels`, {
         headers: getHeaders()
@@ -2443,7 +2522,11 @@ const MLMDashboard = () => {
   };
 
   const fetchDownline = async () => {
-    console.log('🚀 MLM API Call - fetchDownline');
+    // Prevent duplicate calls
+    if (fetchingRef.current.downline) {
+      return;
+    }
+    
     const authData = effectiveAuth;
     
     if (!authData.coachId || !authData.token) {
@@ -2452,7 +2535,7 @@ const MLMDashboard = () => {
       return;
     }
     
-    console.log('🔑 Using Coach ID:', authData.coachId);
+    fetchingRef.current.downline = true;
     setLoading(true);
     try {
       const response = await fetch(`${BASE_URL}/api/advanced-mlm/downline/${authData.coachId}?includePerformance=true`, {
@@ -2467,19 +2550,49 @@ const MLMDashboard = () => {
         
         setDownlineData(Array.isArray(downlineArray) ? downlineArray : []);
       } else {
-        throw new Error('Failed to fetch downline data');
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { message: errorText };
+        }
+        
+        // Check if it's a 404 with "no data" message (not a real error)
+        if (response.status === 404 && (
+          errorData.message?.toLowerCase().includes('no downline found') ||
+          errorData.message?.toLowerCase().includes('not found')
+        )) {
+          // No downline yet - this is normal, just set empty array (no error logging)
+          setDownlineData([]);
+        } else {
+          // Real error - only log if it's not a 404
+          if (response.status !== 404) {
+            console.error('💥 fetchDownline Error:', errorText);
+            toast('Failed to fetch downline data', 'error');
+          }
+          setDownlineData([]);
+        }
       }
     } catch (error) {
       console.error('💥 fetchDownline Error:', error);
-      toast('Failed to fetch downline data', 'error');
+      // Only show toast for network errors, not 404s
+      if (error.message && !error.message.includes('404')) {
+        toast('Failed to fetch downline data', 'error');
+      }
       setDownlineData([]);
     } finally {
+      fetchingRef.current.downline = false;
       setLoading(false);
     }
   };
 
   const fetchHierarchy = async () => {
-    console.log('🚀 MLM API Call - fetchHierarchy');
+    // Prevent duplicate calls
+    if (fetchingRef.current.hierarchy) {
+      return;
+    }
+    
     const authData = effectiveAuth;
     
     if (!authData.coachId || !authData.token) {
@@ -2488,7 +2601,7 @@ const MLMDashboard = () => {
       return;
     }
     
-    console.log('🔑 Using Coach ID:', authData.coachId);
+    fetchingRef.current.hierarchy = true;
     setLoading(true);
     try {
       // Use the downline API to get your team structure
@@ -2498,7 +2611,6 @@ const MLMDashboard = () => {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Raw Hierarchy Data:', data);
         
         // Process the data to match the expected structure
         let processedData;
@@ -2564,108 +2676,77 @@ const MLMDashboard = () => {
           }
         }
         
-        console.log('✅ Processed Hierarchy Data:', processedData);
         setHierarchyData(processedData);
       } else {
         const errorText = await response.text();
-        console.error('fetchHierarchy Failed - Status:', response.status);
-        console.error('fetchHierarchy Failed - Error:', errorText);
-        console.log('🔄 Using fallback hierarchy data due to API error');
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { message: errorText };
+        }
         
-        // Use comprehensive fallback data
-        const fallbackData = {
-          name: effectiveAuth.user?.name || 'Network Leader',
-          email: effectiveAuth.user?.email || 'leader@example.com',
-          _id: effectiveAuth.coachId || 'fallback-id',
-          isActive: true,
-          currentLevel: 0,
-          downlineHierarchy: [
-            {
-              _id: 'member-1',
-              name: 'John Smith',
-              email: 'john@example.com',
-              isActive: true,
-              currentLevel: 1,
-              performance: { score: 85, streak: 12 },
-              downlineHierarchy: [
-                {
-                  _id: 'member-2',
-                  name: 'Sarah Johnson',
-                  email: 'sarah@example.com',
-                  isActive: true,
-                  currentLevel: 2,
-                  performance: { score: 72, streak: 8 },
-                  downlineHierarchy: []
-                }
-              ]
-            },
-            {
-              _id: 'member-3',
-              name: 'Mike Wilson',
-              email: 'mike@example.com',
-              isActive: true,
-              currentLevel: 1,
-              performance: { score: 90, streak: 15 },
-              downlineHierarchy: []
-            }
-          ]
-        };
-        
-        setHierarchyData(fallbackData);
-        toast('Using demo data - API connection failed', 'info');
+        // Check if it's a 404 with "no data" message (not a real error)
+        if (response.status === 404 && (
+          errorData.message?.toLowerCase().includes('no downline found') ||
+          errorData.message?.toLowerCase().includes('no team members found') ||
+          errorData.message?.toLowerCase().includes('not found')
+        )) {
+          // Set empty hierarchy data (no downline yet) - this is expected, not an error
+          const emptyData = {
+            name: effectiveAuth.user?.name || user?.name || 'Network Leader',
+            email: effectiveAuth.user?.email || user?.email || '',
+            _id: effectiveAuth.coachId || user?.id,
+            isActive: true,
+            currentLevel: 0,
+            downlineHierarchy: []
+          };
+          setHierarchyData(emptyData);
+        } else {
+          // Real error - only log if it's not a 404
+          if (response.status !== 404) {
+            console.error('fetchHierarchy Failed - Status:', response.status);
+            console.error('fetchHierarchy Failed - Error:', errorText);
+            toast('Failed to fetch hierarchy data', 'error');
+          }
+          // Set empty data on error
+          const emptyData = {
+            name: effectiveAuth.user?.name || user?.name || 'Network Leader',
+            email: effectiveAuth.user?.email || user?.email || '',
+            _id: effectiveAuth.coachId || user?.id,
+            isActive: true,
+            currentLevel: 0,
+            downlineHierarchy: []
+          };
+          setHierarchyData(emptyData);
+        }
       }
     } catch (error) {
       console.error('💥 fetchHierarchy Error:', error);
-      console.log('🔄 Using fallback hierarchy data due to network error');
       
-      // Use comprehensive fallback data
-      const fallbackData = {
-        name: effectiveAuth.user?.name || 'Network Leader',
-        email: effectiveAuth.user?.email || 'leader@example.com',
-        _id: effectiveAuth.coachId || 'fallback-id',
+      // Set empty data on network error
+      const emptyData = {
+        name: effectiveAuth.user?.name || user?.name || 'Network Leader',
+        email: effectiveAuth.user?.email || user?.email || '',
+        _id: effectiveAuth.coachId || user?.id,
         isActive: true,
         currentLevel: 0,
-        downlineHierarchy: [
-          {
-            _id: 'member-1',
-            name: 'John Smith',
-            email: 'john@example.com',
-            isActive: true,
-            currentLevel: 1,
-            performance: { score: 85, streak: 12 },
-            downlineHierarchy: [
-              {
-                _id: 'member-2',
-                name: 'Sarah Johnson',
-                email: 'sarah@example.com',
-                isActive: true,
-                currentLevel: 2,
-                performance: { score: 72, streak: 8 },
-                downlineHierarchy: []
-              }
-            ]
-          },
-          {
-            _id: 'member-3',
-            name: 'Mike Wilson',
-            email: 'mike@example.com',
-            isActive: true,
-            currentLevel: 1,
-            performance: { score: 90, streak: 15 },
-            downlineHierarchy: []
-          }
-        ]
+        downlineHierarchy: []
       };
       
-      setHierarchyData(fallbackData);
-      toast('Using demo data - Network connection failed', 'info');
+      setHierarchyData(emptyData);
     } finally {
+      fetchingRef.current.hierarchy = false;
       setLoading(false);
     }
   };
 
   const fetchTeamPerformance = async () => {
-    console.log('🚀 MLM API Call - fetchTeamPerformance');
+    // Prevent duplicate calls
+    if (fetchingRef.current.teamPerformance) {
+      return;
+    }
+    
     const authData = effectiveAuth;
     
     if (!authData.coachId || !authData.token) {
@@ -2673,21 +2754,17 @@ const MLMDashboard = () => {
       return;
     }
     
-    console.log('🔑 Using Coach ID:', authData.coachId);
+    fetchingRef.current.teamPerformance = true;
     setLoading(true);
     try {
       const response = await fetch(`${BASE_URL}/api/advanced-mlm/team-performance/${authData.coachId}?period=monthly`, {
         headers: getHeaders()
       });
       
-      console.log('📊 Team Performance API Response Status:', response.status);
-      
       if (response.ok) {
         const data = await response.json();
-        console.log('📊 Raw Team Performance Data:', data);
         
         const processedData = data.success ? data.data : data;
-        console.log('📊 Processed Team Performance Data:', processedData);
         
         // Check if the data has the expected structure
         if (processedData && (
@@ -2697,35 +2774,51 @@ const MLMDashboard = () => {
           processedData.averagePerformanceScore !== undefined
         )) {
           setTeamPerformance(processedData);
-          console.log('✅ Team performance data set successfully');
         } else {
-          console.warn('⚠️ Team performance data missing expected fields, using fallback');
           setTeamPerformance(null);
         }
-        
-        // Log the stats that will be calculated
-        console.log('📊 Stats that will be calculated:', {
-          totalTeamSize: processedData?.totalTeamSize,
-          activeCoaches: processedData?.activeCoaches,
-          totalRevenue: processedData?.totalRevenue,
-          averagePerformanceScore: processedData?.averagePerformanceScore
-        });
       } else {
         const errorText = await response.text();
-        console.error('❌ Team Performance API Error Response:', errorText);
-        toast(`Failed to fetch team performance: ${response.status} ${response.statusText}`, 'error');
-        setTeamPerformance(null);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { message: errorText };
+        }
+        
+        // Check if it's a 404 with "no data" message (not a real error)
+        if (response.status === 404 && (
+          errorData.message?.toLowerCase().includes('no team members found') ||
+          errorData.message?.toLowerCase().includes('not found')
+        )) {
+          // No team members yet - this is normal, just set to null (no error logging)
+          setTeamPerformance(null);
+        } else {
+          // Real error - only log if it's not a 404
+          if (response.status !== 404) {
+            console.error('❌ Team Performance API Error Response:', errorText);
+            toast(`Failed to fetch team performance: ${response.status} ${response.statusText}`, 'error');
+          }
+          setTeamPerformance(null);
+        }
       }
     } catch (error) {
       console.error('💥 fetchTeamPerformance Error:', error);
       toast('Failed to fetch team performance', 'error');
       setTeamPerformance(null);
     } finally {
+      fetchingRef.current.teamPerformance = false;
       setLoading(false);
     }
   };
 
   const fetchReports = async () => {
+    // Prevent duplicate calls
+    if (fetchingRef.current.reports) {
+      return;
+    }
+    
+    fetchingRef.current.reports = true;
     setLoading(true);
     try {
       const response = await fetch(`${BASE_URL}/api/advanced-mlm/reports/${user?.id}?limit=10`, {
@@ -2734,11 +2827,157 @@ const MLMDashboard = () => {
       if (response.ok) {
         const data = await response.json();
         setReports(data.success ? data.data : data);
+      } else {
+        setReports([]);
       }
     } catch (error) {
       console.error('💥 fetchReports Error:', error);
       toast('Failed to fetch reports', 'error');
       setReports([]);
+    } finally {
+      fetchingRef.current.reports = false;
+      setLoading(false);
+    }
+  };
+
+  // Fetch Commissions
+  const fetchCommissions = async () => {
+    const authData = effectiveAuth;
+    if (!authData.coachId || !authData.token) {
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`${BASE_URL}/api/advanced-mlm/commissions/${authData.coachId}`, {
+        headers: getHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setCommissions(data.data.commissions || []);
+          setCommissionSummary(data.data.summary || { totalEarned: 0, pendingAmount: 0, totalCommissions: 0 });
+        }
+      }
+    } catch (error) {
+      console.error('💥 fetchCommissions Error:', error);
+      toast('Failed to fetch commissions', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch Admin Requests
+  const fetchAdminRequests = async () => {
+    const authData = effectiveAuth;
+    if (!authData.coachId || !authData.token) {
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`${BASE_URL}/api/advanced-mlm/admin-requests/${authData.coachId}`, {
+        headers: getHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAdminRequests(data.success ? (data.data || []) : []);
+      }
+    } catch (error) {
+      console.error('💥 fetchAdminRequests Error:', error);
+      toast('Failed to fetch admin requests', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch Coach Performance
+  const fetchCoachPerformance = async () => {
+    const authData = effectiveAuth;
+    if (!authData.coachId || !authData.token) {
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`${BASE_URL}/api/advanced-mlm/coach-performance/${authData.coachId}`, {
+        headers: getHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCoachPerformance(data.success ? data.data : data);
+      }
+    } catch (error) {
+      console.error('💥 fetchCoachPerformance Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch Sales Performance
+  const fetchSalesPerformance = async () => {
+    const authData = effectiveAuth;
+    if (!authData.coachId || !authData.token) {
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`${BASE_URL}/api/advanced-mlm/sales-performance/${authData.coachId}`, {
+        headers: getHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSalesPerformance(data.success ? data.data : data);
+      }
+    } catch (error) {
+      console.error('💥 fetchSalesPerformance Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch Client Performance
+  const fetchClientPerformance = async () => {
+    const authData = effectiveAuth;
+    if (!authData.coachId || !authData.token) {
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`${BASE_URL}/api/advanced-mlm/client-performance/${authData.coachId}`, {
+        headers: getHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setClientPerformance(data.success ? data.data : data);
+      }
+    } catch (error) {
+      console.error('💥 fetchClientPerformance Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch Lead Performance
+  const fetchLeadPerformance = async () => {
+    const authData = effectiveAuth;
+    if (!authData.coachId || !authData.token) {
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`${BASE_URL}/api/advanced-mlm/lead-performance/${authData.coachId}`, {
+        headers: getHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setLeadPerformance(data.success ? data.data : data);
+      }
+    } catch (error) {
+      console.error('💥 fetchLeadPerformance Error:', error);
     } finally {
       setLoading(false);
     }
@@ -2746,7 +2985,6 @@ const MLMDashboard = () => {
 
   const addCoach = async (e) => {
     e.preventDefault();
-    console.log('🚀 MLM API Call - addCoach');
     setLoading(true);
     try {
       const response = await fetch(`${BASE_URL}/api/advanced-mlm/downline`, {
@@ -2780,7 +3018,6 @@ const MLMDashboard = () => {
 
   const generateReport = async (e) => {
     e.preventDefault();
-    console.log('🚀 MLM API Call - generateReport');
     setLoading(true);
     try {
       const response = await fetch(`${BASE_URL}/api/advanced-mlm/generate-report`, {
@@ -2912,13 +3149,6 @@ const MLMDashboard = () => {
 
   // Stats calculation
   const stats = useMemo(() => {
-    console.log('📊 Calculating stats with:', {
-      teamPerformance,
-      filteredDownlineDataLength: filteredDownlineData.length,
-      activeDownlineCount: filteredDownlineData.filter(c => c.isActive).length,
-      hierarchyStats
-    });
-    
     // Use team performance data if available and valid, otherwise fallback to hierarchy data
     const totalTeam = teamPerformance?.totalTeamSize || hierarchyStats?.totalMembers || filteredDownlineData.length;
     const activeCoaches = teamPerformance?.activeCoaches || hierarchyStats?.activeMembers || filteredDownlineData.filter(c => c.isActive).length;
@@ -2926,36 +3156,64 @@ const MLMDashboard = () => {
     const avgPerformance = teamPerformance?.averagePerformanceScore || 0;
     
     const calculatedStats = { totalTeam, activeCoaches, totalRevenue, avgPerformance };
-    console.log('📊 Final calculated stats:', calculatedStats);
     
     return calculatedStats;
   }, [teamPerformance, filteredDownlineData, hierarchyStats]);
 
-  // Load data on component mount and tab change
+  // Load data on component mount - only fetch hierarchy levels
   useEffect(() => {
     fetchHierarchyLevels();
-    fetchHierarchy(); // Load hierarchy data on mount
-    fetchTeamPerformance(); // Load team performance data on mount
   }, []);
 
+  // Load data based on active tab - only once when tab changes
   useEffect(() => {
+    // Only fetch if not already fetching and data is not loaded
     switch (activeTab) {
       case 0: // Hierarchy
-        fetchHierarchy();
+        if (!fetchingRef.current.hierarchy && !hierarchyData) {
+          fetchHierarchy();
+        }
         break;
       case 1: // Direct Coaches
-        fetchDownline();
+        if (!fetchingRef.current.downline && downlineData.length === 0) {
+          fetchDownline();
+        }
         break;
       case 2: // Performance
-        fetchTeamPerformance();
+        if (!fetchingRef.current.teamPerformance && !teamPerformance) {
+          fetchTeamPerformance();
+        }
+        // Load sub-tab data based on performanceSubTab
+        if (performanceSubTab === 0 && !coachPerformance) {
+          fetchCoachPerformance();
+        } else if (performanceSubTab === 1 && !salesPerformance) {
+          fetchSalesPerformance();
+        } else if (performanceSubTab === 2 && !clientPerformance) {
+          fetchClientPerformance();
+        } else if (performanceSubTab === 3 && !leadPerformance) {
+          fetchLeadPerformance();
+        }
         break;
       case 3: // Reports
-        fetchReports();
+        if (!fetchingRef.current.reports && reports.length === 0) {
+          fetchReports();
+        }
+        break;
+      case 4: // Commissions
+        if (commissions.length === 0) {
+          fetchCommissions();
+        }
+        break;
+      case 5: // Admin Requests
+        if (adminRequests.length === 0) {
+          fetchAdminRequests();
+        }
         break;
       default:
         break;
     }
-  }, [activeTab, levelsToShow]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, performanceSubTab]); // Only depend on activeTab and performanceSubTab
 
   // Conditional rendering for loading
   if (loading && !downlineData.length && !hierarchyData && !teamPerformance) {
@@ -2966,154 +3224,120 @@ const MLMDashboard = () => {
     <Box bg="gray.100" minH="100vh" py={6} px={6}>
       <Box maxW="full" mx="auto">
         <VStack spacing={8} align="stretch" w="full">
-          {/* Beautiful Header */}
-          <Card bg="white" borderRadius="xl" boxShadow="lg" border="1px" borderColor="gray.200">
-            <CardHeader py={6}>
-              <VStack spacing={6} align="stretch">
-                {/* Main Header Section */}
-                <Flex justify="space-between" align="start" direction={{ base: 'column', lg: 'row' }} gap={6}>
-                  {/* Left Side - Title and Description */}
-                  <VStack align={{ base: 'center', lg: 'start' }} spacing={3} flex="1">
-                    <HStack spacing={3} justify={{ base: 'center', lg: 'start' }}>
-                      <Heading size="lg" color="gray.800" fontWeight="bold">
-                        MLM Coach Network
-                      </Heading>
-                      <Badge colorScheme="blue" variant="subtle" px={3} py={1} borderRadius="full">
-                        Professional Dashboard
-                      </Badge>
-                    </HStack>
-                    <Text color="gray.500" fontSize="sm" fontWeight="medium" textAlign={{ base: 'center', lg: 'start' }}>
-                      Manage your team hierarchy, track performance, and generate insights for maximum growth
+          {/* Minimalist Header */}
+          <Card bg="white" borderRadius="lg" boxShadow="sm" border="1px" borderColor="gray.100">
+            <CardBody p={8}>
+              <VStack spacing={8} align="stretch">
+                {/* Header Section */}
+                <Flex justify="space-between" align="center" direction={{ base: 'column', lg: 'row' }} gap={6}>
+                  {/* Left Side - Title */}
+                  <VStack align={{ base: 'center', lg: 'start' }} spacing={2} flex="1">
+                    <Heading 
+                      size="xl" 
+                      color="gray.900" 
+                      fontWeight="600"
+                      letterSpacing="-0.02em"
+                    >
+                      Coach Network
+                    </Heading>
+                    <Text 
+                      color="gray.600" 
+                      fontSize="sm" 
+                      fontWeight="normal"
+                      textAlign={{ base: 'center', lg: 'start' }}
+                      maxW="600px"
+                    >
+                      Manage your team hierarchy and track performance metrics
                     </Text>
-                    <HStack spacing={2} justify={{ base: 'center', lg: 'start' }}>
-                      <Badge colorScheme="green" variant="subtle" borderRadius="full">
-                        ✅ {stats.activeCoaches} Active Coaches
-                      </Badge>
-                      <Badge colorScheme="purple" variant="subtle" borderRadius="full">
-                        {stats.totalTeam} Total Team Members
-                      </Badge>
-                    </HStack>
                   </VStack>
                   
                   {/* Right Side - Action Buttons */}
-                  <VStack spacing={4} align={{ base: 'stretch', lg: 'end' }} minW={{ base: 'full', lg: 'auto' }}>
-                    <HStack spacing={3} justify={{ base: 'center', lg: 'end' }}>
-                      <Button
-                        leftIcon={<RepeatIcon />}
-                        variant="outline"
-                        size="md"
-                        onClick={() => {
-                          switch (activeTab) {
-                            case 0: fetchHierarchy(); break;
-                            case 1: fetchDownline(); break;
-                            case 2: fetchTeamPerformance(); break;
-                            case 3: fetchReports(); break;
-                          }
-                        }}
-                        _hover={{
-                          transform: 'translateY(-1px)',
-                          shadow: 'md',
-                          bg: 'gray.50'
-                        }}
-                        transition="all 0.2s"
-                        borderRadius="lg"
-                        isLoading={loading}
-                      >
-                        🔄 Refresh Data
-                      </Button>
-                      
-                      <Button
-                        leftIcon={<AddIcon />}
-                        bg="blue.500"
-                        color="white"
-                        size="lg"
-                        onClick={onAddModalOpen}
-                        borderRadius="xl"
-                        px={8}
-                        py={3}
-                        _hover={{ 
-                          bg: "blue.600",
-                          transform: 'translateY(-2px)', 
-                          boxShadow: 'xl',
-                          filter: 'brightness(1.05)'
-                        }}
-                        _active={{ 
-                          bg: "blue.700",
-                          transform: 'translateY(0px)',
-                          boxShadow: 'lg'
-                        }}
-                        transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-                        fontWeight="bold"
-                        fontSize="md"
-                      >
-                         Add New Coach
-                      </Button>
-                    </HStack>
-                  </VStack>
+                  <HStack spacing={3} justify={{ base: 'center', lg: 'end' }}>
+                    {/* Toggle for Dummy/Actual Data - Only show in Hierarchy tab */}
+                    {activeTab === 0 && (
+                      <HStack spacing={2} align="center" px={3} py={2} bg="gray.50" borderRadius="7px">
+                        <Text fontSize="xs" color="gray.600" fontWeight="500" whiteSpace="nowrap">
+                          {showDummyData ? 'Demo' : 'Actual'}
+                        </Text>
+                        <Switch
+                          isChecked={showDummyData}
+                          onChange={(e) => setShowDummyData(e.target.checked)}
+                          colorScheme="blue"
+                          size="sm"
+                        />
+                      </HStack>
+                    )}
+                    <IconButton
+                      icon={<RepeatIcon />}
+                      variant="ghost"
+                      size="md"
+                      onClick={() => {
+                        switch (activeTab) {
+                          case 0: fetchHierarchy(); break;
+                          case 1: fetchDownline(); break;
+                          case 2: fetchTeamPerformance(); break;
+                          case 3: fetchReports(); break;
+                        }
+                      }}
+                      _hover={{
+                        bg: 'gray.50'
+                      }}
+                      transition="all 0.2s"
+                      borderRadius="7px"
+                      isLoading={loading}
+                      aria-label="Refresh"
+                    />
+                    
+                    <Button
+                      leftIcon={<AddIcon />}
+                      colorScheme="blue"
+                      size="md"
+                      onClick={onAddModalOpen}
+                      borderRadius="7px"
+                      px={6}
+                    >
+                      Add Coach
+                    </Button>
+                  </HStack>
                 </Flex>
                 
-                {/* Stats Cards - Professional Design */}
-                <Box>
-                  <HStack justify="space-between" align="center" mb={4}>
-                    <Text fontSize="lg" fontWeight="semibold" color="gray.700">
-                      Team Performance Overview
-                    </Text>
-                    <HStack spacing={2}>
-                      <Badge 
-                        colorScheme={teamPerformance ? "blue" : "orange"} 
-                        variant="subtle" 
-                        px={3} 
-                        py={1} 
-                        borderRadius="full"
-                      >
-                        {teamPerformance ? "📡 Real-time Data" : "📊 Hierarchy Data"}
-                      </Badge>
-                      {loading && (
-                        <Spinner size="sm" color="blue.500" />
-                      )}
-                    </HStack>
-                  </HStack>
-                  <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={4}>
-                    <StatsCard
-                      title="Total Team Size"
-                      value={stats.totalTeam}
-                      icon={<Box as={FiUsers} size="24px" />}
-                      color="blue"
-                      trend={12}
-                      description="Active team members"
-                      isLoading={loading}
-                    />
-                    <StatsCard
-                      title="Active Coaches"
-                      value={stats.activeCoaches}
-                      icon={<CheckCircleIcon />}
-                      color="green"
-                      trend={8}
-                      description="Currently active"
-                      isLoading={loading}
-                    />
-                    <StatsCard
-                      title="Team Revenue"
-                      value={`$${stats.totalRevenue.toLocaleString()}`}
-                      icon={<Box as={FiTrendingUp} size="24px" />}
-                      color="purple"
-                      trend={15}
-                      description="Monthly total"
-                      isLoading={loading}
-                    />
-                    <StatsCard
-                      title="Avg Performance"
-                      value={`${stats.avgPerformance}%`}
-                      icon={<Box as={FiTarget} size="24px" />}
-                      color="orange"
-                      trend={5}
-                      description="Team average"
-                      isLoading={loading}
-                    />
-                  </SimpleGrid>
-                </Box>
+                {/* Stats Cards - Minimalist Design */}
+                <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={4}>
+                  <StatsCard
+                    title="Total Team Size"
+                    value={stats.totalTeam}
+                    icon={<Box as={FiUsers} size="20px" />}
+                    color="blue"
+                    description="Active team members"
+                    isLoading={loading}
+                  />
+                  <StatsCard
+                    title="Active Coaches"
+                    value={stats.activeCoaches}
+                    icon={<CheckCircleIcon />}
+                    color="green"
+                    description="Currently active"
+                    isLoading={loading}
+                  />
+                  <StatsCard
+                    title="Team Revenue"
+                    value={`$${stats.totalRevenue.toLocaleString()}`}
+                    icon={<Box as={FiTrendingUp} size="20px" />}
+                    color="purple"
+                    description="Monthly total"
+                    isLoading={loading}
+                  />
+                  <StatsCard
+                    title="Avg Performance"
+                    value={`${stats.avgPerformance}%`}
+                    icon={<Box as={FiTarget} size="20px" />}
+                    color="orange"
+                    description="Team average"
+                    isLoading={loading}
+                  />
+                </SimpleGrid>
               </VStack>
-            </CardHeader>
+            </CardBody>
           </Card>
 
           {/* Bulk Actions Toolbar */}
@@ -3173,128 +3397,806 @@ const MLMDashboard = () => {
           )}
 
           {/* Main Content Tabs */}
-          <Card bg="white" borderRadius="xl" boxShadow="lg" border="1px" borderColor="gray.200">
-            <Tabs index={activeTab} onChange={setActiveTab} colorScheme="blue" variant="enclosed">
-              <TabList borderBottomColor="gray.200" bg="gray.50" borderTopRadius="xl">
+          <Card bg="white" borderRadius="lg" boxShadow="sm" border="1px" borderColor="gray.100">
+            <Tabs index={activeTab} onChange={setActiveTab} colorScheme="blue">
+              <TabList borderBottom="1px" borderColor="gray.200" px={6} pt={4}>
                 <Tab 
                   _selected={{ 
                     color: 'blue.600', 
-                    borderBottomColor: 'blue.600',
-                    bg: 'white',
-                    borderTopRadius: 'lg'
+                    borderBottom: '2px solid',
+                    borderColor: 'blue.600',
                   }}
-                  fontWeight="medium"
-                  px={6}
-                  py={4}
+                  fontWeight="500"
+                  fontSize="sm"
+                  px={4}
+                  py={3}
+                  color="gray.600"
+                  _hover={{ color: 'gray.900' }}
                 >
-                  <HStack spacing={2}>
-                    <Text fontSize="lg">●</Text>
-                    <Text>Team Hierarchy</Text>
-                  </HStack>
+                  Hierarchy
                 </Tab>
                 <Tab 
                   _selected={{ 
                     color: 'blue.600', 
-                    borderBottomColor: 'blue.600',
-                    bg: 'white',
-                    borderTopRadius: 'lg'
+                    borderBottom: '2px solid',
+                    borderColor: 'blue.600',
                   }}
-                  fontWeight="medium"
-                  px={6}
-                  py={4}
+                  fontWeight="500"
+                  fontSize="sm"
+                  px={4}
+                  py={3}
+                  color="gray.600"
+                  _hover={{ color: 'gray.900' }}
                 >
-                  <HStack spacing={2}>
-                    <Box as={FiUsers} />
-                    <Text>Direct Coaches ({filteredDownlineData.length})</Text>
-                  </HStack>
+                  Direct Coaches
                 </Tab>
                 <Tab 
                   _selected={{ 
                     color: 'blue.600', 
-                    borderBottomColor: 'blue.600',
-                    bg: 'white',
-                    borderTopRadius: 'lg'
+                    borderBottom: '2px solid',
+                    borderColor: 'blue.600',
                   }}
-                  fontWeight="medium"
-                  px={6}
-                  py={4}
+                  fontWeight="500"
+                  fontSize="sm"
+                  px={4}
+                  py={3}
+                  color="gray.600"
+                  _hover={{ color: 'gray.900' }}
                 >
-                  <HStack spacing={2}>
-                    <Box as={FiTrendingUp} />
-                    <Text>Performance</Text>
-                  </HStack>
+                  Performance
                 </Tab>
                 <Tab 
                   _selected={{ 
                     color: 'blue.600', 
-                    borderBottomColor: 'blue.600',
-                    bg: 'white',
-                    borderTopRadius: 'lg'
+                    borderBottom: '2px solid',
+                    borderColor: 'blue.600',
                   }}
-                  fontWeight="medium"
-                  px={6}
-                  py={4}
+                  fontWeight="500"
+                  fontSize="sm"
+                  px={4}
+                  py={3}
+                  color="gray.600"
+                  _hover={{ color: 'gray.900' }}
                 >
-                  <HStack spacing={2}>
-                    <Box as={FiFileText} />
-                    <Text>Reports ({reports.length})</Text>
-                  </HStack>
+                  Reports
+                </Tab>
+                <Tab 
+                  _selected={{ 
+                    color: 'blue.600', 
+                    borderBottom: '2px solid',
+                    borderColor: 'blue.600',
+                  }}
+                  fontWeight="500"
+                  fontSize="sm"
+                  px={4}
+                  py={3}
+                  color="gray.600"
+                  _hover={{ color: 'gray.900' }}
+                >
+                  Commissions
+                </Tab>
+                <Tab 
+                  _selected={{ 
+                    color: 'blue.600', 
+                    borderBottom: '2px solid',
+                    borderColor: 'blue.600',
+                  }}
+                  fontWeight="500"
+                  fontSize="sm"
+                  px={4}
+                  py={3}
+                  color="gray.600"
+                  _hover={{ color: 'gray.900' }}
+                >
+                  Admin Requests
                 </Tab>
               </TabList>
 
               <TabPanels>
-                {/* Enhanced Hierarchy Tab */}
-                <TabPanel p={6}>
-                  <VStack spacing={6} align="stretch">
-                    <Flex justify="space-between" align="center">
-                      <VStack align="start" spacing={1}>
-                        <Heading size="md" color="gray.800">Team Hierarchy Structure</Heading>
-                        <Text fontSize="sm" color="gray.600">
-                          Complete visualization of your MLM team structure and relationships
-                        </Text>
-                      </VStack>
-                      <HStack spacing={4}>
-                        <FormControl w="200px">
-                          <FormLabel mb={1} fontSize="sm" color="gray.600">Hierarchy Depth</FormLabel>
-                          <Select 
-                            value={levelsToShow} 
-                            onChange={(e) => setLevelsToShow(parseInt(e.target.value))}
-                            bg="white"
-                            borderColor="gray.300"
-                            _hover={{ borderColor: 'gray.400' }}
-                            _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px #3182ce' }}
-                          >
-                            <option value={3}>3 Levels Deep</option>
-                            <option value={5}>5 Levels Deep</option>
-                            <option value={10}>10 Levels Deep</option>
-                            <option value={0}>All Levels</option>
-                          </Select>
-                        </FormControl>
-                        <Button 
-                          variant="outline" 
-                          onClick={fetchHierarchy} 
-                          isLoading={loading}
-                          leftIcon={<RepeatIcon />}
-                          colorScheme="blue"
-                          _hover={{ bg: 'blue.50' }}
-                        >
-                           Refresh Hierarchy
-                        </Button>
-                      </HStack>
-                    </Flex>
+                {/* Hierarchy Tab - Redesigned */}
+                <TabPanel p={0}>
+                  <Box p={6}>
+                    {loading && !hierarchyData ? (
+                      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                          <Card key={i} borderRadius="7px" border="1px" borderColor="gray.200">
+                            <CardBody>
+                              <Skeleton height="120px" />
+                            </CardBody>
+                          </Card>
+                        ))}
+                      </SimpleGrid>
+                    ) : (() => {
+                      // Determine which data to use based on toggle
+                      const dataToUse = showDummyData ? sampleHierarchyData : hierarchyData;
+                      
+                      // Get the members list - handle both downlineHierarchy and downline structures
+                      const members = dataToUse?.downlineHierarchy || dataToUse?.downline || [];
+                      const hasMembers = Array.isArray(members) && members.length > 0;
+                      
+                      if (!hasMembers) {
+                        return (
+                          <Card bg="gray.50" border="1px" borderColor="gray.200" borderRadius="7px">
+                            <CardBody py={12}>
+                              <Center>
+                                <VStack spacing={4}>
+                                  <Box as={FiUsers} size={48} color="gray.400" />
+                                  <VStack spacing={2}>
+                                    <Text fontSize="lg" fontWeight="600" color="gray.700">
+                                      No Team Members Yet
+                                    </Text>
+                                    <Text fontSize="sm" color="gray.500" textAlign="center" maxW="400px">
+                                      Start building your network by adding your first team member
+                                    </Text>
+                                  </VStack>
+                                  <Button
+                                    leftIcon={<AddIcon />}
+                                    colorScheme="blue"
+                                    onClick={onAddModalOpen}
+                                    borderRadius="7px"
+                                    mt={2}
+                                  >
+                                    Add First Team Member
+                                  </Button>
+                                </VStack>
+                              </Center>
+                            </CardBody>
+                          </Card>
+                        );
+                      }
+                      
+                      return (
+                        <VStack spacing={6} align="stretch">
+                          {/* Header */}
+                          <Flex justify="space-between" align="center">
+                            <VStack align="start" spacing={1}>
+                              <HStack spacing={3} align="center">
+                                <Text fontSize="sm" fontWeight="600" color="gray.700" textTransform="uppercase" letterSpacing="wide">
+                                  Team Structure
+                                </Text>
+                                {showDummyData && (
+                                  <Badge colorScheme="orange" variant="subtle" fontSize="xs" borderRadius="full" px={2}>
+                                    Demo Data
+                                  </Badge>
+                                )}
+                              </HStack>
+                              <Text fontSize="xs" color="gray.500">
+                                {members.length} direct member{members.length !== 1 ? 's' : ''}
+                              </Text>
+                            </VStack>
+                            <HStack spacing={2}>
+                              <Box position="relative">
+                                <Select 
+                                  value={levelsToShow} 
+                                  onChange={(e) => setLevelsToShow(parseInt(e.target.value))}
+                                  size="sm"
+                                  w="150px"
+                                  borderRadius="7px"
+                                  borderColor="gray.300"
+                                  bg="white"
+                                  fontWeight="500"
+                                  _hover={{
+                                    borderColor: 'blue.400',
+                                    boxShadow: '0 0 0 1px rgba(66, 153, 225, 0.2)',
+                                    transform: 'translateY(-1px)'
+                                  }}
+                                  _focus={{
+                                    borderColor: 'blue.500',
+                                    boxShadow: '0 0 0 3px rgba(66, 153, 225, 0.1)',
+                                    outline: 'none'
+                                  }}
+                                  _active={{
+                                    borderColor: 'blue.500'
+                                  }}
+                                  transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                                  cursor="pointer"
+                                  sx={{
+                                    '& > option': {
+                                      background: 'white !important',
+                                      color: 'gray.700',
+                                      padding: '10px',
+                                      fontSize: '14px',
+                                      fontWeight: '500',
+                                      transition: 'all 0.15s ease',
+                                      '&:hover': {
+                                        background: 'blue.50 !important',
+                                        color: 'blue.700'
+                                      },
+                                      '&:checked': {
+                                        background: 'blue.100 !important',
+                                        color: 'blue.800',
+                                        fontWeight: '600'
+                                      },
+                                      '&:focus': {
+                                        background: 'blue.50 !important'
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <option value={1}>Level 1</option>
+                                  <option value={2}>Level 2</option>
+                                  <option value={3}>Level 3</option>
+                                  <option value={0}>All Levels</option>
+                                </Select>
+                              </Box>
+                              <IconButton
+                                icon={<RepeatIcon />}
+                                size="sm"
+                                variant="ghost"
+                                onClick={fetchHierarchy}
+                                isLoading={loading}
+                                aria-label="Refresh"
+                                borderRadius="7px"
+                              />
+                            </HStack>
+                          </Flex>
 
-                    <HierarchyOverview
-                      hierarchyData={hierarchyData}
-                      loading={loading}
-                      onViewCoach={openViewModal}
-                      onEditCoach={openEditModal}
-                      levelsToShow={levelsToShow}
-                      nodeSpacing={nodeSpacing}
-                      treeHeight={treeHeight}
-                      setNodeSpacing={setNodeSpacing}
-                      setTreeHeight={setTreeHeight}
-                    />
-                  </VStack>
+                          {/* Professional Tree View with Graph Paper Background and Zoom */}
+                          <Card border="1px" borderColor="gray.200" borderRadius="7px" overflow="hidden">
+                            {/* Zoom Controls */}
+                            <HStack 
+                              justify="space-between" 
+                              align="center"
+                              p={3} 
+                              bg="gray.50" 
+                              borderBottom="1px" 
+                              borderColor="gray.200"
+                              spacing={4}
+                            >
+                              <HStack spacing={3} flex={1} maxW="400px">
+                                <Text fontSize="xs" color="gray.600" fontWeight="500" minW="60px">
+                                  Zoom: {Math.round(treeZoom * 100)}%
+                                </Text>
+                                <Slider
+                                  aria-label="Zoom slider"
+                                  value={treeZoom}
+                                  min={0.5}
+                                  max={2}
+                                  step={0.1}
+                                  onChange={(val) => setTreeZoom(val)}
+                                  colorScheme="blue"
+                                  flex={1}
+                                >
+                                  <SliderTrack>
+                                    <SliderFilledTrack />
+                                  </SliderTrack>
+                                  <SliderThumb />
+                                </Slider>
+                              </HStack>
+                              <IconButton
+                                icon={<FiMaximize2 />}
+                                size="sm"
+                                onClick={() => setTreeZoom(1)}
+                                aria-label="Reset Zoom"
+                                variant="ghost"
+                                colorScheme="blue"
+                              />
+                            </HStack>
+                            
+                            {/* Tree Container with Graph Paper Background */}
+                            <Box
+                              position="relative"
+                              overflow="auto"
+                              bg="white"
+                              minH="600px"
+                              cursor={isDragging ? 'grabbing' : 'default'}
+                              onMouseDown={(e) => {
+                                // Only start dragging if clicking on empty area (not on interactive elements)
+                                const target = e.target;
+                                const isInteractive = target.closest('button') || 
+                                                     target.closest('[role="button"]') || 
+                                                     target.closest('img') ||
+                                                     target.closest('svg') ||
+                                                     target.closest('.tooltip-container');
+                                
+                                if (!isInteractive) {
+                                  setIsDragging(true);
+                                  setDragStart({
+                                    x: e.clientX - treePosition.x,
+                                    y: e.clientY - treePosition.y
+                                  });
+                                  e.preventDefault();
+                                }
+                              }}
+                              onMouseMove={(e) => {
+                                if (isDragging) {
+                                  const newX = e.clientX - dragStart.x;
+                                  const newY = e.clientY - dragStart.y;
+                                  setTreePosition({
+                                    x: newX,
+                                    y: newY
+                                  });
+                                }
+                              }}
+                              onMouseUp={() => setIsDragging(false)}
+                              onMouseLeave={() => setIsDragging(false)}
+                              sx={{
+                                backgroundImage: `
+                                  linear-gradient(to right, rgba(156, 163, 175, 0.1) 1px, transparent 1px),
+                                  linear-gradient(to bottom, rgba(156, 163, 175, 0.1) 1px, transparent 1px)
+                                `,
+                                backgroundSize: '20px 20px',
+                                backgroundPosition: `${treePosition.x % 20}px ${treePosition.y % 20}px, ${treePosition.x % 20}px ${treePosition.y % 20}px`,
+                                // Custom scrollbar styling - minimal and elegant
+                                '&::-webkit-scrollbar': {
+                                  width: '10px',
+                                  height: '10px',
+                                },
+                                '&::-webkit-scrollbar-track': {
+                                  background: 'rgba(0, 0, 0, 0.02)',
+                                  borderRadius: '5px',
+                                },
+                                '&::-webkit-scrollbar-thumb': {
+                                  background: 'rgba(156, 163, 175, 0.2)',
+                                  borderRadius: '5px',
+                                  border: '2px solid transparent',
+                                  backgroundClip: 'padding-box',
+                                  '&:hover': {
+                                    background: 'rgba(156, 163, 175, 0.35)',
+                                    backgroundClip: 'padding-box',
+                                  },
+                                },
+                                // Firefox scrollbar
+                                scrollbarWidth: 'thin',
+                                scrollbarColor: 'rgba(156, 163, 175, 0.2) rgba(0, 0, 0, 0.02)',
+                              }}
+                            >
+                              <Box
+                                className="tree-background"
+                                minW="fit-content"
+                                position="relative"
+                                py={6}
+                                px={8}
+                                transform={`scale(${treeZoom}) translate(${treePosition.x / treeZoom}px, ${treePosition.y / treeZoom}px)`}
+                                transformOrigin="top left"
+                                transition={isDragging ? 'none' : 'transform 0.05s ease-out'}
+                                style={{
+                                  userSelect: 'none',
+                                }}
+                              >
+                                <VStack spacing={12} align="stretch">
+                                  {/* Root Node - Head Coach */}
+                                  <Box textAlign="center" position="relative" zIndex={3} id="root-node">
+                                    <Tooltip
+                                      label={
+                                        <Box p={3}>
+                                          <VStack align="start" spacing={2}>
+                                            <HStack spacing={2}>
+                                              <Text fontWeight="600" color="white" fontSize="sm">
+                                                {dataToUse.name || 'You'}
+                                              </Text>
+                                              <Box w={2} h={2} bg="green.500" borderRadius="full" />
+                                            </HStack>
+                                            <Text fontSize="xs" color="gray.200">
+                                              Head Coach • Level 0
+                                            </Text>
+                                            {dataToUse.email && (
+                                              <Text fontSize="xs" color="gray.300">
+                                                {dataToUse.email}
+                                              </Text>
+                                            )}
+                                            <HStack spacing={4} pt={2} borderTop="1px" borderColor="gray.600">
+                                              <VStack spacing={0} align="start">
+                                                <Text fontSize="xs" color="gray.400">Team Size</Text>
+                                                <Text fontSize="sm" fontWeight="700" color="white">
+                                                  {members.length}
+                                                </Text>
+                                              </VStack>
+                                              {dataToUse.performance?.performanceScore !== undefined && (
+                                                <VStack spacing={0} align="start">
+                                                  <Text fontSize="xs" color="gray.400">Performance</Text>
+                                                  <Text fontSize="sm" fontWeight="700" color="white">
+                                                    {dataToUse.performance.performanceScore}%
+                                                  </Text>
+                                                </VStack>
+                                              )}
+                                            </HStack>
+                                          </VStack>
+                                        </Box>
+                                      }
+                                      bg="gray.800"
+                                      color="white"
+                                      borderRadius="7px"
+                                      placement="top"
+                                      hasArrow
+                                    >
+                                      <Box
+                                        as="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openViewModal(dataToUse);
+                                        }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        cursor="pointer"
+                                        _hover={{ transform: 'scale(1.1)' }}
+                                        transition="all 0.2s"
+                                        position="relative"
+                                        zIndex={3}
+                                        id="root-avatar"
+                                      >
+                                        <Box position="relative" display="inline-block">
+                                          <Image
+                                            src={`https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70) + 1}`}
+                                            alt={dataToUse.name || 'You'}
+                                            borderRadius="full"
+                                            boxSize="80px"
+                                            border="4px solid"
+                                            borderColor="gray.400"
+                                            boxShadow="0 4px 12px rgba(0,0,0,0.15)"
+                                            objectFit="cover"
+                                            fallbackSrc="https://via.placeholder.com/80"
+                                          />
+                                          <Box
+                                            position="absolute"
+                                            bottom="-2px"
+                                            right="-2px"
+                                            w={4}
+                                            h={4}
+                                            bg="green.500"
+                                            borderRadius="full"
+                                            border="2px solid"
+                                            borderColor="white"
+                                          />
+                                        </Box>
+                                      </Box>
+                                    </Tooltip>
+                                    <Text fontSize="sm" color="gray.700" mt={3} fontWeight="600">
+                                      {dataToUse.name || 'You'}
+                                    </Text>
+                                    <Text fontSize="xs" color="gray.500">
+                                      Head Coach
+                                    </Text>
+                                  </Box>
+
+                                {/* Level 1 Members */}
+                                {members.length > 0 && (
+                                  <Box position="relative" mt={2}>
+                                    {/* SVG Connection Lines - Properly Connected */}
+                                    <Box
+                                      position="absolute"
+                                      top="-80px"
+                                      left="0"
+                                      right="0"
+                                      height="80px"
+                                      zIndex={1}
+                                      pointerEvents="none"
+                                    >
+                                      <svg
+                                        width="100%"
+                                        height="100%"
+                                        style={{ position: 'absolute', top: 0, left: 0 }}
+                                      >
+                                        {/* Vertical line from root to horizontal branch */}
+                                        <line
+                                          x1="50%"
+                                          y1="0"
+                                          x2="50%"
+                                          y2="40"
+                                          stroke="#9CA3AF"
+                                          strokeWidth="2.5"
+                                        />
+                                        {/* Horizontal line connecting all level 1 members */}
+                                        {members.length > 1 && (
+                                          <line
+                                            x1={`${100 / (members.length * 2)}%`}
+                                            y1="40"
+                                            x2={`${100 - (100 / (members.length * 2))}%`}
+                                            y2="40"
+                                            stroke="#9CA3AF"
+                                            strokeWidth="2.5"
+                                          />
+                                        )}
+                                        {/* Vertical lines from horizontal branch to each member avatar */}
+                                        {members.map((_, index) => {
+                                          const colCount = members.length > 4 ? 5 : members.length;
+                                          const colWidth = 100 / colCount;
+                                          const xPos = (index % colCount) * colWidth + colWidth / 2;
+                                          return (
+                                            <line
+                                              key={`line-${index}`}
+                                              x1={`${xPos}%`}
+                                              y1="40"
+                                              x2={`${xPos}%`}
+                                              y2="80"
+                                              stroke="#9CA3AF"
+                                              strokeWidth="2.5"
+                                            />
+                                          );
+                                        })}
+                                      </svg>
+                                    </Box>
+
+                                    <SimpleGrid 
+                                      columns={{ base: 2, md: members.length > 3 ? 4 : members.length, lg: members.length > 4 ? 5 : members.length }} 
+                                      spacing={6}
+                                      mt={10}
+                                    >
+                                      {members
+                                        .filter((_, index) => levelsToShow === 0 || levelsToShow >= 1)
+                                        .map((member, index) => {
+                                          const memberDownline = member.downlineHierarchy || member.downline || [];
+                                          const hasChildren = memberDownline.length > 0;
+                                          const imageId = (member._id ? member._id.toString().charCodeAt(0) : index) % 70 + 1;
+                                          
+                                          return (
+                                            <Box key={member._id || index} position="relative" textAlign="center" id={`member-${index}`}>
+                                              <VStack spacing={2}>
+                                                <Tooltip
+                                                  label={
+                                                    <Box p={3}>
+                                                      <VStack align="start" spacing={2}>
+                                                        <HStack spacing={2}>
+                                                          <Text fontWeight="600" color="white" fontSize="sm">
+                                                            {member.name}
+                                                          </Text>
+                                                          {member.isActive !== false ? (
+                                                            <Box w={2} h={2} bg="green.500" borderRadius="full" />
+                                                          ) : (
+                                                            <Box w={2} h={2} bg="gray.400" borderRadius="full" />
+                                                          )}
+                                                        </HStack>
+                                                        <Text fontSize="xs" color="gray.200">
+                                                          Level {member.currentLevel || 1}
+                                                        </Text>
+                                                        {member.email && (
+                                                          <Text fontSize="xs" color="gray.300">
+                                                            {member.email}
+                                                          </Text>
+                                                        )}
+                                                        <HStack spacing={4} pt={2} borderTop="1px" borderColor="gray.600">
+                                                          {member.performance?.performanceScore !== undefined && (
+                                                            <VStack spacing={0} align="start">
+                                                              <Text fontSize="xs" color="gray.400">Performance</Text>
+                                                              <Text fontSize="sm" fontWeight="700" color="white">
+                                                                {member.performance.performanceScore}%
+                                                              </Text>
+                                                            </VStack>
+                                                          )}
+                                                          {hasChildren && (
+                                                            <VStack spacing={0} align="start">
+                                                              <Text fontSize="xs" color="gray.400">Team</Text>
+                                                              <Text fontSize="sm" fontWeight="700" color="white">
+                                                                {memberDownline.length}
+                                                              </Text>
+                                                            </VStack>
+                                                          )}
+                                                        </HStack>
+                                                      </VStack>
+                                                    </Box>
+                                                  }
+                                                  bg="gray.800"
+                                                  color="white"
+                                                  borderRadius="7px"
+                                                  placement="top"
+                                                  hasArrow
+                                                >
+                                                  <Box
+                                                    as="button"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      openViewModal(member);
+                                                    }}
+                                                    onMouseDown={(e) => e.stopPropagation()}
+                                                    cursor="pointer"
+                                                    _hover={{ transform: 'scale(1.1)' }}
+                                                    transition="all 0.2s"
+                                                    position="relative"
+                                                    zIndex={2}
+                                                    id={`member-avatar-${index}`}
+                                                  >
+                                                    <Box position="relative" display="inline-block">
+                                                      <Image
+                                                        src={`https://i.pravatar.cc/150?img=${imageId}`}
+                                                        alt={member.name}
+                                                        borderRadius="full"
+                                                        boxSize="64px"
+                                                        border="3px solid"
+                                                        borderColor={member.isActive !== false ? "green.400" : "gray.400"}
+                                                        boxShadow="0 2px 8px rgba(0,0,0,0.1)"
+                                                        objectFit="cover"
+                                                        fallbackSrc="https://via.placeholder.com/64"
+                                                      />
+                                                      <Box
+                                                        position="absolute"
+                                                        bottom="-2px"
+                                                        right="-2px"
+                                                        w={3}
+                                                        h={3}
+                                                        bg={member.isActive !== false ? "green.500" : "gray.400"}
+                                                        borderRadius="full"
+                                                        border="2px solid"
+                                                        borderColor="white"
+                                                      />
+                                                    </Box>
+                                                  </Box>
+                                                </Tooltip>
+                                                <Text fontSize="xs" color="gray.700" mt={1} fontWeight="500" noOfLines={1} maxW="80px" mx="auto">
+                                                  {member.name}
+                                                </Text>
+                                                <Text fontSize="xs" color="gray.500">
+                                                  L{member.currentLevel || 1}
+                                                </Text>
+                                              </VStack>
+
+                                              {/* Level 2 Members - Nested */}
+                                              {hasChildren && levelsToShow >= 2 && memberDownline.length > 0 && (
+                                                <Box mt={8} position="relative">
+                                                  {/* SVG Connection Lines for Level 2 - Properly Connected */}
+                                                  <Box
+                                                    position="absolute"
+                                                    top="-50px"
+                                                    left="50%"
+                                                    transform="translateX(-50%)"
+                                                    width={`${Math.min(memberDownline.length * 70, 350)}px`}
+                                                    height="50px"
+                                                    zIndex={1}
+                                                    pointerEvents="none"
+                                                  >
+                                                    <svg
+                                                      width="100%"
+                                                      height="100%"
+                                                      style={{ position: 'absolute', top: 0, left: 0 }}
+                                                    >
+                                                      {/* Vertical line from level 1 member */}
+                                                      <line
+                                                        x1="50%"
+                                                        y1="0"
+                                                        x2="50%"
+                                                        y2="25"
+                                                        stroke="#9CA3AF"
+                                                        strokeWidth="2.5"
+                                                      />
+                                                      {/* Horizontal line for level 2 */}
+                                                      {memberDownline.length > 1 && (
+                                                        <line
+                                                          x1={`${50 - ((memberDownline.length - 1) * 30)}%`}
+                                                          y1="25"
+                                                          x2={`${50 + ((memberDownline.length - 1) * 30)}%`}
+                                                          y2="25"
+                                                          stroke="#9CA3AF"
+                                                          strokeWidth="2.5"
+                                                        />
+                                                      )}
+                                                      {/* Vertical lines to each level 2 member */}
+                                                      {memberDownline.map((_, childIndex) => {
+                                                        if (memberDownline.length === 1) {
+                                                          return (
+                                                            <line
+                                                              key={`line-l2-${childIndex}`}
+                                                              x1="50%"
+                                                              y1="25"
+                                                              x2="50%"
+                                                              y2="50"
+                                                              stroke="#9CA3AF"
+                                                              strokeWidth="2.5"
+                                                            />
+                                                          );
+                                                        }
+                                                        const spacing = 100 / (memberDownline.length - 1);
+                                                        const xPos = childIndex * spacing;
+                                                        return (
+                                                          <line
+                                                            key={`line-l2-${childIndex}`}
+                                                            x1={`${xPos}%`}
+                                                            y1="25"
+                                                            x2={`${xPos}%`}
+                                                            y2="50"
+                                                            stroke="#9CA3AF"
+                                                            strokeWidth="2.5"
+                                                          />
+                                                        );
+                                                      })}
+                                                    </svg>
+                                                  </Box>
+
+                                                  <HStack spacing={3} justify="center" flexWrap="wrap" mt={6}>
+                                                    {memberDownline
+                                                      .filter((_, idx) => levelsToShow === 0 || idx < 6)
+                                                      .map((child, childIndex) => {
+                                                        const childImageId = (child._id ? child._id.toString().charCodeAt(0) : childIndex) % 70 + 1;
+                                                        return (
+                                                          <VStack key={child._id || childIndex} spacing={1} position="relative">
+                                                            <Tooltip
+                                                              label={
+                                                                <Box p={3}>
+                                                                  <VStack align="start" spacing={2}>
+                                                                    <HStack spacing={2}>
+                                                                      <Text fontWeight="600" color="white" fontSize="sm">
+                                                                        {child.name}
+                                                                      </Text>
+                                                                      {child.isActive !== false ? (
+                                                                        <Box w={2} h={2} bg="green.500" borderRadius="full" />
+                                                                      ) : (
+                                                                        <Box w={2} h={2} bg="gray.400" borderRadius="full" />
+                                                                      )}
+                                                                    </HStack>
+                                                                    <Text fontSize="xs" color="gray.200">
+                                                                      Level {child.currentLevel || 2}
+                                                                    </Text>
+                                                                    {child.email && (
+                                                                      <Text fontSize="xs" color="gray.300">
+                                                                        {child.email}
+                                                                      </Text>
+                                                                    )}
+                                                                    {child.performance?.performanceScore !== undefined && (
+                                                                      <VStack spacing={0} align="start" pt={2} borderTop="1px" borderColor="gray.600">
+                                                                        <Text fontSize="xs" color="gray.400">Performance</Text>
+                                                                        <Text fontSize="sm" fontWeight="700" color="white">
+                                                                          {child.performance.performanceScore}%
+                                                                        </Text>
+                                                                      </VStack>
+                                                                    )}
+                                                                  </VStack>
+                                                                </Box>
+                                                              }
+                                                              bg="gray.800"
+                                                              color="white"
+                                                              borderRadius="7px"
+                                                              placement="top"
+                                                              hasArrow
+                                                            >
+                                                              <Box
+                                                                as="button"
+                                                                onClick={(e) => {
+                                                                  e.stopPropagation();
+                                                                  openViewModal(child);
+                                                                }}
+                                                                onMouseDown={(e) => e.stopPropagation()}
+                                                                cursor="pointer"
+                                                                _hover={{ transform: 'scale(1.1)' }}
+                                                                transition="all 0.2s"
+                                                                position="relative"
+                                                                zIndex={2}
+                                                              >
+                                                                <Box position="relative" display="inline-block">
+                                                                  <Image
+                                                                    src={`https://i.pravatar.cc/150?img=${childImageId}`}
+                                                                    alt={child.name}
+                                                                    borderRadius="full"
+                                                                    boxSize="48px"
+                                                                    border="2px solid"
+                                                                    borderColor={child.isActive !== false ? "green.400" : "gray.400"}
+                                                                    boxShadow="0 2px 6px rgba(0,0,0,0.1)"
+                                                                    objectFit="cover"
+                                                                    fallbackSrc="https://via.placeholder.com/48"
+                                                                  />
+                                                                  <Box
+                                                                    position="absolute"
+                                                                    bottom="-1px"
+                                                                    right="-1px"
+                                                                    w={2.5}
+                                                                    h={2.5}
+                                                                    bg={child.isActive !== false ? "green.500" : "gray.400"}
+                                                                    borderRadius="full"
+                                                                    border="2px solid"
+                                                                    borderColor="white"
+                                                                  />
+                                                                </Box>
+                                                              </Box>
+                                                            </Tooltip>
+                                                            <Text fontSize="xs" color="gray.600" noOfLines={1} maxW="60px">
+                                                              {child.name}
+                                                            </Text>
+                                                          </VStack>
+                                                        );
+                                                      })}
+                                                  </HStack>
+                                                </Box>
+                                              )}
+                                            </Box>
+                                          );
+                                        })}
+                                    </SimpleGrid>
+                                  </Box>
+                                )}
+                              </VStack>
+                            </Box>
+                          </Box>
+                        </Card>
+                        </VStack>
+                      );
+                    })()}
+                  </Box>
                 </TabPanel>
 
                 {/* Direct Coaches Tab */}
@@ -3843,6 +4745,375 @@ const MLMDashboard = () => {
                   </VStack>
                 </TabPanel>
 
+                {/* Performance Tab - Enhanced with Sub-tabs */}
+                <TabPanel p={0}>
+                  <Box p={6}>
+                    <Tabs index={performanceSubTab} onChange={setPerformanceSubTab} colorScheme="blue">
+                      <TabList borderBottom="1px" borderColor="gray.200" mb={4}>
+                        <Tab fontSize="sm" fontWeight="500">Overview</Tab>
+                        <Tab fontSize="sm" fontWeight="500">Coach Performance</Tab>
+                        <Tab fontSize="sm" fontWeight="500">Sales Performance</Tab>
+                        <Tab fontSize="sm" fontWeight="500">Client Performance</Tab>
+                        <Tab fontSize="sm" fontWeight="500">Lead Performance</Tab>
+                      </TabList>
+                      <TabPanels>
+                        {/* Overview Sub-tab - Existing team performance */}
+                        <TabPanel p={0}>
+                          <VStack spacing={6} align="stretch">
+                            <Flex justify="space-between" align="center">
+                              <VStack align="start" spacing={1}>
+                                <Heading size="md" color="gray.800">Team Performance Analytics</Heading>
+                                <Text fontSize="sm" color="gray.600">
+                                  Comprehensive insights into your team's performance and growth
+                                </Text>
+                              </VStack>
+                              <HStack spacing={3}>
+                                <Select w="200px" value={performanceFilter} onChange={(e) => setPerformanceFilter(e.target.value)}>
+                                  <option value="all">🌍 All Members</option>
+                                  <option value="top">⭐ Top Performers</option>
+                                  <option value="active">✅ Active Only</option>
+                                  <option value="inactive">⚠️ Needs Attention</option>
+                                </Select>
+                                <Button 
+                                  variant="outline" 
+                                  onClick={fetchTeamPerformance} 
+                                  isLoading={loading}
+                                  leftIcon={<RepeatIcon />}
+                                  colorScheme="blue"
+                                >
+                                  🔄 Refresh Data
+                                </Button>
+                              </HStack>
+                            </Flex>
+
+                            {loading ? (
+                              <VStack spacing={4}>
+                                <Skeleton height="200px" borderRadius="lg" />
+                                <SimpleGrid columns={3} spacing={4} w="100%">
+                                  <Skeleton height="150px" borderRadius="lg" />
+                                  <Skeleton height="150px" borderRadius="lg" />
+                                  <Skeleton height="150px" borderRadius="lg" />
+                                </SimpleGrid>
+                              </VStack>
+                            ) : teamPerformance ? (
+                              <VStack spacing={6} align="stretch">
+                                {/* Performance Overview Cards */}
+                                <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4}>
+                                  <Card bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)" color="white" borderRadius="xl" boxShadow="lg">
+                                    <CardBody textAlign="center" p={6}>
+                                      <VStack spacing={3}>
+                                        <Box p={3} bg="white" borderRadius="full">
+                                          <Text fontSize="2xl" color="blue.600">●</Text>
+                                        </Box>
+                                        <Stat>
+                                          <StatLabel color="white" fontSize="sm">TEAM SIZE</StatLabel>
+                                          <StatNumber color="white" fontSize="3xl">
+                                            {teamPerformance.teamSize || 0}
+                                          </StatNumber>
+                                          <StatHelpText color="white" opacity={0.8}>Total Members</StatHelpText>
+                                        </Stat>
+                                      </VStack>
+                                    </CardBody>
+                                  </Card>
+                                  
+                                  <Card bg="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" color="white" borderRadius="xl" boxShadow="lg">
+                                    <CardBody textAlign="center" p={6}>
+                                      <VStack spacing={3}>
+                                        <Box p={3} bg="white" borderRadius="full">
+                                          <Text fontSize="2xl" color="pink.500">●</Text>
+                                        </Box>
+                                        <Stat>
+                                          <StatLabel color="white" fontSize="sm">TOTAL LEADS</StatLabel>
+                                          <StatNumber color="white" fontSize="3xl">
+                                            {teamPerformance.totalLeads || 0}
+                                          </StatNumber>
+                                          <StatHelpText color="white" opacity={0.8}>This Month</StatHelpText>
+                                        </Stat>
+                                      </VStack>
+                                    </CardBody>
+                                  </Card>
+                                  
+                                  <Card bg="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" color="white" borderRadius="xl" boxShadow="lg">
+                                    <CardBody textAlign="center" p={6}>
+                                      <VStack spacing={3}>
+                                        <Box p={3} bg="white" borderRadius="full">
+                                          <Text fontSize="2xl" color="blue.400">●</Text>
+                                        </Box>
+                                        <Stat>
+                                          <StatLabel color="white" fontSize="sm">TOTAL SALES</StatLabel>
+                                          <StatNumber color="white" fontSize="3xl">
+                                            {teamPerformance.totalSales || 0}
+                                          </StatNumber>
+                                          <StatHelpText color="white" opacity={0.8}>Completed</StatHelpText>
+                                        </Stat>
+                                      </VStack>
+                                    </CardBody>
+                                  </Card>
+                                  
+                                  <Card bg="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)" color="white" borderRadius="xl" boxShadow="lg">
+                                    <CardBody textAlign="center" p={6}>
+                                      <VStack spacing={3}>
+                                        <Box p={3} bg="white" borderRadius="full">
+                                          <Text fontSize="2xl" color="green.400">●</Text>
+                                        </Box>
+                                        <Stat>
+                                          <StatLabel color="white" fontSize="sm">REVENUE</StatLabel>
+                                          <StatNumber color="white" fontSize="3xl">
+                                            ${(teamPerformance.totalRevenue || 0).toLocaleString()}
+                                          </StatNumber>
+                                          <StatHelpText color="white" opacity={0.8}>Monthly</StatHelpText>
+                                        </Stat>
+                                      </VStack>
+                                    </CardBody>
+                                  </Card>
+                                </SimpleGrid>
+
+                                {/* Performance Charts and Analytics */}
+                                <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
+                                  <Card borderRadius="xl" boxShadow="md">
+                                    <CardHeader>
+                                      <Heading size="md" color="gray.800">Performance Distribution</Heading>
+                                    </CardHeader>
+                                    <CardBody>
+                                      <VStack spacing={4} align="stretch">
+                                        <Box>
+                                          <HStack justify="space-between" mb={2}>
+                                            <Text fontSize="sm" fontWeight="bold" color="gray.700">High Performers (80-100%)</Text>
+                                            <Text fontSize="sm" fontWeight="bold" color="green.600">
+                                              {teamPerformance.memberDetails ? 
+                                                teamPerformance.memberDetails.filter(m => (m.performance?.score || 0) >= 80).length
+                                                : 0}
+                                            </Text>
+                                          </HStack>
+                                          <Progress 
+                                            value={teamPerformance.memberDetails ? 
+                                              (teamPerformance.memberDetails.filter(m => (m.performance?.score || 0) >= 80).length / teamPerformance.memberDetails.length) * 100
+                                              : 0} 
+                                            colorScheme="green" 
+                                            size="lg" 
+                                            borderRadius="full"
+                                          />
+                                        </Box>
+
+                                        <Box>
+                                          <HStack justify="space-between" mb={2}>
+                                            <Text fontSize="sm" fontWeight="bold" color="gray.700">Medium Performers (40-79%)</Text>
+                                            <Text fontSize="sm" fontWeight="bold" color="yellow.600">
+                                              {teamPerformance.memberDetails ? 
+                                                teamPerformance.memberDetails.filter(m => (m.performance?.score || 0) >= 40 && (m.performance?.score || 0) < 80).length
+                                                : 0}
+                                            </Text>
+                                          </HStack>
+                                          <Progress 
+                                            value={teamPerformance.memberDetails ? 
+                                              (teamPerformance.memberDetails.filter(m => (m.performance?.score || 0) >= 40 && (m.performance?.score || 0) < 80).length / teamPerformance.memberDetails.length) * 100
+                                              : 0} 
+                                            colorScheme="yellow" 
+                                            size="lg" 
+                                            borderRadius="full"
+                                          />
+                                        </Box>
+
+                                        <Box>
+                                          <HStack justify="space-between" mb={2}>
+                                            <Text fontSize="sm" fontWeight="bold" color="gray.700">Needs Support (0-39%)</Text>
+                                            <Text fontSize="sm" fontWeight="bold" color="red.600">
+                                              {teamPerformance.memberDetails ? 
+                                                teamPerformance.memberDetails.filter(m => (m.performance?.score || 0) < 40).length
+                                                : 0}
+                                            </Text>
+                                          </HStack>
+                                          <Progress 
+                                            value={teamPerformance.memberDetails ? 
+                                              (teamPerformance.memberDetails.filter(m => (m.performance?.score || 0) < 40).length / teamPerformance.memberDetails.length) * 100
+                                              : 0} 
+                                            colorScheme="red" 
+                                            size="lg" 
+                                            borderRadius="full"
+                                          />
+                                        </Box>
+                                      </VStack>
+                                    </CardBody>
+                                  </Card>
+
+                                  <Card borderRadius="xl" boxShadow="md">
+                                    <CardHeader>
+                                      <Heading size="md" color="gray.800">Key Metrics</Heading>
+                                    </CardHeader>
+                                    <CardBody>
+                                      <VStack spacing={4} align="stretch">
+                                        <Box>
+                                          <HStack justify="space-between" mb={2}>
+                                            <Text fontSize="sm" fontWeight="bold" color="gray.700">Conversion Rate</Text>
+                                            <Text fontSize="sm" fontWeight="bold" color="blue.600">
+                                              {teamPerformance.totalLeads > 0 
+                                                ? ((teamPerformance.totalSales / teamPerformance.totalLeads) * 100).toFixed(1)
+                                                : 0}%
+                                            </Text>
+                                          </HStack>
+                                          <Progress 
+                                            value={teamPerformance.totalLeads > 0 
+                                              ? (teamPerformance.totalSales / teamPerformance.totalLeads) * 100
+                                              : 0} 
+                                            colorScheme="blue" 
+                                            size="lg" 
+                                            borderRadius="full"
+                                          />
+                                        </Box>
+
+                                        <Box>
+                                          <HStack justify="space-between" mb={2}>
+                                            <Text fontSize="sm" fontWeight="bold" color="gray.700">Team Activity</Text>
+                                            <Text fontSize="sm" fontWeight="bold" color="purple.600">
+                                              {teamPerformance.memberDetails ? 
+                                                Math.round((teamPerformance.memberDetails.filter(m => m.performance?.isActive).length / teamPerformance.memberDetails.length) * 100)
+                                                : 0}%
+                                            </Text>
+                                          </HStack>
+                                          <Progress 
+                                            value={teamPerformance.memberDetails ? 
+                                              (teamPerformance.memberDetails.filter(m => m.performance?.isActive).length / teamPerformance.memberDetails.length) * 100
+                                              : 0} 
+                                            colorScheme="purple" 
+                                            size="lg" 
+                                            borderRadius="full"
+                                          />
+                                        </Box>
+
+                                        <Box textAlign="center" p={4} bg="gray.50" borderRadius="lg">
+                                          <Text fontSize="xs" color="gray.500" mb={1}>AVERAGE DEAL SIZE</Text>
+                                          <Text fontSize="2xl" fontWeight="bold" color="green.600">
+                                            ${teamPerformance.totalSales > 0 
+                                              ? (teamPerformance.totalRevenue / teamPerformance.totalSales).toFixed(0)
+                                              : 0}
+                                          </Text>
+                                        </Box>
+                                      </VStack>
+                                    </CardBody>
+                                  </Card>
+                                </SimpleGrid>
+                              </VStack>
+                            ) : (
+                              <Card bg="gray.50" borderRadius="lg" border="2px dashed" borderColor="gray.300">
+                                <CardBody py={12}>
+                                  <Center>
+                                    <VStack spacing={4}>
+                                      <Box
+                                        w="80px"
+                                        h="80px"
+                                        bg="gray.200"
+                                        borderRadius="lg"
+                                        display="flex"
+                                        alignItems="center"
+                                        justifyContent="center"
+                                        color="gray.500"
+                                      >
+                                        <Box as={FiBarChart2} size="32px" />
+                                      </Box>
+                                      <VStack spacing={2}>
+                                        <Text fontSize="lg" fontWeight="semibold" color="gray.600">
+                                          No Performance Data
+                                        </Text>
+                                        <Text color="gray.500" textAlign="center" fontSize="sm">
+                                          Performance metrics will appear once your team starts generating activity.
+                                        </Text>
+                                      </VStack>
+                                    </VStack>
+                                  </Center>
+                                </CardBody>
+                              </Card>
+                            )}
+                          </VStack>
+                        </TabPanel>
+                        
+                        {/* Coach Performance Sub-tab */}
+                        <TabPanel p={0}>
+                          <VStack spacing={4} align="stretch">
+                            <Heading size="md" color="gray.800">Coach Performance Metrics</Heading>
+                            {coachPerformance ? (
+                              <Card>
+                                <CardBody>
+                                  <Text>Coach performance data will be displayed here</Text>
+                                  <Text fontSize="xs" color="gray.500">Data: {JSON.stringify(coachPerformance).substring(0, 100)}...</Text>
+                                </CardBody>
+                              </Card>
+                            ) : (
+                              <Card>
+                                <CardBody>
+                                  <Text color="gray.500">No coach performance data available</Text>
+                                </CardBody>
+                              </Card>
+                            )}
+                          </VStack>
+                        </TabPanel>
+                        
+                        {/* Sales Performance Sub-tab */}
+                        <TabPanel p={0}>
+                          <VStack spacing={4} align="stretch">
+                            <Heading size="md" color="gray.800">Sales Performance Metrics</Heading>
+                            {salesPerformance ? (
+                              <Card>
+                                <CardBody>
+                                  <Text>Sales performance data will be displayed here</Text>
+                                  <Text fontSize="xs" color="gray.500">Data: {JSON.stringify(salesPerformance).substring(0, 100)}...</Text>
+                                </CardBody>
+                              </Card>
+                            ) : (
+                              <Card>
+                                <CardBody>
+                                  <Text color="gray.500">No sales performance data available</Text>
+                                </CardBody>
+                              </Card>
+                            )}
+                          </VStack>
+                        </TabPanel>
+                        
+                        {/* Client Performance Sub-tab */}
+                        <TabPanel p={0}>
+                          <VStack spacing={4} align="stretch">
+                            <Heading size="md" color="gray.800">Client Performance Metrics</Heading>
+                            {clientPerformance ? (
+                              <Card>
+                                <CardBody>
+                                  <Text>Client performance data will be displayed here</Text>
+                                  <Text fontSize="xs" color="gray.500">Data: {JSON.stringify(clientPerformance).substring(0, 100)}...</Text>
+                                </CardBody>
+                              </Card>
+                            ) : (
+                              <Card>
+                                <CardBody>
+                                  <Text color="gray.500">No client performance data available</Text>
+                                </CardBody>
+                              </Card>
+                            )}
+                          </VStack>
+                        </TabPanel>
+                        
+                        {/* Lead Performance Sub-tab */}
+                        <TabPanel p={0}>
+                          <VStack spacing={4} align="stretch">
+                            <Heading size="md" color="gray.800">Lead Performance Metrics</Heading>
+                            {leadPerformance ? (
+                              <Card>
+                                <CardBody>
+                                  <Text>Lead performance data will be displayed here</Text>
+                                  <Text fontSize="xs" color="gray.500">Data: {JSON.stringify(leadPerformance).substring(0, 100)}...</Text>
+                                </CardBody>
+                              </Card>
+                            ) : (
+                              <Card>
+                                <CardBody>
+                                  <Text color="gray.500">No lead performance data available</Text>
+                                </CardBody>
+                              </Card>
+                            )}
+                          </VStack>
+                        </TabPanel>
+                      </TabPanels>
+                    </Tabs>
+                  </Box>
+                </TabPanel>
+
                 {/* Reports Tab - Keep existing enhanced design */}
                 <TabPanel p={6}>
                   <VStack spacing={6} align="stretch">
@@ -3962,6 +5233,229 @@ const MLMDashboard = () => {
                               <Button colorScheme="blue" onClick={onReportModalOpen} size="sm">
                                 Generate First Report
                               </Button>
+                            </VStack>
+                          </Center>
+                        </CardBody>
+                      </Card>
+                    )}
+                  </VStack>
+                </TabPanel>
+
+                {/* Commissions Tab */}
+                <TabPanel p={6}>
+                  <VStack spacing={6} align="stretch">
+                    <Flex justify="space-between" align="center">
+                      <VStack align="start" spacing={1}>
+                        <Heading size="md" color="gray.800">Commissions & Earnings</Heading>
+                        <Text fontSize="sm" color="gray.600">
+                          Track your commission history and earnings
+                        </Text>
+                      </VStack>
+                      <Button leftIcon={<RepeatIcon />} colorScheme="blue" onClick={fetchCommissions} isLoading={loading}>
+                        Refresh
+                      </Button>
+                    </Flex>
+
+                    {/* Commission Summary Cards */}
+                    <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+                      <Card bg="green.50" border="1px" borderColor="green.200" borderRadius="7px">
+                        <CardBody>
+                          <VStack align="start" spacing={2}>
+                            <Text fontSize="xs" color="green.600" fontWeight="600" textTransform="uppercase">Total Earned</Text>
+                            <Text fontSize="2xl" fontWeight="700" color="green.800">
+                              ${commissionSummary.totalEarned?.toLocaleString() || '0.00'}
+                            </Text>
+                          </VStack>
+                        </CardBody>
+                      </Card>
+                      <Card bg="yellow.50" border="1px" borderColor="yellow.200" borderRadius="7px">
+                        <CardBody>
+                          <VStack align="start" spacing={2}>
+                            <Text fontSize="xs" color="yellow.600" fontWeight="600" textTransform="uppercase">Pending</Text>
+                            <Text fontSize="2xl" fontWeight="700" color="yellow.800">
+                              ${commissionSummary.pendingAmount?.toLocaleString() || '0.00'}
+                            </Text>
+                          </VStack>
+                        </CardBody>
+                      </Card>
+                      <Card bg="blue.50" border="1px" borderColor="blue.200" borderRadius="7px">
+                        <CardBody>
+                          <VStack align="start" spacing={2}>
+                            <Text fontSize="xs" color="blue.600" fontWeight="600" textTransform="uppercase">Total Commissions</Text>
+                            <Text fontSize="2xl" fontWeight="700" color="blue.800">
+                              {commissionSummary.totalCommissions || 0}
+                            </Text>
+                          </VStack>
+                        </CardBody>
+                      </Card>
+                    </SimpleGrid>
+
+                    {/* Commissions Table */}
+                    {loading ? (
+                      <VStack spacing={4}>
+                        {[1, 2, 3].map(i => (
+                          <Skeleton key={i} height="80px" borderRadius="lg" />
+                        ))}
+                      </VStack>
+                    ) : commissions.length > 0 ? (
+                      <Card>
+                        <CardBody>
+                          <TableContainer>
+                            <Table variant="simple">
+                              <Thead>
+                                <Tr>
+                                  <Th>Date</Th>
+                                  <Th>Type</Th>
+                                  <Th>Amount</Th>
+                                  <Th>Percentage</Th>
+                                  <Th>Status</Th>
+                                  <Th>Notes</Th>
+                                </Tr>
+                              </Thead>
+                              <Tbody>
+                                {commissions.map((commission, index) => (
+                                  <Tr key={commission._id || index}>
+                                    <Td>{new Date(commission.calculatedAt || commission.createdAt).toLocaleDateString()}</Td>
+                                    <Td>
+                                      <Badge colorScheme="blue" variant="subtle">
+                                        {commission.commissionType || 'N/A'}
+                                      </Badge>
+                                    </Td>
+                                    <Td fontWeight="600">${commission.commissionAmount?.toLocaleString() || '0.00'}</Td>
+                                    <Td>{(commission.commissionPercentage * 100)?.toFixed(1)}%</Td>
+                                    <Td>
+                                      <Badge 
+                                        colorScheme={
+                                          commission.status === 'paid' ? 'green' : 
+                                          commission.status === 'pending' ? 'yellow' : 
+                                          commission.status === 'approved' ? 'blue' : 'gray'
+                                        }
+                                      >
+                                        {commission.status || 'pending'}
+                                      </Badge>
+                                    </Td>
+                                    <Td fontSize="sm" color="gray.600">{commission.notes || '-'}</Td>
+                                  </Tr>
+                                ))}
+                              </Tbody>
+                            </Table>
+                          </TableContainer>
+                        </CardBody>
+                      </Card>
+                    ) : (
+                      <Card bg="gray.50" borderRadius="lg" border="2px dashed" borderColor="gray.300">
+                        <CardBody py={12}>
+                          <Center>
+                            <VStack spacing={4}>
+                              <Box
+                                w="80px"
+                                h="80px"
+                                bg="gray.200"
+                                borderRadius="lg"
+                                display="flex"
+                                alignItems="center"
+                                justifyContent="center"
+                                color="gray.500"
+                              >
+                                <Text fontSize="3xl">💰</Text>
+                              </Box>
+                              <VStack spacing={2}>
+                                <Text fontSize="lg" fontWeight="semibold" color="gray.600">
+                                  No Commissions Yet
+                                </Text>
+                                <Text color="gray.500" textAlign="center" fontSize="sm">
+                                  Commissions will appear here once they are calculated and processed.
+                                </Text>
+                              </VStack>
+                            </VStack>
+                          </Center>
+                        </CardBody>
+                      </Card>
+                    )}
+                  </VStack>
+                </TabPanel>
+
+                {/* Admin Requests Tab */}
+                <TabPanel p={6}>
+                  <VStack spacing={6} align="stretch">
+                    <Flex justify="space-between" align="center">
+                      <VStack align="start" spacing={1}>
+                        <Heading size="md" color="gray.800">Admin Requests</Heading>
+                        <Text fontSize="sm" color="gray.600">
+                          Track your hierarchy change requests and their status
+                        </Text>
+                      </VStack>
+                      <Button leftIcon={<RepeatIcon />} colorScheme="blue" onClick={fetchAdminRequests} isLoading={loading}>
+                        Refresh
+                      </Button>
+                    </Flex>
+
+                    {loading ? (
+                      <VStack spacing={4}>
+                        {[1, 2, 3].map(i => (
+                          <Skeleton key={i} height="120px" borderRadius="lg" />
+                        ))}
+                      </VStack>
+                    ) : adminRequests.length > 0 ? (
+                      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                        {adminRequests.map((request, index) => (
+                          <Card key={request._id || index} borderRadius="lg" border="1px" borderColor="gray.200">
+                            <CardBody>
+                              <VStack align="start" spacing={3}>
+                                <HStack justify="space-between" w="full">
+                                  <Badge 
+                                    colorScheme={
+                                      request.status === 'approved' ? 'green' : 
+                                      request.status === 'rejected' ? 'red' : 
+                                      request.status === 'pending' ? 'yellow' : 'gray'
+                                    }
+                                  >
+                                    {request.status || 'pending'}
+                                  </Badge>
+                                  <Text fontSize="xs" color="gray.500">
+                                    {new Date(request.createdAt || request.submittedAt).toLocaleDateString()}
+                                  </Text>
+                                </HStack>
+                                <VStack align="start" spacing={1}>
+                                  <Text fontWeight="600" color="gray.800">{request.requestType || 'Hierarchy Change'}</Text>
+                                  <Text fontSize="sm" color="gray.600">{request.reason || request.description || 'No description provided'}</Text>
+                                </VStack>
+                                {request.adminResponse && (
+                                  <Box p={3} bg="gray.50" borderRadius="md" w="full">
+                                    <Text fontSize="xs" color="gray.500" fontWeight="600" mb={1}>Admin Response:</Text>
+                                    <Text fontSize="sm" color="gray.700">{request.adminResponse}</Text>
+                                  </Box>
+                                )}
+                              </VStack>
+                            </CardBody>
+                          </Card>
+                        ))}
+                      </SimpleGrid>
+                    ) : (
+                      <Card bg="gray.50" borderRadius="lg" border="2px dashed" borderColor="gray.300">
+                        <CardBody py={12}>
+                          <Center>
+                            <VStack spacing={4}>
+                              <Box
+                                w="80px"
+                                h="80px"
+                                bg="gray.200"
+                                borderRadius="lg"
+                                display="flex"
+                                alignItems="center"
+                                justifyContent="center"
+                                color="gray.500"
+                              >
+                                <Text fontSize="3xl">📋</Text>
+                              </Box>
+                              <VStack spacing={2}>
+                                <Text fontSize="lg" fontWeight="semibold" color="gray.600">
+                                  No Admin Requests
+                                </Text>
+                                <Text color="gray.500" textAlign="center" fontSize="sm">
+                                  You haven't submitted any admin requests yet.
+                                </Text>
+                              </VStack>
                             </VStack>
                           </Center>
                         </CardBody>
