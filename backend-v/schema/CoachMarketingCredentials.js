@@ -110,6 +110,15 @@ const coachMarketingCredentialsSchema = new mongoose.Schema({
         language: {
             type: String,
             default: 'en'
+        },
+        currency: {
+            type: String,
+            enum: ['USD', 'EUR', 'GBP', 'INR', 'CAD', 'AUD'],
+            default: 'USD'
+        },
+        updatedAt: {
+            type: Date,
+            default: Date.now
         }
     },
 
@@ -135,27 +144,90 @@ const coachMarketingCredentialsSchema = new mongoose.Schema({
 
 // Encrypt sensitive data before saving
 coachMarketingCredentialsSchema.pre('save', function(next) {
-    if (this.isModified('metaAds.accessToken') && this.metaAds.accessToken) {
-        this.metaAds.accessToken = this.encrypt(this.metaAds.accessToken);
+    try {
+        if (this.isModified('metaAds.accessToken') && this.metaAds.accessToken) {
+            // Only encrypt if it's not already encrypted (encrypted tokens are much longer)
+            if (this.metaAds.accessToken.length < 200) {
+                console.log(`[PreSave] Encrypting access token, original length: ${this.metaAds.accessToken.length}`);
+                const encrypted = this.encrypt(this.metaAds.accessToken);
+                if (!encrypted) {
+                    return next(new Error('Failed to encrypt access token'));
+                }
+                this.metaAds.accessToken = encrypted;
+                console.log(`[PreSave] Access token encrypted, new length: ${this.metaAds.accessToken.length}`);
+            } else {
+                console.log(`[PreSave] Access token appears already encrypted (length: ${this.metaAds.accessToken.length}), skipping encryption`);
+            }
+        }
+        if (this.isModified('metaAds.appSecret') && this.metaAds.appSecret) {
+            if (this.metaAds.appSecret.length < 200) {
+                const encrypted = this.encrypt(this.metaAds.appSecret);
+                if (!encrypted) {
+                    return next(new Error('Failed to encrypt app secret'));
+                }
+                this.metaAds.appSecret = encrypted;
+            }
+        }
+        if (this.isModified('openAI.apiKey') && this.openAI.apiKey) {
+            if (this.openAI.apiKey.length < 200) {
+                const encrypted = this.encrypt(this.openAI.apiKey);
+                if (!encrypted) {
+                    return next(new Error('Failed to encrypt OpenAI API key'));
+                }
+                this.openAI.apiKey = encrypted;
+            }
+        }
+        next();
+    } catch (error) {
+        console.error('[PreSave] Error in pre-save hook:', error);
+        next(error);
     }
-    if (this.isModified('metaAds.appSecret') && this.metaAds.appSecret) {
-        this.metaAds.appSecret = this.encrypt(this.metaAds.appSecret);
-    }
-    if (this.isModified('openAI.apiKey') && this.openAI.apiKey) {
-        this.openAI.apiKey = this.encrypt(this.openAI.apiKey);
-    }
-    next();
 });
 
 // Decrypt sensitive data when retrieving
 coachMarketingCredentialsSchema.methods.decrypt = function(encryptedData) {
-    if (!encryptedData) return null;
+    if (!encryptedData) {
+        console.warn('[Decrypt] No encrypted data provided');
+        return null;
+    }
+    
+    if (!this.encryptionKey) {
+        console.error('[Decrypt] No encryption key available');
+        return null;
+    }
     
     try {
+        // Check if data looks encrypted (should be at least 64 chars: 32 for IV + 32 for encrypted data)
+        if (encryptedData.length < 64) {
+            console.warn(`[Decrypt] Data too short to be encrypted (length: ${encryptedData.length}), might be plain text`);
+            // If it's too short, it might be plain text - return as-is (but log warning)
+            return encryptedData;
+        }
+        
         const algorithm = 'aes-256-cbc';
         const key = Buffer.from(this.encryptionKey, 'hex');
-        const iv = Buffer.from(encryptedData.substring(0, 32), 'hex');
+        
+        // Validate key length
+        if (key.length !== 32) {
+            console.error(`[Decrypt] Invalid encryption key length: ${key.length}, expected 32`);
+            return null;
+        }
+        
+        // Extract IV (first 32 hex chars = 16 bytes)
+        const ivHex = encryptedData.substring(0, 32);
         const encrypted = encryptedData.substring(32);
+        
+        // Validate IV
+        if (ivHex.length !== 32 || !/^[0-9a-fA-F]+$/.test(ivHex)) {
+            console.error(`[Decrypt] Invalid IV format: ${ivHex.substring(0, 10)}...`);
+            return null;
+        }
+        
+        const iv = Buffer.from(ivHex, 'hex');
+        if (iv.length !== 16) {
+            console.error(`[Decrypt] Invalid IV length: ${iv.length}, expected 16`);
+            return null;
+        }
         
         const decipher = crypto.createDecipheriv(algorithm, key, iv);
         let decrypted = decipher.update(encrypted, 'hex', 'utf8');
@@ -163,28 +235,46 @@ coachMarketingCredentialsSchema.methods.decrypt = function(encryptedData) {
         
         return decrypted;
     } catch (error) {
-        console.error('Decryption error:', error);
+        console.error('[Decrypt] Decryption error:', error.message);
+        console.error('[Decrypt] Error code:', error.code);
+        console.error('[Decrypt] Encrypted data length:', encryptedData.length);
+        console.error('[Decrypt] Encrypted data preview:', encryptedData.substring(0, 50));
         return null;
     }
 };
 
 // Encrypt sensitive data
 coachMarketingCredentialsSchema.methods.encrypt = function(data) {
-    if (!data) return null;
+    if (!data) {
+        console.warn('[Encrypt] No data provided to encrypt');
+        return null;
+    }
+    
+    if (!this.encryptionKey) {
+        console.error('[Encrypt] No encryption key available');
+        throw new Error('Encryption key is required but not found');
+    }
     
     try {
         const algorithm = 'aes-256-cbc';
         const key = Buffer.from(this.encryptionKey, 'hex');
+        if (key.length !== 32) {
+            console.error(`[Encrypt] Invalid encryption key length: ${key.length}, expected 32`);
+            throw new Error('Invalid encryption key length');
+        }
         const iv = crypto.randomBytes(16);
         
         const cipher = crypto.createCipheriv(algorithm, key, iv);
         let encrypted = cipher.update(data, 'utf8', 'hex');
         encrypted += cipher.final('hex');
         
-        return iv.toString('hex') + encrypted;
+        const result = iv.toString('hex') + encrypted;
+        console.log(`[Encrypt] Successfully encrypted data, result length: ${result.length}`);
+        return result;
     } catch (error) {
-        console.error('Encryption error:', error);
-        return null;
+        console.error('[Encrypt] Encryption error:', error);
+        console.error('[Encrypt] Error stack:', error.stack);
+        throw new Error(`Failed to encrypt data: ${error.message}`);
     }
 };
 

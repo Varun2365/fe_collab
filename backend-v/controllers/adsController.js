@@ -3,6 +3,7 @@ const { getUserContext } = require('../middleware/unifiedCoachAuth');
 const CoachStaffService = require('../services/coachStaffService');
 const metaAdsService = require('../services/metaAdsService');
 const aiAdsAgentService = require('../services/aiAdsAgentService');
+const CoachMarketingCredentials = require('../schema/CoachMarketingCredentials');
 
 // List all campaigns for a coach
 async function listCampaigns(req, res) {
@@ -34,7 +35,7 @@ async function listCampaigns(req, res) {
 
 // Create a new campaign with AI optimization
 async function createCampaign(req, res) {
-    console.log("Called")
+    console.log("[CreateCampaign] Called");
     // Get coach ID using unified service (handles both coach and staff)
     const coachId = CoachStaffService.getCoachIdForQuery(req);
     const userContext = CoachStaffService.getUserContext(req);
@@ -43,6 +44,50 @@ async function createCampaign(req, res) {
     CoachStaffService.logStaffAction(req, 'write', 'ads', 'create', { coachId });
     
     const { coachMetaAccountId, campaignData, useAI = false } = req.body;
+    
+    console.log("[CreateCampaign] Request body:", { coachMetaAccountId, campaignData, useAI });
+    
+    // Validate required fields
+    if (!campaignData) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required field: campaignData'
+        });
+    }
+    
+    if (!campaignData.name || !campaignData.objective) {
+        return res.status(400).json({
+            success: false,
+            error: 'Campaign name and objective are required'
+        });
+    }
+    
+    // Get ad account ID from credentials if not provided
+    let adAccountId = coachMetaAccountId;
+    if (!adAccountId || adAccountId === '') {
+        try {
+            const accountInfo = await metaAdsService.getCoachMetaAccountInfo(coachId);
+            adAccountId = accountInfo.adAccountId;
+            console.log("[CreateCampaign] Retrieved adAccountId from credentials:", adAccountId);
+        } catch (error) {
+            console.error("[CreateCampaign] Error getting ad account ID:", error);
+            return res.status(400).json({
+                success: false,
+                error: 'Ad account ID not found. Please ensure your Meta account is connected and configured.',
+                details: error.message
+            });
+        }
+    }
+    
+    if (!adAccountId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Ad account ID is required. Please ensure your Meta account is connected and has an ad account configured.'
+        });
+    }
+    
+    // Remove 'act_' prefix if present (Meta API adds it automatically)
+    adAccountId = adAccountId.replace(/^act_/, '');
     
     // Check subscription limits for campaign creation
     const SubscriptionLimitsMiddleware = require('../middleware/subscriptionLimits');
@@ -61,47 +106,143 @@ async function createCampaign(req, res) {
     }
     
     try {
-        let enhancedCampaignData = campaignData;
+        let enhancedCampaignData = { ...campaignData };
         
         if (useAI && campaignData.targetAudience && campaignData.productInfo) {
-            // Generate AI-powered ad copy
-            const aiGeneratedContent = await aiAdsAgentService.generateAdCopy(
-                coachId,
-                campaignData.targetAudience,
-                campaignData.productInfo,
-                campaignData.objective || 'CONVERSIONS'
-            );
-            
-            // Generate targeting recommendations
-            const targetingRecommendations = await aiAdsAgentService.generateTargetingRecommendations(
-                coachId,
-                campaignData.targetAudience,
-                campaignData.dailyBudget || 50
-            );
-            
-            enhancedCampaignData = {
-                ...campaignData,
-                aiGenerated: true,
-                aiContent: aiGeneratedContent,
-                targetingRecommendations
-            };
+            try {
+                // Generate AI-powered ad copy
+                const aiGeneratedContent = await aiAdsAgentService.generateAdCopy(
+                    coachId,
+                    campaignData.targetAudience,
+                    campaignData.productInfo,
+                    campaignData.objective || 'CONVERSIONS'
+                );
+                
+                // Generate targeting recommendations
+                const targetingRecommendations = await aiAdsAgentService.generateTargetingRecommendations(
+                    coachId,
+                    campaignData.targetAudience,
+                    campaignData.dailyBudget || campaignData.budget || 50
+                );
+                
+                enhancedCampaignData = {
+                    ...campaignData,
+                    aiGenerated: true,
+                    aiContent: aiGeneratedContent,
+                    targetingRecommendations
+                };
+            } catch (aiError) {
+                console.warn("[CreateCampaign] AI generation failed, continuing without AI:", aiError.message);
+                // Continue without AI if it fails
+            }
         }
         
-        const data = await metaAdsService.createCampaign(coachId, coachMetaAccountId, enhancedCampaignData);
+        // Transform campaign data to Meta API format
+        const metaCampaignData = {
+            name: enhancedCampaignData.name,
+            objective: enhancedCampaignData.objective,
+            status: 'PAUSED', // Start paused for review
+            // Convert budget from dollars to cents (Meta API expects cents)
+            daily_budget: Math.round((enhancedCampaignData.dailyBudget || enhancedCampaignData.budget || 50) * 100),
+            // Required parameter: special_ad_categories (empty array if no special categories)
+            special_ad_categories: enhancedCampaignData.specialAdCategories || []
+        };
+        
+        console.log("[CreateCampaign] Creating campaign with Meta API:", { adAccountId, metaCampaignData });
+        
+        let data;
+        let testingModeWarning = null;
+        
+        try {
+            data = await metaAdsService.createCampaign(coachId, adAccountId, metaCampaignData);
+            console.log("[CreateCampaign] Campaign created successfully:", data.id);
+            
+            // Check if app is in development mode (this is informational)
+            try {
+                const credentials = await CoachMarketingCredentials.findOne({ coachId })
+                    .select('metaAds.appId');
+                if (credentials?.metaAds?.appId) {
+                    // Note: We can't directly check app mode without additional API calls
+                    // But we can warn if certain conditions are met
+                    testingModeWarning = "Note: If your Meta app is in Development mode, campaigns may be created but may not deploy to real audiences. Only test users can interact with campaigns in Development mode. To deploy campaigns to real users, submit your app for App Review and switch to Live mode.";
+                }
+            } catch (warningError) {
+                // Ignore warning check errors
+            }
+        } catch (error) {
+            // Extract Meta API error details
+            const metaError = error.response?.data?.error;
+            
+            // Prioritize user-friendly error messages from Meta API
+            let errorMessage = metaError?.error_user_msg || 
+                              metaError?.error_user_title || 
+                              metaError?.message || 
+                              error.message || 
+                              'Failed to create campaign';
+            
+            const errorCode = metaError?.code;
+            const errorType = metaError?.type;
+            
+            console.error("[CreateCampaign] Meta API Error:", {
+                code: errorCode,
+                type: errorType,
+                message: errorMessage,
+                user_msg: metaError?.error_user_msg,
+                user_title: metaError?.error_user_title,
+                subcode: metaError?.error_subcode,
+                fbtrace_id: metaError?.fbtrace_id
+            });
+            
+            // Check if error is related to testing mode
+            if (errorMessage.includes('testing mode') || errorMessage.includes('Development mode') || errorMessage.includes('App Review')) {
+                console.warn("[CreateCampaign] Testing mode restriction detected:", errorMessage);
+                return res.status(400).json({
+                    success: false,
+                    error: errorMessage,
+                    testingModeRestriction: true,
+                    suggestion: "To deploy campaigns to real audiences, ensure your Meta app is in Live mode and has passed App Review. In Development mode, campaigns can only be used by test users."
+                });
+            }
+            
+            // Return user-friendly error message with full Meta API error details
+            return res.status(error.response?.status || 500).json({
+                success: false,
+                error: errorMessage, // User-friendly message
+                errorCode: errorCode,
+                errorType: errorType,
+                details: {
+                    error: metaError || error.response?.data?.error || null,
+                    fullResponse: error.response?.data || null
+                }
+            });
+        }
  
-        // Save to local database with AI metadata
-        const campaign = await AdCampaign.create({
+        // Prepare campaign document with all fields
+        const campaignDoc = {
             campaignId: data.id,
             coachId,
             name: campaignData.name,
             objective: campaignData.objective,
             status: 'PAUSED', // Start paused for review
-            dailyBudget: campaignData.dailyBudget,
+            dailyBudget: enhancedCampaignData.dailyBudget || enhancedCampaignData.budget || 50,
             aiGenerated: useAI,
             aiContent: useAI ? enhancedCampaignData.aiContent : null,
             targetingRecommendations: useAI ? enhancedCampaignData.targetingRecommendations : null,
             metaRaw: data
-        });
+        };
+        
+        // Add new fields if provided
+        if (campaignData.adTitle) campaignDoc.adTitle = campaignData.adTitle;
+        if (campaignData.adDescription) campaignDoc.adDescription = campaignData.adDescription;
+        if (campaignData.adImageUrl) campaignDoc.adImageUrl = campaignData.adImageUrl;
+        if (campaignData.callToAction) campaignDoc.callToAction = campaignData.callToAction;
+        if (campaignData.targeting) campaignDoc.targeting = campaignData.targeting;
+        if (campaignData.schedule) campaignDoc.schedule = campaignData.schedule;
+        if (campaignData.funnelId) campaignDoc.funnelId = campaignData.funnelId;
+        if (campaignData.funnelUrl) campaignDoc.funnelUrl = campaignData.funnelUrl;
+        
+        // Save to local database with all metadata
+        const campaign = await AdCampaign.create(campaignDoc);
         
         res.json({ 
             success: true, 
@@ -109,10 +250,16 @@ async function createCampaign(req, res) {
                 ...data,
                 campaign,
                 aiEnhanced: useAI
-            }
+            },
+            warning: testingModeWarning
         });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        console.error("[CreateCampaign] Error creating campaign:", error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message || 'Failed to create campaign',
+            details: error.response?.data || error.stack
+        });
     }
 }
 

@@ -595,6 +595,19 @@ Format as JSON with fields: performanceSummary, keyInsights, topPerformers, impr
             };
         }
     } catch (error) {
+        // Check if it's an API key error
+        if (error.message?.includes('401') || error.message?.includes('Incorrect API key') || error.message?.includes('Invalid API key')) {
+            console.error(`[generateDashboardInsights] OpenAI API key error for coach ${coachId}:`, error.message);
+            throw new Error(`OpenAI API key is invalid or expired. Please update your OpenAI API key in settings. Original error: ${error.message}`);
+        }
+        
+        // Check if it's a rate limit error
+        if (error.message?.includes('429') || error.message?.includes('rate limit')) {
+            console.error(`[generateDashboardInsights] OpenAI rate limit error for coach ${coachId}:`, error.message);
+            throw new Error(`OpenAI API rate limit exceeded. Please try again later. Original error: ${error.message}`);
+        }
+        
+        console.error(`[generateDashboardInsights] Error generating dashboard insights for coach ${coachId}:`, error);
         throw new Error(`Failed to generate dashboard insights: ${error.message}`);
     }
 }
@@ -614,11 +627,23 @@ async function getOpenAIClient(coachId) {
         if (!globalApiKey) {
             throw new Error('OpenAI API key not found for this coach and no global API key configured');
         }
+        
+        // Validate the global API key format
+        if (!globalApiKey.startsWith('sk-') || globalApiKey.length < 20) {
+            throw new Error('Invalid global OpenAI API key format. Please check your OPENAI_API_KEY environment variable.');
+        }
+        
         console.log('Using global OpenAI API key as fallback');
         return new OpenAI({ apiKey: globalApiKey });
     }
     
     const apiKey = credentials.getDecryptedOpenAIKey();
+    
+    // Validate the coach's API key format
+    if (!apiKey || (!apiKey.startsWith('sk-') && apiKey.length < 20)) {
+        throw new Error('Invalid OpenAI API key format for this coach. Please reconfigure your OpenAI credentials.');
+    }
+    
     return new OpenAI({ apiKey });
 }
 
