@@ -192,7 +192,7 @@ const Sidebar = () => {
       title: 'Team & Network',
       items: [
         { icon: FiUsers, label: 'Staff', path: '/staff', badge: null, type: 'single' },
-        { icon: FiTrendingUp, label: 'Couch Network', path: '/mlm', badge: null, type: 'single' },
+        { icon: FiTrendingUp, label: 'Coach Network', path: '/mlm', badge: null, type: 'single' },
         { icon: FiCheckSquare, label: 'Tasks & Activities', path: '/tasks', badge: null, type: 'single' },
       ]
     },
