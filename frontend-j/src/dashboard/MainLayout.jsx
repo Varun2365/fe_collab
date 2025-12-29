@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Box, Flex, useColorModeValue, useBreakpointValue } from '@chakra-ui/react';
 import { useSelector } from 'react-redux';
 import Sidebar from './Sidebar';
@@ -10,11 +10,15 @@ const MainLayout = () => {
   const bgColor = useColorModeValue('gray.50', 'gray.900');
   const isAuthenticated = useSelector(selectAuthStatus);
   const navigate = useNavigate();
+  const location = useLocation();
   const [sidebarWidth, setSidebarWidth] = useState('320px');
   const [isHoverMode, setIsHoverMode] = useState(false);
   
   // Check if we're on mobile
   const isMobile = useBreakpointValue({ base: true, md: false });
+  
+  // Hide TopNav on profile page
+  const isProfilePage = location.pathname.includes('/profile');
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -66,11 +70,11 @@ const MainLayout = () => {
         w={isMobile ? "100%" : (isHoverMode ? "100%" : `calc(100% - ${sidebarWidth})`)}
         overflow="hidden"
       >
-        <TopNav />
+        {!isProfilePage && <TopNav />}
         <Box
           as="main"
-          p={6}
-          minH="calc(100vh - 80px)"
+          p={isProfilePage ? 0 : 6}
+          minH={isProfilePage ? "100vh" : "calc(100vh - 80px)"}
           overflowY="auto"
           bg={bgColor}
           position="relative"

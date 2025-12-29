@@ -124,6 +124,9 @@ import {
   FiPhone,
   FiMapPin,
   FiPrinter,
+  FiCheckCircle,
+  FiImage,
+  FiCopy,
 } from 'react-icons/fi';
 import { subscriptionAPI } from '../../services/subscriptionAPI';
 import {
@@ -155,7 +158,7 @@ const Profile = () => {
   // Local state
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(0); // Portfolio is now default (index 0 after removing Overview)
   const [editData, setEditData] = useState({});
   const [whatsappConfig, setWhatsappConfig] = useState({});
   const [creditsToAdd, setCreditsToAdd] = useState('');
@@ -201,7 +204,7 @@ const Profile = () => {
 
   // Load subscription data
   useEffect(() => {
-    if (activeTab === 5) { // Subscription tab index
+    if (activeTab === 2) { // Subscription tab index (Portfolio=0, Lead Magnets=1, Subscription=2, Settings=3)
       loadSubscriptionData();
     }
   }, [activeTab]);
@@ -237,6 +240,28 @@ const Profile = () => {
     } finally {
       setSubscriptionLoading(false);
     }
+  };
+
+  // Copy to clipboard function
+  const copyToClipboard = (text, label) => {
+    if (!text || text === 'Not specified') return;
+    navigator.clipboard.writeText(text).then(() => {
+      toast({
+        title: 'Copied!',
+        description: `${label || 'Text'} copied to clipboard`,
+        status: 'success',
+        duration: 2000,
+        isClosable: true,
+      });
+    }).catch(() => {
+      toast({
+        title: 'Error',
+        description: 'Failed to copy to clipboard',
+        status: 'error',
+        duration: 2000,
+        isClosable: true,
+      });
+    });
   };
 
   // Format currency
@@ -508,359 +533,493 @@ const Profile = () => {
   }
 
   return (
-    <Box minH="100vh" bg={bgColor}>
-      <Container maxW="7xl" py={8}>
-        {/* Profile Header */}
-        <MotionBox
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <Card mb={8} bg={cardBg} shadow="lg">
-            <CardBody>
-              <Flex direction={{ base: 'column', md: 'row' }} align="center" gap={6}>
-                <Box position="relative">
-                  <Avatar
-                    size="2xl"
-                    src={user.portfolio?.profileImages?.[0]}
-                    name={user.name}
-                  />
-                  {isEditing && (
-                    <IconButton
-                      icon={<FaEdit />}
-                      size="sm"
-                      colorScheme="blue"
-                      rounded="full"
-                      position="absolute"
-                      bottom={0}
-                      right={0}
-                    />
-                  )}
-                </Box>
+    <Box minH="100vh" bg={bgColor} w="100%" 
+      css={{
+        '&::-webkit-scrollbar': { width: '6px' },
+        '&::-webkit-scrollbar-track': { background: 'transparent' },
+        '&::-webkit-scrollbar-thumb': {
+          background: useColorModeValue('rgba(0, 0, 0, 0.2)', 'rgba(255, 255, 255, 0.2)'),
+          borderRadius: '10px',
+          transition: 'background 0.2s',
+        },
+        '&::-webkit-scrollbar-thumb:hover': {
+          background: useColorModeValue('rgba(0, 0, 0, 0.3)', 'rgba(255, 255, 255, 0.3)'),
+        },
+        scrollbarWidth: 'thin',
+        scrollbarColor: `${useColorModeValue('rgba(0, 0, 0, 0.2)', 'rgba(255, 255, 255, 0.2)')} transparent`,
+      }}
+    >
+      {/* Profile Header - Redesigned with Banner and Overview Content */}
+      <MotionBox
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <Box position="relative" w="100%">
+          {/* Banner Background Image */}
+          <Box
+            h="160px"
+            w="100%"
+            bgImage={user.portfolio?.bannerImage || 'url(https://images.unsplash.com/photo-1557683316-973673baf926?w=1920&q=80)'}
+            bgSize="cover"
+            bgPosition="center"
+            bgRepeat="no-repeat"
+            position="relative"
+            _after={{
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              bg: 'linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.4))',
+            }}
+          />
 
-                <VStack align={{ base: 'center', md: 'start' }} flex={1} spacing={2}>
-                  <Heading size="xl" color={textColor}>
-                    {user.name}
-                  </Heading>
-                  <Badge colorScheme="blue" fontSize="md" px={3} py={1}>
-                    {user.role === 'coach' ? 'Fitness Coach' : 'User'}
-                  </Badge>
-                  <Text color={mutedTextColor} textAlign={{ base: 'center', md: 'left' }}>
-                    {user.bio || 'No bio available'}
-                  </Text>
+          {/* Profile Content Card with Overview Content */}
+          <Box px={6} position="relative" mt="-60px" zIndex={1}>
+            <Box maxW="6xl" mx="auto">
+              <Card 
+                mb={8} 
+                bg={cardBg} 
+                borderRadius="10px"
+                border="1px solid"
+                borderColor={borderColor}
+                boxShadow="0 8px 24px rgba(0, 0, 0, 0.12)"
+                overflow="hidden"
+              >
+                {/* Profile Header Section - Compact 2 Column Layout */}
+                <CardBody pt={16} pb={5} px={8}>
+                  <Grid templateColumns={{ base: "1fr", lg: "auto 1px 1fr" }} gap={6} alignItems="start">
+                  {/* Left Section - Avatar & Stats (Horizontal) */}
+                  <VStack spacing={3} align={{ base: 'center', lg: 'start' }} w="100%">
+                    {/* Avatar Section */}
+                    <Box position="relative">
+                      <Avatar
+                        size="xl"
+                        src={user.portfolio?.profileImages?.[0]}
+                        name={user.name}
+                        border="4px solid"
+                        borderColor={cardBg}
+                        boxShadow="0 4px 16px rgba(0, 0, 0, 0.2)"
+                        w="100px"
+                        h="100px"
+                      />
+                      {isEditing && (
+                        <IconButton
+                          icon={<FaEdit />}
+                          size="xs"
+                          colorScheme="blue"
+                          rounded="full"
+                          position="absolute"
+                          bottom={0}
+                          right={0}
+                          boxShadow="lg"
+                          _hover={{ transform: 'scale(1.1)' }}
+                          transition="all 0.2s"
+                          border="2px solid"
+                          borderColor={cardBg}
+                        />
+                      )}
+                    </Box>
 
-                  <SimpleGrid columns={{ base: 3, md: 3 }} spacing={4} mt={4}>
-                    <Stat textAlign="center">
-                      <StatNumber color="blue.500">{user.portfolio?.totalProjectsCompleted || 0}</StatNumber>
-                      <StatLabel>Projects</StatLabel>
-                    </Stat>
-                    <Stat textAlign="center">
-                      <StatNumber color="green.500">{user.portfolio?.experienceYears || 0}</StatNumber>
-                      <StatLabel>Years Exp.</StatLabel>
-                    </Stat>
-                    <Stat textAlign="center">
-                      <StatNumber color="purple.500">{user.credits || 0}</StatNumber>
-                      <StatLabel>Credits</StatLabel>
-                    </Stat>
-                  </SimpleGrid>
-                </VStack>
-
-                <VStack spacing={3}>
-                  {!isEditing ? (
-                    <>
-                      <Button
-                        leftIcon={<FaEdit />}
-                        colorScheme="blue"
-                        onClick={() => setIsEditing(true)}
-                        size="lg"
-                      >
-                        Edit Profile
-                      </Button>
-                      <Button
-                        leftIcon={<FaCreditCard />}
-                        colorScheme="green"
-                        variant="outline"
-                        onClick={onOpen}
-                        size="lg"
-                      >
-                        Add Credits
-                      </Button>
-                    </>
-                  ) : (
-                    <HStack>
-                      <Button
-                        leftIcon={<FaSave />}
-                        colorScheme="green"
-                        onClick={updateProfile}
-                        isLoading={loading}
-                        size="lg"
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        leftIcon={<FaTimes />}
-                        variant="outline"
-                        onClick={() => setIsEditing(false)}
-                        size="lg"
-                      >
-                        Cancel
-                      </Button>
+                    {/* Stats - Horizontal Compact Layout */}
+                    <HStack spacing={4} align="center" flexWrap="wrap" justify={{ base: 'center', lg: 'flex-start' }}>
+                      <VStack spacing={0} align={{ base: 'center', lg: 'start' }}>
+                        <Text 
+                          fontSize="2xl" 
+                          fontWeight="700" 
+                          color="blue.500"
+                          lineHeight="1"
+                        >
+                          {user.portfolio?.totalProjectsCompleted || 0}
+                        </Text>
+                        <Text 
+                          fontSize="2xs" 
+                          color={mutedTextColor}
+                          fontWeight="500"
+                          textTransform="uppercase"
+                          letterSpacing="0.5px"
+                          mt={0.5}
+                        >
+                          Projects
+                        </Text>
+                      </VStack>
+                      <VStack spacing={0} align={{ base: 'center', lg: 'start' }}>
+                        <Text 
+                          fontSize="2xl" 
+                          fontWeight="700" 
+                          color="green.500"
+                          lineHeight="1"
+                        >
+                          {user.portfolio?.experienceYears || 0}
+                        </Text>
+                        <Text 
+                          fontSize="2xs" 
+                          color={mutedTextColor}
+                          fontWeight="500"
+                          textTransform="uppercase"
+                          letterSpacing="0.5px"
+                          mt={0.5}
+                        >
+                          Years
+                        </Text>
+                      </VStack>
+                      <VStack spacing={0} align={{ base: 'center', lg: 'start' }}>
+                        <Text 
+                          fontSize="2xl" 
+                          fontWeight="700" 
+                          color="purple.500"
+                          lineHeight="1"
+                        >
+                          {user.credits || 0}
+                        </Text>
+                        <Text 
+                          fontSize="2xs" 
+                          color={mutedTextColor}
+                          fontWeight="500"
+                          textTransform="uppercase"
+                          letterSpacing="0.5px"
+                          mt={0.5}
+                        >
+                          Credits
+                        </Text>
+                      </VStack>
                     </HStack>
-                  )}
-                </VStack>
-              </Flex>
-            </CardBody>
-          </Card>
-        </MotionBox>
+                  </VStack>
 
-        {/* Navigation Tabs */}
-        <MotionBox
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-        >
-          <Tabs index={activeTab} onChange={setActiveTab} variant="enclosed" colorScheme="blue">
-            <TabList mb={6} overflowX="auto">
-              <Tab><FaUser /> Overview</Tab>
-              <Tab><FaTrophy /> Portfolio</Tab>
-              <Tab><FaCalendarAlt /> Appointments</Tab>
-              <Tab><IoRocketOutline /> Lead Magnets</Tab>
-              <Tab><FaWhatsapp /> WhatsApp</Tab>
-              <Tab><FaCreditCard /> Subscription</Tab>
-              <Tab><FaEdit /> Settings</Tab>
-            </TabList>
+                  {/* Vertical Divider 1 */}
+                  <Divider 
+                    orientation="vertical" 
+                    borderColor={borderColor}
+                    display={{ base: 'none', lg: 'block' }}
+                    h="100%"
+                  />
 
-            <TabPanels>
-              {/* Overview Tab */}
-              <TabPanel px={0}>
-                <Grid templateColumns={{ base: "1fr", lg: "repeat(2, 1fr)" }} gap={6}>
-                  {/* Basic Information */}
-                  <Card bg={cardBg} shadow="md">
-                    <CardHeader>
-                      <Heading size="md" color={textColor}>Basic Information</Heading>
-                    </CardHeader>
-                    <CardBody>
-                      <VStack spacing={4} align="stretch">
-                        <FormControl>
-                          <FormLabel>Full Name</FormLabel>
-                          {isEditing ? (
-                            <Input
-                              value={editData.name}
-                              onChange={(e) => handleInputChange('name', e.target.value)}
-                              placeholder="Enter your full name"
-                            />
-                          ) : (
-                            <Text color={mutedTextColor}>{user.name || 'Not specified'}</Text>
-                          )}
-                        </FormControl>
+                  {/* Middle Section - Profile Info & Contact (Compact) */}
+                  <VStack 
+                    align={{ base: 'center', lg: 'start' }} 
+                    spacing={3}
+                    w="100%"
+                    px={{ base: 0, lg: 4 }}
+                  >
+                    {/* Name, Verified Badge, and Role - Inline */}
+                    <VStack align={{ base: 'center', lg: 'start' }} spacing={1.5} w="100%">
+                      <HStack spacing={2} align="center" flexWrap="wrap" justify={{ base: 'center', lg: 'flex-start' }}>
+                        <Heading 
+                          size="lg" 
+                          color={textColor}
+                          fontWeight="700"
+                          fontSize={{ base: 'xl', md: '2xl' }}
+                        >
+                          {user.name}
+                        </Heading>
+                        {user.isVerified && (
+                          <Box
+                            as={FiCheckCircle}
+                            color="green.500"
+                            boxSize={5}
+                            title="Verified Account"
+                          />
+                        )}
+                        <Badge 
+                          colorScheme="blue" 
+                          fontSize="2xs"
+                          fontWeight="600"
+                          px={2} 
+                          py={0.5}
+                          borderRadius="6px"
+                          textTransform="none"
+                          letterSpacing="0.3px"
+                          bg="blue.50"
+                          color="blue.700"
+                          border="1px solid"
+                          borderColor="blue.200"
+                          _dark={{
+                            bg: "blue.900",
+                            color: "blue.100",
+                            borderColor: "blue.700"
+                          }}
+                        >
+                          {user.role === 'coach' ? 'Fitness Coach' : 'User'}
+                        </Badge>
+                        <Badge 
+                          colorScheme={user.isActive ? 'green' : 'red'}
+                          fontSize="2xs"
+                          fontWeight="600"
+                          px={2} 
+                          py={0.5}
+                          borderRadius="6px"
+                        >
+                          {user.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </HStack>
+                    </VStack>
 
-                        <FormControl>
-                          <FormLabel>Email</FormLabel>
-                          <Text color={mutedTextColor}>{user.email}</Text>
-                        </FormControl>
+                    {/* Bio - Compact */}
+                    {user.bio && (
+                      <Text 
+                        color={mutedTextColor} 
+                        textAlign={{ base: 'center', lg: 'left' }}
+                        fontSize="xs"
+                        lineHeight="1.5"
+                        w="100%"
+                        noOfLines={2}
+                      >
+                        {user.bio}
+                      </Text>
+                    )}
 
-                        <FormControl>
-                          <FormLabel>Bio</FormLabel>
-                          {isEditing ? (
-                            <Textarea
-                              value={editData.bio}
-                              onChange={(e) => handleInputChange('bio', e.target.value)}
-                              placeholder="Tell us about yourself..."
-                              rows={3}
-                            />
-                          ) : (
-                            <Text color={mutedTextColor}>{user.bio || 'No bio added yet'}</Text>
-                          )}
-                        </FormControl>
+                    {/* Contact Information - Values with Copy Buttons */}
+                    <VStack spacing={2.5} align="stretch" w="100%" mt={1}>
+                      {user.email && (
+                        <HStack spacing={2} align="center" justify="space-between">
+                          <HStack spacing={2} align="center" flex={1}>
+                            <Box as={FiMail} color={mutedTextColor} boxSize={4} flexShrink={0} />
+                            <Text color={textColor} fontSize="sm" fontWeight="500" noOfLines={1} flex={1}>
+                              {user.email}
+                            </Text>
+                          </HStack>
+                          <IconButton
+                            icon={<FiCopy />}
+                            size="xs"
+                            variant="ghost"
+                            colorScheme="blue"
+                            onClick={() => copyToClipboard(user.email, 'Email')}
+                            aria-label="Copy email"
+                            borderRadius="7px"
+                          />
+                        </HStack>
+                      )}
 
-                        <FormControl>
-                          <FormLabel>Phone</FormLabel>
+                      {user.phone && (
+                        <HStack spacing={2} align="center" justify="space-between">
                           {isEditing ? (
                             <Input
                               value={editData.phone}
                               onChange={(e) => handleInputChange('phone', e.target.value)}
-                              placeholder="Enter your phone number"
+                              placeholder="Enter phone"
+                              size="sm"
+                              fontSize="sm"
+                              borderRadius="7px"
+                              flex={1}
                             />
                           ) : (
-                            <Text color={mutedTextColor}>{user.phone || 'Not specified'}</Text>
+                            <>
+                              <HStack spacing={2} align="center" flex={1}>
+                                <Box as={FiPhone} color={mutedTextColor} boxSize={4} flexShrink={0} />
+                                <Text color={textColor} fontSize="sm" fontWeight="500" noOfLines={1} flex={1}>
+                                  {user.phone}
+                                </Text>
+                              </HStack>
+                              <IconButton
+                                icon={<FiCopy />}
+                                size="xs"
+                                variant="ghost"
+                                colorScheme="blue"
+                                onClick={() => copyToClipboard(user.phone, 'Phone')}
+                                aria-label="Copy phone"
+                                borderRadius="7px"
+                              />
+                            </>
                           )}
-                        </FormControl>
-                      </VStack>
-                    </CardBody>
-                  </Card>
+                        </HStack>
+                      )}
 
-                  {/* Contact Information */}
-                  <Card bg={cardBg} shadow="md">
-                    <CardHeader>
-                      <Heading size="md" color={textColor}>Contact Information</Heading>
-                    </CardHeader>
-                    <CardBody>
-                      <VStack spacing={4} align="stretch">
-                        <FormControl>
-                          <FormLabel>City</FormLabel>
+                      {([user.city, user.country].filter(Boolean).length > 0) && (
+                        <HStack spacing={2} align="center" justify="space-between">
                           {isEditing ? (
-                            <Input
-                              value={editData.city}
-                              onChange={(e) => handleInputChange('city', e.target.value)}
-                              placeholder="Enter your city"
-                            />
+                            <HStack spacing={2} w="100%">
+                              <Input
+                                value={editData.city}
+                                onChange={(e) => handleInputChange('city', e.target.value)}
+                                placeholder="City"
+                                size="sm"
+                                fontSize="sm"
+                                borderRadius="7px"
+                                flex={1}
+                              />
+                              <Input
+                                value={editData.country}
+                                onChange={(e) => handleInputChange('country', e.target.value)}
+                                placeholder="Country"
+                                size="sm"
+                                fontSize="sm"
+                                borderRadius="7px"
+                                flex={1}
+                              />
+                            </HStack>
                           ) : (
-                            <Text color={mutedTextColor}>{user.city || 'Not specified'}</Text>
+                            <>
+                              <HStack spacing={2} align="center" flex={1}>
+                                <Box as={FiMapPin} color={mutedTextColor} boxSize={4} flexShrink={0} />
+                                <Text color={textColor} fontSize="sm" fontWeight="500" noOfLines={1} flex={1}>
+                                  {[user.city, user.country].filter(Boolean).join(', ')}
+                                </Text>
+                              </HStack>
+                              <IconButton
+                                icon={<FiCopy />}
+                                size="xs"
+                                variant="ghost"
+                                colorScheme="blue"
+                                onClick={() => copyToClipboard([user.city, user.country].filter(Boolean).join(', '), 'Location')}
+                                aria-label="Copy location"
+                                borderRadius="7px"
+                              />
+                            </>
                           )}
-                        </FormControl>
+                        </HStack>
+                      )}
 
-                        <FormControl>
-                          <FormLabel>Country</FormLabel>
-                          {isEditing ? (
-                            <Input
-                              value={editData.country}
-                              onChange={(e) => handleInputChange('country', e.target.value)}
-                              placeholder="Enter your country"
-                            />
-                          ) : (
-                            <Text color={mutedTextColor}>{user.country || 'Not specified'}</Text>
-                          )}
-                        </FormControl>
-
-                        <FormControl>
-                          <FormLabel>Company</FormLabel>
+                      {user.company && (
+                        <HStack spacing={2} align="center" justify="space-between">
                           {isEditing ? (
                             <Input
                               value={editData.company}
                               onChange={(e) => handleInputChange('company', e.target.value)}
-                              placeholder="Enter your company name"
+                              placeholder="Enter company"
+                              size="sm"
+                              fontSize="sm"
+                              borderRadius="7px"
+                              flex={1}
                             />
                           ) : (
-                            <Text color={mutedTextColor}>{user.company || 'Not specified'}</Text>
+                            <>
+                              <HStack spacing={2} align="center" flex={1}>
+                                <Box as={FiGlobe} color={mutedTextColor} boxSize={4} flexShrink={0} />
+                                <Text color={textColor} fontSize="sm" fontWeight="500" noOfLines={1} flex={1}>
+                                  {user.company}
+                                </Text>
+                              </HStack>
+                              <IconButton
+                                icon={<FiCopy />}
+                                size="xs"
+                                variant="ghost"
+                                colorScheme="blue"
+                                onClick={() => copyToClipboard(user.company, 'Company')}
+                                aria-label="Copy company"
+                                borderRadius="7px"
+                              />
+                            </>
                           )}
-                        </FormControl>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-
-                  {/* Professional Information */}
-                  <Card bg={cardBg} shadow="md">
-                    <CardHeader>
-                      <Heading size="md" color={textColor}>Professional Information</Heading>
-                    </CardHeader>
-                    <CardBody>
-                      <VStack spacing={4} align="stretch">
-                        <FormControl>
-                          <FormLabel>Experience (Years)</FormLabel>
-                          {isEditing ? (
-                            <Input
-                              type="number"
-                              value={editData.experienceYears}
-                              onChange={(e) => handleInputChange('experienceYears', parseInt(e.target.value))}
-                              min="0"
-                              max="50"
-                            />
-                          ) : (
-                            <Text color={mutedTextColor}>{user.portfolio?.experienceYears || 0} years</Text>
-                          )}
-                        </FormControl>
-
-                        <FormControl>
-                          <FormLabel>Projects Completed</FormLabel>
-                          {isEditing ? (
-                            <Input
-                              type="number"
-                              value={editData.totalProjectsCompleted}
-                              onChange={(e) => handleInputChange('totalProjectsCompleted', parseInt(e.target.value))}
-                              min="0"
-                            />
-                          ) : (
-                            <Text color={mutedTextColor}>{user.portfolio?.totalProjectsCompleted || 0} projects</Text>
-                          )}
-                        </FormControl>
-
-                        <FormControl>
-                          <FormLabel>Specializations</FormLabel>
-                          {isEditing ? (
-                            <VStack align="stretch" spacing={2}>
-                              {editData.specializations.map((spec, index) => (
-                                <HStack key={index}>
-                                  <Input
-                                    value={spec}
-                                    onChange={(e) => updateSpecialization(index, e.target.value)}
-                                    placeholder="Enter specialization"
-                                  />
-                                  <IconButton
-                                    icon={<FaTrash />}
-                                    size="sm"
-                                    colorScheme="red"
-                                    onClick={() => removeSpecialization(index)}
-                                  />
-                                </HStack>
-                              ))}
-                              <Button
-                                leftIcon={<FaPlus />}
-                                size="sm"
-                                variant="outline"
-                                onClick={addSpecialization}
-                              >
-                                Add Specialization
-                              </Button>
-                            </VStack>
-                          ) : (
-                            <Flex wrap="wrap" gap={2}>
-                              {user.portfolio?.specializations?.length > 0 ? (
-                                user.portfolio.specializations.map((spec, index) => (
-                                  <Tag key={index} colorScheme="blue">
-                                    {spec}
-                                  </Tag>
-                                ))
-                              ) : (
-                                <Text color={mutedTextColor}>No specializations added</Text>
-                              )}
-                            </Flex>
-                          )}
-                        </FormControl>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-
-                  {/* Account Status */}
-                  <Card bg={cardBg} shadow="md">
-                    <CardHeader>
-                      <Heading size="md" color={textColor}>Account Status</Heading>
-                    </CardHeader>
-                    <CardBody>
-                      <VStack spacing={4} align="stretch">
-                        <HStack justify="space-between">
-                          <Text>Verification</Text>
-                          <Badge colorScheme={user.isVerified ? 'green' : 'orange'}>
-                            {user.isVerified ? 'Verified' : 'Pending'}
-                          </Badge>
                         </HStack>
+                      )}
+                    </VStack>
+                  </VStack>
 
-                        <HStack justify="space-between">
-                          <Text>Account Status</Text>
-                          <Badge colorScheme={user.isActive ? 'green' : 'red'}>
-                            {user.isActive ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </HStack>
+                  {/* Right Section - Experience Only */}
+                  <VStack 
+                    align={{ base: 'center', lg: 'start' }} 
+                    spacing={3}
+                    w="100%"
+                    px={{ base: 0, lg: 4 }}
+                  >
+                    {/* Experience - Value with Copy Button */}
+                    <HStack spacing={2} align="center" justify="space-between" w="100%">
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          value={editData.experienceYears}
+                          onChange={(e) => handleInputChange('experienceYears', parseInt(e.target.value))}
+                          placeholder="Years"
+                          size="sm"
+                          fontSize="sm"
+                          borderRadius="7px"
+                          w="120px"
+                        />
+                      ) : (
+                        <>
+                          <HStack spacing={2} align="center" flex={1}>
+                            <Box as={FiTrendingUp} color={mutedTextColor} boxSize={4} flexShrink={0} />
+                            <Text color={textColor} fontSize="sm" fontWeight="500">
+                              {user.portfolio?.experienceYears || 0} years
+                            </Text>
+                          </HStack>
+                          <IconButton
+                            icon={<FiCopy />}
+                            size="xs"
+                            variant="ghost"
+                            colorScheme="blue"
+                            onClick={() => copyToClipboard(`${user.portfolio?.experienceYears || 0} years`, 'Experience')}
+                            aria-label="Copy experience"
+                            borderRadius="7px"
+                          />
+                        </>
+                      )}
+                    </HStack>
+                  </VStack>
+                  </Grid>
+                </CardBody>
+              </Card>
+            </Box>
+          </Box>
+        </Box>
+      </MotionBox>
 
-                        <HStack justify="space-between">
-                          <Text>Credits</Text>
-                          <Badge colorScheme="purple" fontSize="md">
-                            {user.credits || 0}
-                          </Badge>
-                        </HStack>
+      {/* Content Container */}
+      <Box px={6} pb={6}>
+        <Box maxW="7xl" mx="auto">
 
-                        <HStack justify="space-between">
-                          <Text>Last Active</Text>
-                          <Text color={mutedTextColor} fontSize="sm">
-                            {user.lastActiveAt ? new Date(user.lastActiveAt).toLocaleDateString() : 'Never'}
-                          </Text>
-                        </HStack>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                </Grid>
-              </TabPanel>
+          {/* Navigation Tabs */}
+          <MotionBox
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <Tabs index={activeTab} onChange={setActiveTab} variant="line" colorScheme="blue">
+            <TabList mb={6} overflowX="auto" borderBottom="2px solid" borderColor={borderColor}>
+              <Tab 
+                _selected={{ color: 'blue.600', borderBottom: '2px solid', borderColor: 'blue.600' }}
+                fontWeight="500"
+                fontSize="sm"
+                px={6}
+                py={3}
+              >
+                <HStack spacing={2}>
+                  <FaTrophy />
+                  <Text>Portfolio</Text>
+                </HStack>
+              </Tab>
+              <Tab 
+                _selected={{ color: 'blue.600', borderBottom: '2px solid', borderColor: 'blue.600' }}
+                fontWeight="500"
+                fontSize="sm"
+                px={6}
+                py={3}
+              >
+                <HStack spacing={2}>
+                  <IoRocketOutline />
+                  <Text>Lead Magnets</Text>
+                </HStack>
+              </Tab>
+              <Tab 
+                _selected={{ color: 'blue.600', borderBottom: '2px solid', borderColor: 'blue.600' }}
+                fontWeight="500"
+                fontSize="sm"
+                px={6}
+                py={3}
+              >
+                <HStack spacing={2}>
+                  <FaCreditCard />
+                  <Text>Subscription</Text>
+                </HStack>
+              </Tab>
+              <Tab 
+                _selected={{ color: 'blue.600', borderBottom: '2px solid', borderColor: 'blue.600' }}
+                fontWeight="500"
+                fontSize="sm"
+                px={6}
+                py={3}
+              >
+                <HStack spacing={2}>
+                  <FaEdit />
+                  <Text>Settings</Text>
+                </HStack>
+              </Tab>
+            </TabList>
 
-              {/* Portfolio Tab */}
+            <TabPanels>
+              {/* Portfolio Tab - Now Default */}
               <TabPanel px={0}>
                 <Grid templateColumns={{ base: "1fr", lg: "repeat(2, 1fr)" }} gap={6}>
                   {/* Profile Images */}
@@ -1037,123 +1196,6 @@ const Profile = () => {
                 </Grid>
               </TabPanel>
 
-              {/* Appointments Tab */}
-              <TabPanel px={0}>
-                <Grid templateColumns={{ base: "1fr", lg: "repeat(2, 1fr)" }} gap={6}>
-                  {/* Appointment Settings */}
-                  <Card bg={cardBg} shadow="md">
-                    <CardHeader>
-                      <Heading size="md" color={textColor}>Appointment Settings</Heading>
-                    </CardHeader>
-                    <CardBody>
-                      <VStack spacing={4} align="stretch">
-                        <FormControl>
-                          <FormLabel>Appointment Headline</FormLabel>
-                          {isEditing ? (
-                            <Input
-                              value={editData.appointmentHeadline}
-                              onChange={(e) => handleInputChange('appointmentHeadline', e.target.value)}
-                              placeholder="Enter appointment headline"
-                            />
-                          ) : (
-                            <Text color={mutedTextColor}>
-                              {user.appointmentSettings?.appointmentHeadline || 'Schedule a Call With Us'}
-                            </Text>
-                          )}
-                        </FormControl>
-
-                        <FormControl>
-                          <FormLabel>Slot Duration</FormLabel>
-                          {isEditing ? (
-                            <Select
-                              value={editData.slotDuration}
-                              onChange={(e) => handleInputChange('slotDuration', parseInt(e.target.value))}
-                            >
-                              <option value={15}>15 minutes</option>
-                              <option value={30}>30 minutes</option>
-                              <option value={45}>45 minutes</option>
-                              <option value={60}>60 minutes</option>
-                            </Select>
-                          ) : (
-                            <Text color={mutedTextColor}>
-                              {user.appointmentSettings?.slotDuration || 30} minutes
-                            </Text>
-                          )}
-                        </FormControl>
-
-                        <FormControl>
-                          <FormLabel>Time Zone</FormLabel>
-                          {isEditing ? (
-                            <Select
-                              value={editData.timeZone}
-                              onChange={(e) => handleInputChange('timeZone', e.target.value)}
-                            >
-                              <option value="UTC+05:30">UTC+05:30 (IST)</option>
-                              <option value="UTC+00:00">UTC+00:00 (GMT)</option>
-                              <option value="UTC-05:00">UTC-05:00 (EST)</option>
-                              <option value="UTC-08:00">UTC-08:00 (PST)</option>
-                            </Select>
-                          ) : (
-                            <Text color={mutedTextColor}>
-                              {user.appointmentSettings?.timeZone || 'UTC+05:30'}
-                            </Text>
-                          )}
-                        </FormControl>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-
-                  {/* Available Days */}
-                  <Card bg={cardBg} shadow="md">
-                    <CardHeader>
-                      <Heading size="md" color={textColor}>Available Days</Heading>
-                    </CardHeader>
-                    <CardBody>
-                      <Grid templateColumns="repeat(2, 1fr)" gap={4}>
-                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
-                          <HStack key={day} justify="space-between">
-                            <Text fontSize="sm">{day}</Text>
-                            <Switch
-                              isChecked={user.appointmentSettings?.availableDays?.includes(day) || false}
-                              isDisabled={!isEditing}
-                              size="sm"
-                            />
-                          </HStack>
-                        ))}
-                      </Grid>
-                    </CardBody>
-                  </Card>
-
-                  {/* Blocked Dates */}
-                  <Card bg={cardBg} shadow="md" gridColumn={{ base: "1", lg: "span 2" }}>
-                    <CardHeader>
-                      <Flex justify="space-between" align="center">
-                        <Heading size="md" color={textColor}>Blocked Dates</Heading>
-                        {isEditing && (
-                          <Button leftIcon={<FaPlus />} size="sm" colorScheme="red">
-                            Add Blocked Date
-                          </Button>
-                        )}
-                      </Flex>
-                    </CardHeader>
-                    <CardBody>
-                      {user.appointmentSettings?.blockedDates?.length > 0 ? (
-                        <Flex wrap="wrap" gap={2}>
-                          {user.appointmentSettings.blockedDates.map((date, index) => (
-                            <Tag key={index} colorScheme="red">
-                              <TagLabel>{new Date(date).toLocaleDateString()}</TagLabel>
-                              {isEditing && <TagCloseButton />}
-                            </Tag>
-                          ))}
-                        </Flex>
-                      ) : (
-                        <Text color={mutedTextColor}>No blocked dates set</Text>
-                      )}
-                    </CardBody>
-                  </Card>
-                </Grid>
-              </TabPanel>
-
               {/* Lead Magnets Tab */}
               <TabPanel px={0}>
                 <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }} gap={6}>
@@ -1192,55 +1234,6 @@ const Profile = () => {
                     </Card>
                   ))}
                 </Grid>
-              </TabPanel>
-
-              {/* WhatsApp Tab */}
-              <TabPanel px={0}>
-                <Card bg={cardBg} shadow="md">
-                  <CardHeader>
-                    <Heading size="md" color={textColor}>WhatsApp Configuration</Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <VStack spacing={6} align="stretch">
-                      <FormControl>
-                        <FormLabel>Phone Number</FormLabel>
-                        <Input
-                          value={whatsappConfig.phoneNumber}
-                          onChange={(e) => handleWhatsappChange('phoneNumber', e.target.value)}
-                          placeholder="Enter WhatsApp phone number"
-                        />
-                      </FormControl>
-
-                      <FormControl>
-                        <FormLabel>Welcome Message</FormLabel>
-                        <Textarea
-                          value={whatsappConfig.welcomeMessage}
-                          onChange={(e) => handleWhatsappChange('welcomeMessage', e.target.value)}
-                          placeholder="Enter welcome message for WhatsApp"
-                          rows={4}
-                        />
-                      </FormControl>
-
-                      <FormControl display="flex" alignItems="center">
-                        <FormLabel mb="0">Enable WhatsApp Integration</FormLabel>
-                        <Switch
-                          isChecked={whatsappConfig.isActive}
-                          onChange={(e) => handleWhatsappChange('isActive', e.target.checked)}
-                          colorScheme="green"
-                        />
-                      </FormControl>
-
-                      <Button
-                        leftIcon={<FaWhatsapp />}
-                        colorScheme="green"
-                        onClick={updateWhatsappConfig}
-                        isLoading={loading}
-                      >
-                        Update WhatsApp Configuration
-                      </Button>
-                    </VStack>
-                  </CardBody>
-                </Card>
               </TabPanel>
 
               {/* Settings Tab */}
@@ -1820,10 +1813,12 @@ const Profile = () => {
                 </Modal>
               </TabPanel>
             </TabPanels>
-          </Tabs>
-        </MotionBox>
+            </Tabs>
+          </MotionBox>
+        </Box>
+      </Box>
 
-        {/* Add Credits Modal */}
+      {/* Add Credits Modal */}
         <Modal isOpen={isOpen} onClose={onClose}>
           <ModalOverlay />
           <ModalContent>
@@ -1849,7 +1844,6 @@ const Profile = () => {
             </ModalFooter>
           </ModalContent>
         </Modal>
-      </Container>
     </Box>
   );
 };

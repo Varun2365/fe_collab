@@ -333,33 +333,45 @@ exports.initiateMetaOAuth = asyncHandler(async (req, res) => {
 });
 
 // @desc    Handle Meta OAuth callback
-// @route   POST /api/marketing/v1/credentials/meta/oauth/callback
-// @access  Private (Coaches/Staff with permission)
+// @route   GET/POST /api/marketing/v1/credentials/meta/oauth/callback
+// @access  Public (callback from Meta - no authentication required)
 exports.handleMetaOAuthCallback = asyncHandler(async (req, res) => {
-    const coachId = CoachStaffService.getCoachIdForQuery(req);
-    const userContext = CoachStaffService.getUserContext(req);
-    
-    // Log staff action if applicable
-    CoachStaffService.logStaffAction(req, 'manage', 'marketing', 'handle_meta_oauth_callback', { coachId });
-    
     // OAuth callback can come as GET (from browser redirect) or POST
-    const { code, state } = req.method === 'GET' ? req.query : req.body;
+    const { code, state, error } = req.method === 'GET' ? req.query : req.body;
+    
+    // Handle OAuth errors from Meta
+    if (error) {
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        return res.redirect(`${frontendUrl}/ads?meta_error=${encodeURIComponent(error)}`);
+    }
     
     if (!code || !state) {
-        return res.status(400).json({
-            success: false,
-            message: 'Authorization code and state are required'
-        });
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        return res.redirect(`${frontendUrl}/ads?meta_error=missing_parameters`);
     }
     
     try {
-        // Verify state
-        const decodedState = JSON.parse(Buffer.from(state, 'base64').toString());
-        if (decodedState.coachId !== coachId) {
-            return res.status(403).json({
-                success: false,
-                message: 'Invalid state parameter'
-            });
+        // Verify state - extract coachId from state parameter
+        let decodedState;
+        try {
+            decodedState = JSON.parse(Buffer.from(state, 'base64').toString());
+        } catch (e) {
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            return res.redirect(`${frontendUrl}/ads?meta_error=invalid_state`);
+        }
+        
+        const { coachId, timestamp } = decodedState;
+        
+        if (!coachId) {
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            return res.redirect(`${frontendUrl}/ads?meta_error=missing_coach_id`);
+        }
+        
+        // Verify state timestamp (must be within 10 minutes)
+        const stateAge = Date.now() - timestamp;
+        if (stateAge > 10 * 60 * 1000) {
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            return res.redirect(`${frontendUrl}/ads?meta_error=state_expired`);
         }
         
         const META_APP_ID = process.env.META_APP_ID;
@@ -382,76 +394,128 @@ exports.handleMetaOAuthCallback = asyncHandler(async (req, res) => {
         
         // Exchange code for access token
         const axios = require('axios');
-        const tokenResponse = await axios.get(`https://graph.facebook.com/v19.0/oauth/access_token`, {
-            params: {
-                client_id: META_APP_ID,
-                client_secret: META_APP_SECRET,
-                redirect_uri: redirectUri,
-                code: code
-            }
-        });
+        let tokenResponse;
+        try {
+            tokenResponse = await axios.get(`https://graph.facebook.com/v19.0/oauth/access_token`, {
+                params: {
+                    client_id: META_APP_ID,
+                    client_secret: META_APP_SECRET,
+                    redirect_uri: redirectUri,
+                    code: code
+                }
+            });
+        } catch (tokenError) {
+            console.error('Token exchange error:', tokenError.response?.data || tokenError.message);
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            const errorMsg = tokenError.response?.data?.error?.message || 'Failed to exchange authorization code';
+            return res.redirect(`${frontendUrl}/ads?meta_error=${encodeURIComponent(errorMsg)}`);
+        }
+        
+        if (!tokenResponse.data.access_token) {
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            return res.redirect(`${frontendUrl}/ads?meta_error=no_access_token_received`);
+        }
         
         const accessToken = tokenResponse.data.access_token;
         
         // Get long-lived token (optional, but recommended)
-        const longLivedTokenResponse = await axios.get(`https://graph.facebook.com/v19.0/oauth/access_token`, {
-            params: {
-                grant_type: 'fb_exchange_token',
-                client_id: META_APP_ID,
-                client_secret: META_APP_SECRET,
-                fb_exchange_token: accessToken
+        let longLivedToken = accessToken;
+        try {
+            const longLivedTokenResponse = await axios.get(`https://graph.facebook.com/v19.0/oauth/access_token`, {
+                params: {
+                    grant_type: 'fb_exchange_token',
+                    client_id: META_APP_ID,
+                    client_secret: META_APP_SECRET,
+                    fb_exchange_token: accessToken
+                }
+            });
+            
+            if (longLivedTokenResponse.data.access_token) {
+                longLivedToken = longLivedTokenResponse.data.access_token;
             }
-        });
-        
-        const longLivedToken = longLivedTokenResponse.data.access_token || accessToken;
+        } catch (exchangeError) {
+            console.warn('Long-lived token exchange failed, using short-lived token:', exchangeError.response?.data || exchangeError.message);
+            // Continue with short-lived token
+        }
         
         // Get user's ad accounts
-        const accountsResponse = await axios.get(`https://graph.facebook.com/v19.0/me/adaccounts`, {
-            params: {
-                access_token: longLivedToken,
-                fields: 'id,name,account_id'
-            }
-        });
+        let adAccountId = null;
+        let businessAccountId = null;
         
-        const adAccounts = accountsResponse.data.data || [];
-        const adAccountId = adAccounts.length > 0 ? adAccounts[0].id : null;
+        try {
+            const accountsResponse = await axios.get(`https://graph.facebook.com/v19.0/me/adaccounts`, {
+                params: {
+                    access_token: longLivedToken,
+                    fields: 'id,name,account_id'
+                }
+            });
+            
+            const adAccounts = accountsResponse.data.data || [];
+            adAccountId = adAccounts.length > 0 ? adAccounts[0].id : null;
+        } catch (accountsError) {
+            console.warn('Failed to fetch ad accounts:', accountsError.response?.data || accountsError.message);
+            // Continue without ad account ID
+        }
         
         // Get business accounts
-        const businessResponse = await axios.get(`https://graph.facebook.com/v19.0/me/businesses`, {
-            params: {
-                access_token: longLivedToken
-            }
-        });
-        
-        const businesses = businessResponse.data.data || [];
-        const businessAccountId = businesses.length > 0 ? businesses[0].id : null;
+        try {
+            const businessResponse = await axios.get(`https://graph.facebook.com/v19.0/me/businesses`, {
+                params: {
+                    access_token: longLivedToken
+                }
+            });
+            
+            const businesses = businessResponse.data.data || [];
+            businessAccountId = businesses.length > 0 ? businesses[0].id : null;
+        } catch (businessError) {
+            console.warn('Failed to fetch business accounts:', businessError.response?.data || businessError.message);
+            // Continue without business account ID
+        }
         
         // Save credentials using existing service
-        const result = await marketingV1Service.setupMetaCredentials(coachId, {
-            accessToken: longLivedToken,
-            appId: META_APP_ID,
-            appSecret: META_APP_SECRET, // Store for reference, but OAuth doesn't require it
-            businessAccountId,
-            adAccountId: adAccountId ? adAccountId.replace('act_', '') : null,
-            facebookPageId: null, // Can be fetched separately if needed
-            instagramAccountId: null // Can be fetched separately if needed
-        });
-        
-        res.status(200).json({
-            success: true,
-            message: 'Meta account connected successfully via OAuth',
-            data: {
-                ...result,
-                oauthConnected: true
+        let result;
+        try {
+            console.log(`[MetaOAuth] Saving credentials for coach ${coachId}...`);
+            result = await marketingV1Service.setupMetaCredentials(coachId, {
+                accessToken: longLivedToken,
+                appId: META_APP_ID,
+                appSecret: META_APP_SECRET, // Store for reference, but OAuth doesn't require it
+                businessAccountId,
+                adAccountId: adAccountId ? adAccountId.replace('act_', '') : null,
+                facebookPageId: null, // Can be fetched separately if needed
+                instagramAccountId: null // Can be fetched separately if needed
+            });
+            
+            console.log(`[MetaOAuth] Successfully saved credentials for coach ${coachId}`);
+            console.log(`[MetaOAuth] Result:`, JSON.stringify(result, null, 2));
+            
+            // Verify credentials were saved correctly
+            const CoachMarketingCredentials = require('../schema/CoachMarketingCredentials');
+            const savedCreds = await CoachMarketingCredentials.findOne({ coachId });
+            if (savedCreds && savedCreds.metaAds) {
+                console.log(`[MetaOAuth] Verification - isConnected: ${savedCreds.metaAds.isConnected}`);
+                console.log(`[MetaOAuth] Verification - hasAccessToken: ${!!savedCreds.metaAds.accessToken}`);
+                console.log(`[MetaOAuth] Verification - hasAppId: ${!!savedCreds.metaAds.appId}`);
+            } else {
+                console.error(`[MetaOAuth] WARNING: Credentials not found after save for coach ${coachId}`);
             }
-        });
+        } catch (saveError) {
+            console.error('[MetaOAuth] Error saving credentials:', saveError);
+            console.error('[MetaOAuth] Error stack:', saveError.stack);
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            return res.redirect(`${frontendUrl}/ads?meta_error=${encodeURIComponent('Failed to save credentials: ' + saveError.message)}`);
+        }
+        
+        // Redirect back to frontend with success
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const redirectUrl = `${frontendUrl}/ads?meta_connected=true`;
+        console.log(`[MetaOAuth] Redirecting to: ${redirectUrl}`);
+        res.redirect(redirectUrl);
     } catch (error) {
         console.error('Meta OAuth callback error:', error.response?.data || error.message);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to complete OAuth flow',
-            error: error.response?.data?.error?.message || error.message
-        });
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const errorMessage = error.response?.data?.error?.message || error.message || 'unknown_error';
+        return res.redirect(`${frontendUrl}/ads?meta_error=${encodeURIComponent(errorMessage)}`);
     }
 });
 
@@ -539,16 +603,35 @@ exports.saveCurrencyPreference = asyncHandler(async (req, res) => {
     
     try {
         const CoachMarketingCredentials = require('../schema/CoachMarketingCredentials');
-        const credentials = await CoachMarketingCredentials.findOneAndUpdate(
-            { coachId },
-            {
-                $set: {
-                    'preferences.currency': currency,
-                    'preferences.updatedAt': new Date()
+        
+        // Get coachId for updatedBy field
+        const coachIdForUpdate = CoachStaffService.getCoachIdForQuery(req);
+        
+        // Check if credentials exist, if not create with all required fields
+        let credentials = await CoachMarketingCredentials.findOne({ coachId });
+        
+        if (!credentials) {
+            // Create new credentials record with all required fields
+            const crypto = require('crypto');
+            const encryptionKey = crypto.randomBytes(32).toString('hex');
+            credentials = new CoachMarketingCredentials({
+                coachId,
+                encryptionKey,
+                updatedBy: coachIdForUpdate,
+                preferences: {
+                    currency: currency,
+                    updatedAt: new Date()
                 }
-            },
-            { upsert: true, new: true }
-        );
+            });
+            await credentials.save();
+        } else {
+            // Update existing credentials
+            credentials.preferences.currency = currency;
+            credentials.preferences.updatedAt = new Date();
+            credentials.updatedBy = coachIdForUpdate;
+            credentials.lastUpdated = new Date();
+            await credentials.save();
+        }
         
         res.status(200).json({
             success: true,
@@ -576,6 +659,149 @@ exports.getCredentialsStatus = asyncHandler(async (req, res) => {
         success: true,
         data: status
     });
+});
+
+// @desc    Get detailed Meta credentials information
+// @route   GET /api/marketing/v1/credentials/meta/detailed
+// @access  Private (Coaches)
+exports.getDetailedMetaCredentials = asyncHandler(async (req, res) => {
+    const coachId = req.coachId;
+    const CoachMarketingCredentials = require('../schema/CoachMarketingCredentials');
+    
+    try {
+        const credentials = await CoachMarketingCredentials.findOne({ coachId })
+            .select('+metaAds.accessToken +encryptionKey');
+        
+        if (!credentials || !credentials.metaAds) {
+            return res.status(200).json({
+                success: true,
+                data: {
+                    isConnected: false,
+                    hasAccessToken: false,
+                    hasAppId: false,
+                    message: 'No Meta credentials found'
+                }
+            });
+        }
+        
+        const hasAccessToken = !!credentials.metaAds.accessToken;
+        const hasAppId = !!credentials.metaAds.appId;
+        const hasEncryptionKey = !!credentials.encryptionKey;
+        
+        // Try to decrypt the token to verify it's valid
+        let tokenStatus = 'not_found';
+        let tokenPreview = null;
+        let tokenError = null;
+        if (hasAccessToken && hasEncryptionKey) {
+            try {
+                // Check if token looks encrypted (should be at least 64 chars)
+                const tokenLength = credentials.metaAds.accessToken.length;
+                if (tokenLength < 64) {
+                    tokenStatus = 'invalid_format';
+                    tokenError = `Token appears to be plain text or corrupted (length: ${tokenLength}). Please reconnect to encrypt it properly.`;
+                    console.warn(`[getDetailedMetaCredentials] Token too short, likely plain text: ${tokenLength} chars`);
+                } else {
+                    const decryptedToken = credentials.getDecryptedAccessToken();
+                    if (decryptedToken && decryptedToken.length > 0) {
+                        tokenStatus = 'valid';
+                        // Show first 10 and last 4 characters for security
+                        tokenPreview = decryptedToken.length > 14 
+                            ? `${decryptedToken.substring(0, 10)}...${decryptedToken.substring(decryptedToken.length - 4)}`
+                            : '***';
+                    } else {
+                        tokenStatus = 'decryption_failed';
+                        tokenError = 'Token exists but cannot be decrypted. The encryption key may have changed. Please reconnect.';
+                    }
+                }
+            } catch (error) {
+                tokenStatus = 'decryption_error';
+                tokenError = error.message || 'Failed to decrypt token';
+                console.error('[getDetailedMetaCredentials] Decryption error:', error);
+                console.error('[getDetailedMetaCredentials] Token length:', credentials.metaAds.accessToken?.length);
+                console.error('[getDetailedMetaCredentials] Token preview:', credentials.metaAds.accessToken?.substring(0, 50));
+            }
+        } else if (hasAccessToken && !hasEncryptionKey) {
+            tokenStatus = 'missing_key';
+            tokenError = 'Access token exists but encryption key is missing. Please reconnect.';
+        }
+        
+        res.status(200).json({
+            success: true,
+            data: {
+                isConnected: credentials.metaAds.isConnected || false,
+                hasAccessToken,
+                hasAppId,
+                hasEncryptionKey,
+                tokenStatus,
+                tokenPreview,
+                tokenError,
+                appId: credentials.metaAds.appId || null,
+                businessAccountId: credentials.metaAds.businessAccountId || null,
+                adAccountId: credentials.metaAds.adAccountId || null,
+                facebookPageId: credentials.metaAds.facebookPageId || null,
+                instagramAccountId: credentials.metaAds.instagramAccountId || null,
+                lastVerified: credentials.metaAds.lastVerified || null,
+                permissions: credentials.metaAds.permissions || []
+            }
+        });
+    } catch (error) {
+        console.error('[getDetailedMetaCredentials] Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get detailed credentials',
+            error: error.message
+        });
+    }
+});
+
+// @desc    Disconnect Meta account
+// @route   DELETE /api/marketing/v1/credentials/meta
+// @access  Private (Coaches)
+exports.disconnectMeta = asyncHandler(async (req, res) => {
+    const coachId = req.coachId;
+    const CoachMarketingCredentials = require('../schema/CoachMarketingCredentials');
+    
+    try {
+        const credentials = await CoachMarketingCredentials.findOne({ coachId });
+        
+        if (!credentials || !credentials.metaAds) {
+            return res.status(404).json({
+                success: false,
+                message: 'Meta credentials not found'
+            });
+        }
+        
+        // Clear Meta credentials but keep the document
+        credentials.metaAds = {
+            accessToken: null,
+            appId: null,
+            appSecret: null,
+            businessAccountId: null,
+            adAccountId: null,
+            facebookPageId: null,
+            instagramAccountId: null,
+            isConnected: false,
+            lastVerified: null,
+            permissions: []
+        };
+        
+        credentials.updatedBy = coachId;
+        credentials.lastUpdated = new Date();
+        
+        await credentials.save();
+        
+        res.status(200).json({
+            success: true,
+            message: 'Meta account disconnected successfully'
+        });
+    } catch (error) {
+        console.error('[disconnectMeta] Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to disconnect Meta account',
+            error: error.message
+        });
+    }
 });
 
 // ===== CAMPAIGN ANALYSIS & MANAGEMENT =====
