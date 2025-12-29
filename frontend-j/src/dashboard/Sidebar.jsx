@@ -184,7 +184,7 @@ const Sidebar = () => {
       title: 'Marketing & Growth',
       items: [
         { icon: FiTarget, label: 'Marketing & Ads', path: '/ads', badge: null, type: 'single' },
-        { icon: FiZap, label: 'AI & Automation', path: '/automation', badge: null, type: 'single' },
+        { icon: FiZap, label: 'Automation Rules', path: '/automation', badge: null, type: 'single' },
         { icon: FiFileText, label: 'Courses & Content', path: '/courses', badge: null, type: 'single' },
       ]
     },

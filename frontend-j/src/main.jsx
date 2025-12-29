@@ -81,6 +81,17 @@ const theme = extendTheme({
       },
     },
   },
+  config: {
+    initialColorMode: 'light',
+    useSystemColorMode: false,
+  },
+  defaultOptions: {
+    toast: {
+      position: 'top-right',
+      duration: 4000,
+      isClosable: true,
+    },
+  },
   styles: {
     global: {
       body: {

@@ -270,45 +270,57 @@ const initRulesEngineWorker = async () => {
 
                     // Process each rule
                     for (const rule of rules) {
-                        if (rule.workflowType === 'graph') {
-                            // Execute graph workflow
-                            await executeGraphWorkflow(rule, eventPayload, relatedDoc, eventName);
-                        } else {
-                            // Execute legacy workflow
-                            for (const action of rule.actions) {
-                                console.log(`[Rules Engine] Triggering action: ${action.type} for event: ${eventName}`);
+                        try {
+                            if (rule.workflowType === 'graph') {
+                                // Execute graph workflow
+                                await executeGraphWorkflow(rule, eventPayload, relatedDoc, eventName);
+                            } else {
+                                // Execute legacy workflow
+                                for (const action of rule.actions) {
+                                    console.log(`[Rules Engine] Triggering action: ${action.type} for event: ${eventName}`);
 
-                                // Build the payload with all relevant data
-                                const fullActionPayload = {
-                                    actionType: action.type,
-                                    config: action.config,
-                                    payload: {
-                                        ...eventPayload, // Keep original event payload
-                                        relatedDoc: relatedDoc, // Add the full document
-                                        timestamp: new Date().toISOString(),
+                                    // Build the payload with all relevant data
+                                    const fullActionPayload = {
+                                        actionType: action.type,
+                                        config: action.config,
+                                        payload: {
+                                            ...eventPayload, // Keep original event payload
+                                            relatedDoc: relatedDoc, // Add the full document
+                                            timestamp: new Date().toISOString(),
+                                        }
+                                    };
+                                    
+                                    if (action.config.delayMinutes && action.config.delayMinutes > 0) {
+                                        const delayInMilliseconds = action.config.delayMinutes * 60 * 1000;
+                                        
+                                        channel.publish(
+                                            'delayed_actions_exchange',
+                                            SCHEDULED_ACTIONS_QUEUE,
+                                            Buffer.from(JSON.stringify(fullActionPayload)),
+                                            { headers: { 'x-delay': delayInMilliseconds } }
+                                        );
+                                        
+                                        console.log(`[Rules Engine] Scheduled action "${action.type}" for event ${eventName} to run in ${action.config.delayMinutes} minutes.`);
+                                    } else {
+                                        channel.publish(
+                                            ACTIONS_EXCHANGE,
+                                            action.type,
+                                            Buffer.from(JSON.stringify(fullActionPayload))
+                                        );
+                                        console.log(`[Rules Engine] Dispatched immediate action "${action.type}" for event ${eventName}.`);
                                     }
-                                };
-                                
-                                if (action.config.delayMinutes && action.config.delayMinutes > 0) {
-                                    const delayInMilliseconds = action.config.delayMinutes * 60 * 1000;
-                                    
-                                    channel.publish(
-                                        'delayed_actions_exchange',
-                                        SCHEDULED_ACTIONS_QUEUE,
-                                        Buffer.from(JSON.stringify(fullActionPayload)),
-                                        { headers: { 'x-delay': delayInMilliseconds } }
-                                    );
-                                    
-                                    console.log(`[Rules Engine] Scheduled action "${action.type}" for event ${eventName} to run in ${action.config.delayMinutes} minutes.`);
-                                } else {
-                                    channel.publish(
-                                        ACTIONS_EXCHANGE,
-                                        action.type,
-                                        Buffer.from(JSON.stringify(fullActionPayload))
-                                    );
-                                    console.log(`[Rules Engine] Dispatched immediate action "${action.type}" for event ${eventName}.`);
                                 }
                             }
+
+                            // Update execution tracking
+                            await AutomationRule.findByIdAndUpdate(rule._id, {
+                                $inc: { executionCount: 1 },
+                                $set: { lastExecutedAt: new Date() }
+                            });
+                            console.log(`[Rules Engine] Updated execution tracking for rule: ${rule.name} (ID: ${rule._id})`);
+                        } catch (ruleError) {
+                            console.error(`[Rules Engine] Error executing rule ${rule.name} (ID: ${rule._id}):`, ruleError);
+                            // Continue with other rules even if one fails
                         }
                     }
                     channel.ack(msg);

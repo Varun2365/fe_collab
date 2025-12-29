@@ -921,6 +921,184 @@ exports.getBuilderResources = async (req, res) => {
  * @route POST /api/automation-rules/validate-graph
  * @access Private
  */
+/**
+ * @desc Assign or unassign a funnel to an automation rule
+ * @route PUT /api/automation-rules/:id/assign-funnel
+ * @access Private
+ */
+exports.assignFunnel = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { funnelId } = req.body; // null to unassign
+        const coachId = req.coachId || req.user?.id;
+
+        if (!coachId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+        }
+
+        // Find the automation rule
+        const rule = await AutomationRule.findOne({ _id: id, coachId });
+        if (!rule) {
+            return res.status(404).json({
+                success: false,
+                message: 'Automation rule not found'
+            });
+        }
+
+        // If assigning a funnel, check if it's already assigned to another rule
+        if (funnelId) {
+            const Funnel = require('../schema/Funnel');
+            const funnel = await Funnel.findById(funnelId);
+            if (!funnel) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Funnel not found'
+                });
+            }
+
+            // Check if funnel belongs to the same coach
+            if (funnel.coachId.toString() !== coachId.toString()) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Funnel does not belong to your account'
+                });
+            }
+
+            // Check if another rule already has this funnel
+            const existingRule = await AutomationRule.findOne({ 
+                funnelId, 
+                _id: { $ne: id },
+                coachId 
+            });
+            if (existingRule) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Funnel is already assigned to automation rule: ${existingRule.name}`
+                });
+            }
+        }
+
+        // Update the rule
+        rule.funnelId = funnelId || null;
+        await rule.save();
+
+        res.status(200).json({
+            success: true,
+            data: rule,
+            message: funnelId ? 'Funnel assigned successfully' : 'Funnel unassigned successfully'
+        });
+    } catch (error) {
+        console.error('[AutomationRuleController] Error assigning funnel:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to assign funnel',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * @desc Get automation rule analytics
+ * @route GET /api/automation-rules/:id/analytics
+ * @access Private
+ */
+exports.getAnalytics = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const coachId = req.coachId || req.user?.id;
+
+        if (!coachId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+        }
+
+        const rule = await AutomationRule.findOne({ _id: id, coachId });
+        if (!rule) {
+            return res.status(404).json({
+                success: false,
+                message: 'Automation rule not found'
+            });
+        }
+
+        // Get execution logs from automation processor (if available)
+        // For now, return basic stats
+        const analytics = {
+            ruleId: rule._id,
+            ruleName: rule.name,
+            totalExecutions: rule.executionCount || 0,
+            lastExecutedAt: rule.lastExecutedAt || null,
+            isActive: rule.isActive,
+            workflowType: rule.workflowType,
+            nodeCount: rule.nodes?.length || 0,
+            actionCount: rule.actions?.length || 0,
+            createdAt: rule.createdAt,
+            updatedAt: rule.updatedAt,
+            // Additional stats can be added from execution logs
+            executionsByDay: [], // TODO: Aggregate from execution logs
+            successRate: null, // TODO: Calculate from execution logs
+            averageExecutionTime: null // TODO: Calculate from execution logs
+        };
+
+        res.status(200).json({
+            success: true,
+            data: analytics
+        });
+    } catch (error) {
+        console.error('[AutomationRuleController] Error getting analytics:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get analytics',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * @desc Get automation rule for a funnel
+ * @route GET /api/automation-rules/funnel/:funnelId
+ * @access Private
+ */
+exports.getRuleByFunnel = async (req, res) => {
+    try {
+        const { funnelId } = req.params;
+        const coachId = req.coachId || req.user?.id;
+
+        if (!coachId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+        }
+
+        const rule = await AutomationRule.findOne({ funnelId, coachId });
+        
+        if (!rule) {
+            return res.status(200).json({
+                success: true,
+                data: null,
+                message: 'No automation rule assigned to this funnel'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: rule
+        });
+    } catch (error) {
+        console.error('[AutomationRuleController] Error getting rule by funnel:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get automation rule',
+            error: error.message
+        });
+    }
+};
+
 exports.validateGraphWorkflow = async (req, res) => {
     try {
         const { nodes, edges } = req.body;
