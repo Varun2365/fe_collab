@@ -3,3 +3,9 @@ node_modules
 dist
 admin-uploads
 
+# Upload directories - user-generated content
+backend-v/public/uploads/
+backend-v/public/uploads/**
+backend-v/uploads/
+backend-v/uploads/**
+

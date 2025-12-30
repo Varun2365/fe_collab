@@ -82,7 +82,7 @@ ChartJS.register(
   Filler
 );
 
-const FunnelAnalytics = ({ funnelId }) => {
+const FunnelAnalytics = ({ funnelId, isCompact = false }) => {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -169,17 +169,50 @@ const FunnelAnalytics = ({ funnelId }) => {
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
     
+    // Colorful gradient colors for charts
+    const colors = {
+      visitors: {
+        border: '#6366f1',
+        bg: 'rgba(99, 102, 241, 0.15)',
+        gradient: ['rgba(99, 102, 241, 0.3)', 'rgba(99, 102, 241, 0.05)']
+      },
+      conversions: {
+        border: '#10b981',
+        bg: 'rgba(16, 185, 129, 0.15)',
+        gradient: ['rgba(16, 185, 129, 0.3)', 'rgba(16, 185, 129, 0.05)']
+      },
+      uniqueVisitors: {
+        border: '#ec4899',
+        bg: 'rgba(236, 72, 153, 0.15)',
+        gradient: ['rgba(236, 72, 153, 0.3)', 'rgba(236, 72, 153, 0.05)']
+      }
+    };
+
+    const colorScheme = colors[selectedMetric] || colors.visitors;
+    
     switch (selectedMetric) {
       case 'visitors':
         return {
           labels,
           datasets: [{
-            label: 'Visitors',
+            label: 'Views',
             data: analyticsData.dailyTrends.map(item => item.views || 0),
-            borderColor: '#3182ce',
-            backgroundColor: 'rgba(49, 130, 206, 0.1)',
+            borderColor: colorScheme.border,
+            backgroundColor: (context) => {
+              const ctx = context.chart.ctx;
+              const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+              gradient.addColorStop(0, colorScheme.gradient[0]);
+              gradient.addColorStop(1, colorScheme.gradient[1]);
+              return gradient;
+            },
             fill: true,
-            tension: 0.4
+            tension: 0.5,
+            borderWidth: 3,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: colorScheme.border,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
           }]
         };
       case 'conversions':
@@ -188,10 +221,22 @@ const FunnelAnalytics = ({ funnelId }) => {
           datasets: [{
             label: 'Conversions',
             data: analyticsData.dailyTrends.map(item => item.conversions || 0),
-            borderColor: '#38a169',
-            backgroundColor: 'rgba(56, 161, 105, 0.1)',
+            borderColor: colorScheme.border,
+            backgroundColor: (context) => {
+              const ctx = context.chart.ctx;
+              const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+              gradient.addColorStop(0, colorScheme.gradient[0]);
+              gradient.addColorStop(1, colorScheme.gradient[1]);
+              return gradient;
+            },
             fill: true,
-            tension: 0.4
+            tension: 0.5,
+            borderWidth: 3,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: colorScheme.border,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
           }]
         };
       case 'uniqueVisitors':
@@ -200,10 +245,22 @@ const FunnelAnalytics = ({ funnelId }) => {
           datasets: [{
             label: 'Unique Visitors',
             data: analyticsData.dailyTrends.map(item => item.uniqueVisitors || 0),
-            borderColor: '#805ad5',
-            backgroundColor: 'rgba(128, 90, 213, 0.1)',
+            borderColor: colorScheme.border,
+            backgroundColor: (context) => {
+              const ctx = context.chart.ctx;
+              const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+              gradient.addColorStop(0, colorScheme.gradient[0]);
+              gradient.addColorStop(1, colorScheme.gradient[1]);
+              return gradient;
+            },
             fill: true,
-            tension: 0.4
+            tension: 0.5,
+            borderWidth: 3,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: colorScheme.border,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
           }]
         };
       default:
@@ -251,23 +308,38 @@ const FunnelAnalytics = ({ funnelId }) => {
         display: false
       },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
         titleColor: '#ffffff',
         bodyColor: '#ffffff',
-        borderColor: '#3182ce',
-        borderWidth: 1
+        borderColor: '#6366f1',
+        borderWidth: 1,
+        padding: 12,
+        cornerRadius: 8,
+        displayColors: true,
+        callbacks: {
+          label: function(context) {
+            return `${context.dataset.label}: ${context.parsed.y.toLocaleString()}`;
+          }
+        }
       }
     },
     scales: {
       y: {
         beginAtZero: true,
         grid: {
-          color: 'rgba(0, 0, 0, 0.1)'
+          color: 'rgba(0, 0, 0, 0.08)',
+          drawBorder: false
+        },
+        ticks: {
+          color: useColorModeValue('rgba(0, 0, 0, 0.6)', 'rgba(255, 255, 255, 0.6)')
         }
       },
       x: {
         grid: {
           display: false
+        },
+        ticks: {
+          color: useColorModeValue('rgba(0, 0, 0, 0.6)', 'rgba(255, 255, 255, 0.6)')
         }
       }
     }
@@ -313,6 +385,156 @@ const FunnelAnalytics = ({ funnelId }) => {
     ? ((leadsCaptured / overall.uniqueVisitors) * 100).toFixed(2)
     : 0;
 
+  // Compact mode - minimal and elegant
+  if (isCompact) {
+    const compactChartOptions = {
+      ...chartOptions,
+      plugins: {
+        ...chartOptions.plugins,
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          borderColor: '#6366f1',
+          borderWidth: 1,
+          padding: 10,
+          cornerRadius: 8
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(0, 0, 0, 0.08)',
+            drawBorder: false
+          },
+          ticks: {
+            font: { size: 10 },
+            color: secondaryTextColor
+          }
+        },
+        x: {
+          grid: { display: false },
+          ticks: {
+            font: { size: 10 },
+            color: secondaryTextColor
+          }
+        }
+      }
+    };
+
+    return (
+      <Box>
+        {/* Compact Controls */}
+        <Flex justify="space-between" align="center" mb={4} gap={2}>
+          <Select
+            value={timeRange}
+            onChange={(e) => setTimeRange(e.target.value)}
+            variant="filled"
+            size="sm"
+            w="130px"
+            bg={bgColor}
+            fontSize="xs"
+          >
+            <option value="7d">Last 7 days</option>
+            <option value="30d">Last 30 days</option>
+            <option value="90d">Last 90 days</option>
+            <option value="1y">Last year</option>
+          </Select>
+          <Select
+            value={selectedMetric}
+            onChange={(e) => setSelectedMetric(e.target.value)}
+            variant="filled"
+            size="sm"
+            w="130px"
+            bg={bgColor}
+            fontSize="xs"
+          >
+            <option value="visitors">Views</option>
+            <option value="uniqueVisitors">Unique</option>
+            <option value="conversions">Conversions</option>
+          </Select>
+        </Flex>
+
+        {/* Compact Key Metrics */}
+        <SimpleGrid columns={4} spacing={2} mb={4}>
+          <Box 
+            bg={useColorModeValue('blue.50', 'blue.900')} 
+            p={3} 
+            borderRadius="md" 
+            border="1px" 
+            borderColor={useColorModeValue('blue.200', 'blue.700')}
+          >
+            <Text fontSize="xs" color={secondaryTextColor} mb={1}>Views</Text>
+            <Text fontSize="lg" fontWeight="bold" color={textColor}>
+              {overall.totalViews?.toLocaleString() || 0}
+            </Text>
+          </Box>
+          
+          <Box 
+            bg={useColorModeValue('purple.50', 'purple.900')} 
+            p={3} 
+            borderRadius="md" 
+            border="1px" 
+            borderColor={useColorModeValue('purple.200', 'purple.700')}
+          >
+            <Text fontSize="xs" color={secondaryTextColor} mb={1}>Unique</Text>
+            <Text fontSize="lg" fontWeight="bold" color={textColor}>
+              {overall.uniqueVisitors?.toLocaleString() || 0}
+            </Text>
+          </Box>
+          
+          <Box 
+            bg={useColorModeValue('green.50', 'green.900')} 
+            p={3} 
+            borderRadius="md" 
+            border="1px" 
+            borderColor={useColorModeValue('green.200', 'green.700')}
+          >
+            <Text fontSize="xs" color={secondaryTextColor} mb={1}>Leads</Text>
+            <Text fontSize="lg" fontWeight="bold" color={textColor}>
+              {leadsCaptured}
+            </Text>
+          </Box>
+          
+          <Box 
+            bg={useColorModeValue('orange.50', 'orange.900')} 
+            p={3} 
+            borderRadius="md" 
+            border="1px" 
+            borderColor={useColorModeValue('orange.200', 'orange.700')}
+          >
+            <Text fontSize="xs" color={secondaryTextColor} mb={1}>Rate</Text>
+            <Text fontSize="lg" fontWeight="bold" color={textColor}>
+              {conversionRate}%
+            </Text>
+          </Box>
+        </SimpleGrid>
+
+        {/* Compact Chart */}
+        <Box 
+          bg={bgColor} 
+          p={4} 
+          borderRadius="md" 
+          border="1px" 
+          borderColor={useColorModeValue('gray.200', 'gray.700')}
+        >
+          {analyticsData.dailyTrends && analyticsData.dailyTrends.length > 0 ? (
+            <Box h="280px">
+              <Line data={getChartData()} options={compactChartOptions} />
+            </Box>
+          ) : (
+            <Box textAlign="center" py={8}>
+              <Text fontSize="sm" color={secondaryTextColor}>No data available</Text>
+            </Box>
+          )}
+        </Box>
+      </Box>
+    );
+  }
+
+  // Full version (original)
   return (
     <Box>
       {/* Header */}
