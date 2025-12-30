@@ -75,14 +75,22 @@ exports.addCredits = asyncHandler(async (req, res, next) => {
     // --- END PAYMENT PLACEHOLDER ---
 
 
-    // ✅ Add credits to the coach's account
-    coach.credits += creditsToAdd;
-    await coach.save();
+    // ✅ Add credits to the coach's account using findOneAndUpdate
+    // This avoids validation issues with required fields like selfCoachId
+    const updatedCoach = await Coach.findByIdAndUpdate(
+        coachId,
+        { $inc: { credits: creditsToAdd } },
+        { new: true, runValidators: true }
+    );
+
+    if (!updatedCoach) {
+        return res.status(404).json({ success: false, message: 'Coach not found or update failed.' });
+    }
 
     res.status(200).json({
         success: true,
-        message: `${creditsToAdd} credits added to coach ${coach.name}.`,
-        newCredits: coach.credits
+        message: `${creditsToAdd} credits added to coach ${updatedCoach.name}.`,
+        newCredits: updatedCoach.credits
     });
 });
 

@@ -315,8 +315,18 @@ const verifyOtp = async (req, res) => {
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found for this email.' });
         }
-        user.isVerified = true;
-        await user.save();
+        
+        // Use findOneAndUpdate to avoid validation issues with required fields like selfCoachId
+        const updatedUser = await User.findByIdAndUpdate(
+            user._id,
+            { $set: { isVerified: true } },
+            { new: true, runValidators: true }
+        );
+        
+        if (!updatedUser) {
+            return res.status(500).json({ success: false, message: 'Failed to update user verification status.' });
+        }
+        
         await Otp.deleteOne({ email });
         sendTokenResponse(user, 200, res);
     } catch (error) {
@@ -489,14 +499,20 @@ const resetPassword = async (req, res) => {
             });
         }
 
-        // Set new password
-        user.password = req.body.password;
-        user.resetPasswordToken = undefined;
-        user.resetPasswordExpire = undefined;
-        await user.save();
+        // Set new password - password will be hashed by pre-save hook
+        // Ensure user document is complete (re-fetch to ensure all fields including selfCoachId are present)
+        const userToUpdate = await User.findById(user._id);
+        if (!userToUpdate) {
+            return res.status(404).json({ success: false, message: 'User not found.' });
+        }
+        
+        userToUpdate.password = req.body.password;
+        userToUpdate.resetPasswordToken = undefined;
+        userToUpdate.resetPasswordExpire = undefined;
+        await userToUpdate.save();
 
         // Send token response
-        sendTokenResponse(user, 200, res);
+        sendTokenResponse(userToUpdate, 200, res);
     } catch (error) {
         console.error('Error in reset password:', error.message);
         res.status(500).json({
@@ -625,11 +641,14 @@ const upgradeToCoach = async (req, res) => {
         
         console.log(`User ${user.email} is upgrading to coach with ID: ${selfCoachId}`);
         
-        // Update user to coach role with MLM hierarchy fields
-        user.role = 'coach';
-        user.selfCoachId = selfCoachId;
-        user.currentLevel = currentLevel;
-        user.hierarchyLocked = false; // Will be locked after first save
+        // Use findOneAndUpdate to set all required coach fields at once
+        // This ensures all required fields (selfCoachId, currentLevel) are set together
+        const updateData = {
+            role: 'coach',
+            selfCoachId: selfCoachId,
+            currentLevel: currentLevel,
+            hierarchyLocked: false
+        };
         
         // Look up sponsor by selfCoachId and convert to MongoDB ObjectId
         // if (sponsorId) {
@@ -640,31 +659,42 @@ const upgradeToCoach = async (req, res) => {
         //             message: `Sponsor with Coach ID "${sponsorId}" not found. Please enter a valid Coach ID.` 
         //         });
         //     }
-        //     user.sponsorId = sponsor._id; // Use MongoDB ObjectId
+        //     updateData.sponsorId = sponsor._id; // Use MongoDB ObjectId
         // }
         
         // Add optional team rank fields
-        // if (teamRankName) user.teamRankName = teamRankName;
-        // if (presidentTeamRankName) user.presidentTeamRankName = presidentTeamRankName;
+        // if (teamRankName) updateData.teamRankName = teamRankName;
+        // if (presidentTeamRankName) updateData.presidentTeamRankName = presidentTeamRankName;
 
-        await user.save();
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Failed to upgrade user to coach.' 
+            });
+        }
 
         // Auto-lock hierarchy after upgrade
-        await autoLockHierarchy(user._id);
+        await autoLockHierarchy(updatedUser._id);
 
         res.status(200).json({
             success: true,
             message: 'User successfully upgraded to coach with MLM hierarchy!',
             user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                selfCoachId: user.selfCoachId,
-                currentLevel: user.currentLevel,
-                sponsorId: user.sponsorId,
-                teamRankName: user.teamRankName,
-                presidentTeamRankName: user.presidentTeamRankName
+                id: updatedUser._id,
+                name: updatedUser.name,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                selfCoachId: updatedUser.selfCoachId,
+                currentLevel: updatedUser.currentLevel,
+                sponsorId: updatedUser.sponsorId,
+                teamRankName: updatedUser.teamRankName,
+                presidentTeamRankName: updatedUser.presidentTeamRankName
             },
             message: 'You can now build your downline and earn commissions!'
         });
@@ -837,25 +867,26 @@ const updateProfile = async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found.' });
         }
 
-        // Update fields if provided
-        if (name !== undefined) user.name = name;
-        if (bio !== undefined) user.bio = bio;
-        if (tagline !== undefined) user.tagline = tagline;
-        if (company !== undefined) user.company = company;
-        if (phone !== undefined) user.phone = phone;
-        if (country !== undefined) user.country = country;
-        if (city !== undefined) user.city = city;
-        if (state !== undefined) user.state = state;
-        if (zipCode !== undefined) user.zipCode = zipCode;
-        if (address !== undefined) user.address = address;
-        if (website !== undefined) user.website = website;
-        if (linkedin !== undefined) user.linkedin = linkedin;
-        if (twitter !== undefined) user.twitter = twitter;
-        if (facebook !== undefined) user.facebook = facebook;
-        if (instagram !== undefined) user.instagram = instagram;
-        if (youtube !== undefined) user.youtube = youtube;
+        // Build update object with only provided fields
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (bio !== undefined) updateData.bio = bio;
+        if (tagline !== undefined) updateData.tagline = tagline;
+        if (company !== undefined) updateData.company = company;
+        if (phone !== undefined) updateData.phone = phone;
+        if (country !== undefined) updateData.country = country;
+        if (city !== undefined) updateData.city = city;
+        if (state !== undefined) updateData.state = state;
+        if (zipCode !== undefined) updateData.zipCode = zipCode;
+        if (address !== undefined) updateData.address = address;
+        if (website !== undefined) updateData.website = website;
+        if (linkedin !== undefined) updateData.linkedin = linkedin;
+        if (twitter !== undefined) updateData.twitter = twitter;
+        if (facebook !== undefined) updateData.facebook = facebook;
+        if (instagram !== undefined) updateData.instagram = instagram;
+        if (youtube !== undefined) updateData.youtube = youtube;
         if (dateOfBirth !== undefined) {
-            user.dateOfBirth = dateOfBirth;
+            updateData.dateOfBirth = dateOfBirth;
             // Calculate age from date of birth
             if (dateOfBirth) {
                 const birthDate = new Date(dateOfBirth);
@@ -865,15 +896,24 @@ const updateProfile = async (req, res) => {
                 if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
                     calculatedAge--;
                 }
-                user.age = calculatedAge;
+                updateData.age = calculatedAge;
             }
         } else if (age !== undefined) {
-            user.age = age;
+            updateData.age = age;
         }
 
-        await user.save();
+        // Use findOneAndUpdate to avoid validation issues with required fields like selfCoachId
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        );
 
-        const userData = user.toObject();
+        if (!updatedUser) {
+            return res.status(404).json({ success: false, message: 'User not found or update failed.' });
+        }
+
+        const userData = updatedUser.toObject();
         delete userData.password;
 
         res.status(200).json({
@@ -904,16 +944,18 @@ const updateProfilePicture = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Profile picture URL is required.' });
         }
 
-        const user = await User.findById(userId);
-        
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found.' });
+        // Use findOneAndUpdate to avoid validation issues with required fields like selfCoachId
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: { profilePicture } },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({ success: false, message: 'User not found or update failed.' });
         }
 
-        user.profilePicture = profilePicture;
-        await user.save();
-
-        const userData = user.toObject();
+        const userData = updatedUser.toObject();
         delete userData.password;
 
         res.status(200).json({
@@ -961,10 +1003,18 @@ const updateAchievements = async (req, res) => {
             }
         }
 
-        user.achievements = achievements;
-        await user.save();
+        // Use findOneAndUpdate to avoid validation issues with required fields like selfCoachId
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: { achievements } },
+            { new: true, runValidators: true }
+        );
 
-        const userData = user.toObject();
+        if (!updatedUser) {
+            return res.status(404).json({ success: false, message: 'User not found or update failed.' });
+        }
+
+        const userData = updatedUser.toObject();
         delete userData.password;
 
         res.status(200).json({
@@ -1018,10 +1068,18 @@ const updateExperiences = async (req, res) => {
             }
         }
 
-        user.experiences = experiences;
-        await user.save();
+        // Use findOneAndUpdate to avoid validation issues with required fields like selfCoachId
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: { experiences } },
+            { new: true, runValidators: true }
+        );
 
-        const userData = user.toObject();
+        if (!updatedUser) {
+            return res.status(404).json({ success: false, message: 'User not found or update failed.' });
+        }
+
+        const userData = updatedUser.toObject();
         delete userData.password;
 
         res.status(200).json({
