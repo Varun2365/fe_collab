@@ -54,8 +54,6 @@ import {
 
   FiBell,
 
-  FiSearch,
-
   FiLogOut,
 
   FiSettings,
@@ -109,8 +107,62 @@ const TopNav = () => {
   const user = useSelector(selectUser);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [userData, setUserData] = useState(user);
 
   const toast = useToast();
+
+  // Fetch latest user data on mount to get updated profile picture
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            setUserData(data.user);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  // Update userData when Redux user changes
+  useEffect(() => {
+    if (user) {
+      setUserData(user);
+    }
+  }, [user]);
+
+  // Get profile picture URL - same logic as Profile.jsx
+  const currentUser = userData || user;
+  let profilePictureUrl = null;
+  if (currentUser?.profilePicture) {
+    if (currentUser.profilePicture.startsWith('http://') || currentUser.profilePicture.startsWith('https://')) {
+      profilePictureUrl = currentUser.profilePicture;
+    } else if (currentUser.profilePicture.startsWith('/')) {
+      profilePictureUrl = `${API_BASE_URL.replace('/api', '')}${currentUser.profilePicture}`;
+    } else {
+      // If it's just a filename, construct the full URL
+      profilePictureUrl = `${API_BASE_URL.replace('/api', '')}/uploads/images/${currentUser.profilePicture}`;
+    }
+  } else if (currentUser?.profilePictureUrl) {
+    profilePictureUrl = currentUser.profilePictureUrl;
+  } else if (currentUser?.avatar) {
+    profilePictureUrl = currentUser.avatar;
+  }
 
   
 
@@ -1340,7 +1392,7 @@ const TopNav = () => {
 
   const handleProfileClick = () => {
 
-    navigate('/Profile_settings');
+    navigate('/profile');
 
   };
 
@@ -1458,7 +1510,7 @@ const TopNav = () => {
 
             <Text fontSize="2xl" fontWeight="bold" color="brand.600" noOfLines={1}>
 
-              Welcome back, {user?.name || 'User'}!
+              Welcome back, {currentUser?.name || 'User'}!
 
             </Text>
 
@@ -1477,26 +1529,6 @@ const TopNav = () => {
         {/* Right Section */}
 
         <HStack spacing={4}>
-
-          {/* Search */}
-
-          <Tooltip label="Search">
-
-            <IconButton
-
-              icon={<FiSearch />}
-
-              variant="ghost"
-
-              size="md"
-
-              aria-label="Search"
-
-            />
-
-          </Tooltip>
-
-
 
           {/* Notifications Dropdown */}
 
@@ -1891,9 +1923,7 @@ const TopNav = () => {
 
             <MenuButton
 
-              as={IconButton}
-
-              icon={<Avatar size="sm" name={user?.name} src={user?.avatar} />}
+              as={Button}
 
               variant="ghost"
 
@@ -1903,7 +1933,35 @@ const TopNav = () => {
 
               _hover={{ bg: 'rgba(102, 126, 234, 0.1)' }}
 
-            />
+              p={0}
+
+              minW="auto"
+
+              h="auto"
+
+            >
+
+              <Box
+                position="relative"
+                display="inline-block"
+                p="2px"
+                borderRadius="full"
+                bg="blue.500"
+              >
+                <Avatar 
+
+                  size="md" 
+
+                  name={currentUser?.name || 'User'} 
+
+                  src={profilePictureUrl || undefined}
+
+                  bg="brand.500"
+
+                />
+              </Box>
+
+            </MenuButton>
 
             <MenuList 
 
@@ -1943,9 +2001,9 @@ const TopNav = () => {
 
                     size="lg" 
 
-                    name={user?.name} 
+                    name={currentUser?.name || 'User'} 
 
-                    src={user?.avatar}
+                    src={profilePictureUrl || undefined}
 
                     border="3px solid"
 
@@ -1969,7 +2027,7 @@ const TopNav = () => {
 
                     >
 
-                      {user?.name || 'User'}
+                      {currentUser?.name || 'User'}
 
                     </Text>
 
@@ -1985,7 +2043,7 @@ const TopNav = () => {
 
                     >
 
-                      {user?.email || 'user@example.com'}
+                      {currentUser?.email || 'user@example.com'}
 
                     </Text>
 
@@ -2011,7 +2069,7 @@ const TopNav = () => {
 
                     >
 
-                      {user?.role || 'User'}
+                      {currentUser?.role || 'User'}
 
                     </Badge>
 

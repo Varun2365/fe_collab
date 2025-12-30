@@ -799,6 +799,242 @@ const getCoachRanks = async (req, res) => {
 };
 
 
+// @desc    Update user profile
+// @route   PUT /api/auth/profile
+// @access  Private
+const updateProfile = async (req, res) => {
+    try {
+        const userId = req.userId || req.user?._id;
+        
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'User not authenticated.' });
+        }
+
+        const {
+            name,
+            bio,
+            tagline,
+            company,
+            phone,
+            country,
+            city,
+            state,
+            zipCode,
+            address,
+            website,
+            linkedin,
+            twitter,
+            facebook,
+            instagram,
+            youtube,
+            age,
+            dateOfBirth
+        } = req.body;
+
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found.' });
+        }
+
+        // Update fields if provided
+        if (name !== undefined) user.name = name;
+        if (bio !== undefined) user.bio = bio;
+        if (tagline !== undefined) user.tagline = tagline;
+        if (company !== undefined) user.company = company;
+        if (phone !== undefined) user.phone = phone;
+        if (country !== undefined) user.country = country;
+        if (city !== undefined) user.city = city;
+        if (state !== undefined) user.state = state;
+        if (zipCode !== undefined) user.zipCode = zipCode;
+        if (address !== undefined) user.address = address;
+        if (website !== undefined) user.website = website;
+        if (linkedin !== undefined) user.linkedin = linkedin;
+        if (twitter !== undefined) user.twitter = twitter;
+        if (facebook !== undefined) user.facebook = facebook;
+        if (instagram !== undefined) user.instagram = instagram;
+        if (youtube !== undefined) user.youtube = youtube;
+        if (dateOfBirth !== undefined) {
+            user.dateOfBirth = dateOfBirth;
+            // Calculate age from date of birth
+            if (dateOfBirth) {
+                const birthDate = new Date(dateOfBirth);
+                const today = new Date();
+                let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                    calculatedAge--;
+                }
+                user.age = calculatedAge;
+            }
+        } else if (age !== undefined) {
+            user.age = age;
+        }
+
+        await user.save();
+
+        const userData = user.toObject();
+        delete userData.password;
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile updated successfully.',
+            user: userData
+        });
+    } catch (error) {
+        console.error('Error updating profile:', error.message);
+        res.status(500).json({ success: false, message: 'Server error updating profile.' });
+    }
+};
+
+// @desc    Update profile picture
+// @route   PUT /api/auth/profile/picture
+// @access  Private
+const updateProfilePicture = async (req, res) => {
+    try {
+        const userId = req.userId || req.user?._id;
+        
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'User not authenticated.' });
+        }
+
+        const { profilePicture } = req.body;
+
+        if (!profilePicture) {
+            return res.status(400).json({ success: false, message: 'Profile picture URL is required.' });
+        }
+
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found.' });
+        }
+
+        user.profilePicture = profilePicture;
+        await user.save();
+
+        const userData = user.toObject();
+        delete userData.password;
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile picture updated successfully.',
+            user: userData
+        });
+    } catch (error) {
+        console.error('Error updating profile picture:', error.message);
+        res.status(500).json({ success: false, message: 'Server error updating profile picture.' });
+    }
+};
+
+// @desc    Update achievements
+// @route   PUT /api/auth/profile/achievements
+// @access  Private
+const updateAchievements = async (req, res) => {
+    try {
+        const userId = req.userId || req.user?._id;
+        
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'User not authenticated.' });
+        }
+
+        const { achievements } = req.body;
+
+        if (!Array.isArray(achievements)) {
+            return res.status(400).json({ success: false, message: 'Achievements must be an array.' });
+        }
+
+        if (achievements.length > 4) {
+            return res.status(400).json({ success: false, message: 'Maximum 4 achievements allowed.' });
+        }
+
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found.' });
+        }
+
+        // Validate each achievement
+        for (const achievement of achievements) {
+            if (!achievement.title || achievement.title.trim() === '') {
+                return res.status(400).json({ success: false, message: 'Each achievement must have a title.' });
+            }
+        }
+
+        user.achievements = achievements;
+        await user.save();
+
+        const userData = user.toObject();
+        delete userData.password;
+
+        res.status(200).json({
+            success: true,
+            message: 'Achievements updated successfully.',
+            user: userData
+        });
+    } catch (error) {
+        console.error('Error updating achievements:', error.message);
+        res.status(500).json({ success: false, message: 'Server error updating achievements.' });
+    }
+};
+
+// @desc    Update experiences
+// @route   PUT /api/auth/profile/experiences
+// @access  Private
+const updateExperiences = async (req, res) => {
+    try {
+        const userId = req.userId || req.user?._id;
+        
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'User not authenticated.' });
+        }
+
+        const { experiences } = req.body;
+
+        if (!Array.isArray(experiences)) {
+            return res.status(400).json({ success: false, message: 'Experiences must be an array.' });
+        }
+
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found.' });
+        }
+
+        // Validate each experience
+        for (const experience of experiences) {
+            if (!experience.company || experience.company.trim() === '') {
+                return res.status(400).json({ success: false, message: 'Each experience must have a company name.' });
+            }
+            if (!experience.position || experience.position.trim() === '') {
+                return res.status(400).json({ success: false, message: 'Each experience must have a position/title.' });
+            }
+            if (!experience.startDate) {
+                return res.status(400).json({ success: false, message: 'Each experience must have a start date.' });
+            }
+            // If not current, endDate should be provided
+            if (!experience.isCurrent && !experience.endDate) {
+                return res.status(400).json({ success: false, message: 'End date is required if not current position.' });
+            }
+        }
+
+        user.experiences = experiences;
+        await user.save();
+
+        const userData = user.toObject();
+        delete userData.password;
+
+        res.status(200).json({
+            success: true,
+            message: 'Experiences updated successfully.',
+            user: userData
+        });
+    } catch (error) {
+        console.error('Error updating experiences:', error.message);
+        res.status(500).json({ success: false, message: 'Server error updating experiences.' });
+    }
+};
+
 module.exports = {
     signup,
     verifyOtp,
@@ -810,6 +1046,10 @@ module.exports = {
     resendOtp,
     upgradeToCoach,
     lockHierarchy,
+    updateProfile,
+    updateProfilePicture,
+    updateAchievements,
+    updateExperiences,
     // Helper functions for other controllers
     generateOtp,
     sendOtp,

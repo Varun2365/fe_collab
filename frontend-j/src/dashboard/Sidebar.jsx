@@ -199,7 +199,7 @@ const Sidebar = () => {
     {
       title: 'Account',
       items: [
-        { icon: FiUserCheck, label: 'Profile', path: '/profile_settings', badge: null, type: 'single' },
+        { icon: FiUserCheck, label: 'Profile', path: '/profile', badge: null, type: 'single' },
         { 
           icon: FiSettings, 
           label: 'Settings', 
