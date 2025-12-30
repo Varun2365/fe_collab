@@ -217,6 +217,7 @@ router.post('/profile-picture', protect, uploadImage.single('image'), async (req
       return res.status(401).json({ success: false, message: 'User not authenticated.' });
     }
 
+    // Check if user exists first
     const user = await User.findById(userId);
     if (!user) {
       // Clean up uploaded file if user not found
@@ -240,8 +241,22 @@ router.post('/profile-picture', protect, uploadImage.single('image'), async (req
       }
     }
 
-    user.profilePicture = fileUrl;
-    await user.save();
+    // Use findOneAndUpdate to only update profilePicture field
+    // This ensures we only update the profilePicture without affecting other fields
+    // and avoids validation issues with required fields like selfCoachId
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: { profilePicture: fileUrl } },
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedUser) {
+      // Clean up uploaded file if update failed
+      if (fs.existsSync(compressedFilePath)) {
+        fs.unlinkSync(compressedFilePath);
+      }
+      return res.status(404).json({ success: false, message: 'User not found or update failed.' });
+    }
 
     res.status(200).json({
       success: true,

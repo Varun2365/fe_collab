@@ -63,6 +63,65 @@ router.get('/:funnelSlug/:pageSlug', asyncHandler(async (req, res, next) => {
     ${basicInfo.customHtmlBody || ''}
 
     <script>
+        // Funnel Analytics Tracking
+        (function() {
+            // Get or create session ID
+            function getSessionId() {
+                let sessionId = localStorage.getItem('funnel_session_id');
+                if (!sessionId) {
+                    sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+                    localStorage.setItem('funnel_session_id', sessionId);
+                }
+                return sessionId;
+            }
+
+            // Track page view
+            function trackPageView() {
+                const sessionId = getSessionId();
+                const funnelId = '${funnel._id.toString()}';
+                const pageId = '${stage.pageId || ''}';
+                const eventType = 'PageView';
+                
+                // Get API base URL from current origin
+                const apiBaseUrl = window.location.origin;
+                
+                // Track the event
+                // Note: stageId is set to null since stages are embedded documents without ObjectIds
+                // The pageId is included in metadata for reference
+                fetch(apiBaseUrl + '/api/funnels/track', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        funnelId: funnelId,
+                        stageId: null, // Stages don't have ObjectIds, use pageId in metadata
+                        eventType: eventType,
+                        sessionId: sessionId,
+                        userId: null, // Can be set if user is logged in
+                        metadata: {
+                            referrer: document.referrer || '',
+                            url: window.location.href,
+                            userAgent: navigator.userAgent,
+                            timestamp: new Date().toISOString(),
+                            pageId: pageId,
+                            stageName: '${(stage.name || '').replace(/'/g, "\\'")}'
+                        }
+                    })
+                }).catch(error => {
+                    // Silently fail - don't interrupt user experience
+                    console.debug('Funnel tracking error:', error);
+                });
+            }
+
+            // Track page view when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', trackPageView);
+            } else {
+                trackPageView();
+            }
+        })();
+
         // JavaScript from the saved stage
         ${stage.js}
     </script>
