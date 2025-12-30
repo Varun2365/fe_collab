@@ -66,6 +66,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
+import { funnelAnalyticsAPI } from '../services/api';
 
 // Register Chart.js components
 ChartJS.register(
@@ -84,72 +85,97 @@ ChartJS.register(
 const FunnelAnalytics = ({ funnelId }) => {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [timeRange, setTimeRange] = useState('30d');
-  const [selectedMetric, setSelectedMetric] = useState('conversions');
-  
-  // Mock analytics data
-  const mockAnalytics = {
-    overview: {
-      totalVisitors: 1250,
-      totalConversions: 6,
-      conversionRate: 0.48,
-      revenue: 18000,
-      cost: 2500,
-      roi: 620,
-      avgOrderValue: 3000,
-      costPerAcquisition: 416.67,
-      revenuePerVisitor: 14.4
-    },
-    trends: {
-      labels: ['Jan 1', 'Jan 2', 'Jan 3', 'Jan 4', 'Jan 5', 'Jan 6', 'Jan 7'],
-      visitors: [120, 135, 142, 118, 156, 168, 145],
-      conversions: [0, 1, 0, 1, 2, 1, 1],
-      revenue: [0, 3000, 0, 3000, 6000, 3000, 3000]
-    },
-    stagePerformance: [
-      { name: 'Landing Page', visitors: 1250, conversions: 89, rate: 7.12, dropoff: 0 },
-      { name: 'Video Sales Letter', visitors: 89, conversions: 34, rate: 38.2, dropoff: 61.8 },
-      { name: 'Application Form', visitors: 34, conversions: 12, rate: 35.3, dropoff: 64.7 },
-      { name: 'Discovery Call', visitors: 12, conversions: 8, rate: 66.7, dropoff: 33.3 },
-      { name: 'Enrollment', visitors: 8, conversions: 6, rate: 75.0, dropoff: 25.0 }
-    ],
-    trafficSources: [
-      { source: 'Facebook Ads', visitors: 450, conversions: 3, rate: 0.67 },
-      { source: 'Google Ads', visitors: 380, conversions: 2, rate: 0.53 },
-      { source: 'Organic Search', visitors: 220, conversions: 1, rate: 0.45 },
-      { source: 'Email Marketing', visitors: 200, conversions: 0, rate: 0.00 }
-    ],
-    deviceBreakdown: [
-      { device: 'Mobile', visitors: 750, conversions: 4, rate: 0.53 },
-      { device: 'Desktop', visitors: 400, conversions: 2, rate: 0.50 },
-      { device: 'Tablet', visitors: 100, conversions: 0, rate: 0.00 }
-    ],
-    geographicData: [
-      { location: 'Mumbai', visitors: 320, conversions: 2, rate: 0.63 },
-      { location: 'Delhi', visitors: 280, conversions: 2, rate: 0.71 },
-      { location: 'Bangalore', visitors: 220, conversions: 1, rate: 0.45 },
-      { location: 'Chennai', visitors: 180, conversions: 1, rate: 0.56 },
-      { location: 'Other', visitors: 250, conversions: 0, rate: 0.00 }
-    ]
+  const [selectedMetric, setSelectedMetric] = useState('visitors');
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const textColor = useColorModeValue('gray.800', 'gray.100');
+  const secondaryTextColor = useColorModeValue('gray.600', 'gray.400');
+
+  // Calculate date range based on timeRange
+  const getDateRange = (range) => {
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    switch (range) {
+      case '7d':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(startDate.getDate() - 30);
+        break;
+      case '90d':
+        startDate.setDate(startDate.getDate() - 90);
+        break;
+      case '1y':
+        startDate.setFullYear(startDate.getFullYear() - 1);
+        break;
+      default:
+        startDate.setDate(startDate.getDate() - 30);
+    }
+    
+    return {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
+    };
   };
 
+  // Fetch analytics data
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
+    if (!funnelId) {
+      setError('Funnel ID is required');
       setLoading(false);
-    }, 1000);
-  }, [funnelId]);
+      return;
+    }
+
+    const fetchAnalytics = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const { startDate, endDate } = getDateRange(timeRange);
+        const response = await funnelAnalyticsAPI.getFunnelAnalytics(funnelId, startDate, endDate);
+        
+        if (response.success && response.data) {
+          setAnalyticsData(response.data);
+        } else {
+          throw new Error(response.message || 'Failed to fetch analytics');
+        }
+      } catch (err) {
+        console.error('Error fetching funnel analytics:', err);
+        setError(err.message || 'Failed to load analytics data');
+        toast({
+          title: 'Error',
+          description: err.message || 'Failed to load analytics data',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, [funnelId, timeRange, toast]);
 
   const getChartData = () => {
-    const { trends } = mockAnalytics;
+    if (!analyticsData?.dailyTrends || analyticsData.dailyTrends.length === 0) {
+      return { labels: [], datasets: [] };
+    }
+
+    const labels = analyticsData.dailyTrends.map(item => {
+      const date = new Date(item.date);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
     
     switch (selectedMetric) {
       case 'visitors':
         return {
-          labels: trends.labels,
+          labels,
           datasets: [{
             label: 'Visitors',
-            data: trends.visitors,
+            data: analyticsData.dailyTrends.map(item => item.views || 0),
             borderColor: '#3182ce',
             backgroundColor: 'rgba(49, 130, 206, 0.1)',
             fill: true,
@@ -158,24 +184,24 @@ const FunnelAnalytics = ({ funnelId }) => {
         };
       case 'conversions':
         return {
-          labels: trends.labels,
+          labels,
           datasets: [{
             label: 'Conversions',
-            data: trends.conversions,
+            data: analyticsData.dailyTrends.map(item => item.conversions || 0),
             borderColor: '#38a169',
             backgroundColor: 'rgba(56, 161, 105, 0.1)',
             fill: true,
             tension: 0.4
           }]
         };
-      case 'revenue':
+      case 'uniqueVisitors':
         return {
-          labels: trends.labels,
+          labels,
           datasets: [{
-            label: 'Revenue (₹)',
-            data: trends.revenue,
-            borderColor: '#d69e2e',
-            backgroundColor: 'rgba(214, 158, 46, 0.1)',
+            label: 'Unique Visitors',
+            data: analyticsData.dailyTrends.map(item => item.uniqueVisitors || 0),
+            borderColor: '#805ad5',
+            backgroundColor: 'rgba(128, 90, 213, 0.1)',
             fill: true,
             tension: 0.4
           }]
@@ -186,39 +212,30 @@ const FunnelAnalytics = ({ funnelId }) => {
   };
 
   const getStageChartData = () => {
-    const { stagePerformance } = mockAnalytics;
+    if (!analyticsData?.stageAnalytics || analyticsData.stageAnalytics.length === 0) {
+      return { labels: [], datasets: [] };
+    }
+    
+    const stageData = analyticsData.stageAnalytics.map(stage => {
+      const conversionRate = stage.totalViews > 0 
+        ? ((stage.uniqueVisitors / stage.totalViews) * 100).toFixed(1)
+        : 0;
+      return parseFloat(conversionRate);
+    });
     
     return {
-      labels: stagePerformance.map(stage => stage.name),
+      labels: analyticsData.stageAnalytics.map((_, index) => `Stage ${index + 1}`),
       datasets: [{
-        label: 'Conversion Rate (%)',
-        data: stagePerformance.map(stage => stage.rate),
+        label: 'Views',
+        data: analyticsData.stageAnalytics.map(stage => stage.totalViews || 0),
         backgroundColor: [
           '#3182ce',
           '#38a169',
           '#d69e2e',
           '#e53e3e',
-          '#805ad5'
-        ],
-        borderWidth: 2,
-        borderColor: '#ffffff'
-      }]
-    };
-  };
-
-  const getTrafficSourceData = () => {
-    const { trafficSources } = mockAnalytics;
-    
-    return {
-      labels: trafficSources.map(source => source.source),
-      datasets: [{
-        label: 'Visitors',
-        data: trafficSources.map(source => source.visitors),
-        backgroundColor: [
-          '#3182ce',
-          '#38a169',
-          '#d69e2e',
-          '#e53e3e'
+          '#805ad5',
+          '#ed8936',
+          '#319795'
         ],
         borderWidth: 2,
         borderColor: '#ffffff'
@@ -260,10 +277,41 @@ const FunnelAnalytics = ({ funnelId }) => {
     return (
       <Box textAlign="center" py={20}>
         <Spinner size="xl" color="brand.500" mb={4} />
-        <Text fontSize="xl" fontWeight="semibold">Loading Analytics...</Text>
+        <Text fontSize="xl" fontWeight="semibold" color={textColor}>Loading Analytics...</Text>
       </Box>
     );
   }
+
+  if (error) {
+    return (
+      <Box textAlign="center" py={20}>
+        <Icon as={FaExclamationTriangle} boxSize={12} color="red.500" mb={4} />
+        <Text fontSize="xl" fontWeight="semibold" color={textColor} mb={2}>
+          Error Loading Analytics
+        </Text>
+        <Text color={secondaryTextColor} mb={4}>{error}</Text>
+        <Button colorScheme="brand" onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
+
+  if (!analyticsData) {
+    return (
+      <Box textAlign="center" py={20}>
+        <Text fontSize="xl" fontWeight="semibold" color={textColor}>
+          No analytics data available
+        </Text>
+      </Box>
+    );
+  }
+
+  const overall = analyticsData.overall || { totalViews: 0, uniqueVisitors: 0 };
+  const leadsCaptured = analyticsData.leadsCaptured || 0;
+  const conversionRate = overall.uniqueVisitors > 0 
+    ? ((leadsCaptured / overall.uniqueVisitors) * 100).toFixed(2)
+    : 0;
 
   return (
     <Box>
@@ -271,8 +319,10 @@ const FunnelAnalytics = ({ funnelId }) => {
       <Box mb={6}>
         <Flex justify="space-between" align="center" mb={4}>
           <Box>
-            <Heading size="lg" color="gray.800">Funnel Analytics</Heading>
-            <Text color="gray.600">Detailed performance insights and optimization recommendations</Text>
+            <Heading size="lg" color={textColor}>
+              {analyticsData.funnelInfo?.name || 'Funnel'} Analytics
+            </Heading>
+            <Text color={secondaryTextColor}>Detailed performance insights and optimization recommendations</Text>
           </Box>
           
           <HStack spacing={4}>
@@ -281,69 +331,64 @@ const FunnelAnalytics = ({ funnelId }) => {
               onChange={(e) => setTimeRange(e.target.value)}
               variant="filled"
               minW="120px"
+              bg={bgColor}
             >
               <option value="7d">Last 7 days</option>
               <option value="30d">Last 30 days</option>
               <option value="90d">Last 90 days</option>
               <option value="1y">Last year</option>
             </Select>
-            
-            <Button leftIcon={<FaDownload />} variant="outline" colorScheme="brand">
-              Export Report
-            </Button>
           </HStack>
         </Flex>
       </Box>
 
       {/* Key Metrics */}
       <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6} mb={6}>
-        <Card>
+        <Card bg={bgColor}>
           <CardBody>
             <Stat>
-              <StatLabel>Total Visitors</StatLabel>
-              <StatNumber>{mockAnalytics.overview.totalVisitors.toLocaleString()}</StatNumber>
-              <StatHelpText>
-                <StatArrow type="increase" />
-                12% from last period
+              <StatLabel color={secondaryTextColor}>Total Views</StatLabel>
+              <StatNumber color={textColor}>{overall.totalViews?.toLocaleString() || 0}</StatNumber>
+              <StatHelpText color={secondaryTextColor}>
+                <Icon as={FaEye} mr={1} />
+                Page views
               </StatHelpText>
             </Stat>
           </CardBody>
         </Card>
         
-        <Card>
+        <Card bg={bgColor}>
           <CardBody>
             <Stat>
-              <StatLabel>Conversions</StatLabel>
-              <StatNumber>{mockAnalytics.overview.totalConversions}</StatNumber>
-              <StatHelpText>
-                <StatArrow type="increase" />
-                8% from last period
+              <StatLabel color={secondaryTextColor}>Unique Visitors</StatLabel>
+              <StatNumber color={textColor}>{overall.uniqueVisitors?.toLocaleString() || 0}</StatNumber>
+              <StatHelpText color={secondaryTextColor}>
+                <Icon as={FaUsers} mr={1} />
+                Unique sessions
               </StatHelpText>
             </Stat>
           </CardBody>
         </Card>
         
-        <Card>
+        <Card bg={bgColor}>
           <CardBody>
             <Stat>
-              <StatLabel>Conversion Rate</StatLabel>
-              <StatNumber>{mockAnalytics.overview.conversionRate.toFixed(2)}%</StatNumber>
-              <StatHelpText>
-                <StatArrow type="increase" />
-                5% from last period
+              <StatLabel color={secondaryTextColor}>Leads Captured</StatLabel>
+              <StatNumber color={textColor}>{leadsCaptured}</StatNumber>
+              <StatHelpText color={secondaryTextColor}>
+                Form submissions
               </StatHelpText>
             </Stat>
           </CardBody>
         </Card>
         
-        <Card>
+        <Card bg={bgColor}>
           <CardBody>
             <Stat>
-              <StatLabel>Revenue</StatLabel>
-              <StatNumber>₹{mockAnalytics.overview.revenue.toLocaleString()}</StatNumber>
-              <StatHelpText>
-                <StatArrow type="increase" />
-                23% from last period
+              <StatLabel color={secondaryTextColor}>Conversion Rate</StatLabel>
+              <StatNumber color={textColor}>{conversionRate}%</StatNumber>
+              <StatHelpText color={secondaryTextColor}>
+                Visitors to leads
               </StatHelpText>
             </Stat>
           </CardBody>
@@ -351,219 +396,151 @@ const FunnelAnalytics = ({ funnelId }) => {
       </SimpleGrid>
 
       {/* Performance Trends */}
-      <Card mb={6}>
+      <Card mb={6} bg={bgColor}>
         <CardHeader>
           <Flex justify="space-between" align="center">
-            <Heading size="md">Performance Trends</Heading>
+            <Heading size="md" color={textColor}>Performance Trends</Heading>
             <Select
               value={selectedMetric}
               onChange={(e) => setSelectedMetric(e.target.value)}
               variant="filled"
               minW="150px"
+              bg={bgColor}
             >
-              <option value="visitors">Visitors</option>
+              <option value="visitors">Views</option>
+              <option value="uniqueVisitors">Unique Visitors</option>
               <option value="conversions">Conversions</option>
-              <option value="revenue">Revenue</option>
             </Select>
           </Flex>
         </CardHeader>
         <CardBody>
-          <Box h="400px">
-            <Line data={getChartData()} options={chartOptions} />
-          </Box>
+          {analyticsData.dailyTrends && analyticsData.dailyTrends.length > 0 ? (
+            <Box h="400px">
+              <Line data={getChartData()} options={chartOptions} />
+            </Box>
+          ) : (
+            <Box textAlign="center" py={10}>
+              <Text color={secondaryTextColor}>No trend data available for the selected period</Text>
+            </Box>
+          )}
         </CardBody>
       </Card>
 
       {/* Funnel Stages Performance */}
-      <Card mb={6}>
-        <CardHeader>
-          <Heading size="md">Funnel Stages Performance</Heading>
-        </CardHeader>
-        <CardBody>
-          <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
-            <Box>
-              <Text fontSize="lg" fontWeight="semibold" mb={4}>Stage Conversion Rates</Text>
-              <Box h="300px">
-                <Bar data={getStageChartData()} options={chartOptions} />
-              </Box>
-            </Box>
-            
-            <Box>
-              <Text fontSize="lg" fontWeight="semibold" mb={4}>Stage Breakdown</Text>
-              <VStack spacing={3} align="stretch">
-                {mockAnalytics.stagePerformance.map((stage, index) => (
-                  <Box key={index}>
-                    <Flex justify="space-between" align="center" mb={2}>
-                      <Text fontWeight="medium">{stage.name}</Text>
-                      <Text fontSize="sm" color="gray.500">
-                        {stage.visitors} → {stage.conversions} ({stage.rate}%)
-                      </Text>
-                    </Flex>
-                    <Progress 
-                      value={stage.rate} 
-                      size="lg" 
-                      colorScheme="brand"
-                      borderRadius="full"
-                    />
-                    <Text fontSize="xs" color="gray.500" mt={1}>
-                      Dropoff: {stage.dropoff}%
-                    </Text>
-                  </Box>
-                ))}
-              </VStack>
-            </Box>
-          </SimpleGrid>
-        </CardBody>
-      </Card>
-
-      {/* Traffic Sources & Device Breakdown */}
-      <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6} mb={6}>
-        <Card>
+      {analyticsData.stageAnalytics && analyticsData.stageAnalytics.length > 0 && (
+        <Card mb={6} bg={bgColor}>
           <CardHeader>
-            <Heading size="md">Traffic Sources</Heading>
+            <Heading size="md" color={textColor}>Funnel Stages Performance</Heading>
           </CardHeader>
           <CardBody>
-            <Box h="300px">
-              <Doughnut 
-                data={getTrafficSourceData()} 
-                options={{
-                  ...chartOptions,
-                  plugins: {
-                    ...chartOptions.plugins,
-                    legend: {
-                      display: true,
-                      position: 'bottom'
-                    }
-                  }
-                }} 
-              />
-            </Box>
-            
-            <VStack spacing={3} align="stretch" mt={4}>
-              {mockAnalytics.trafficSources.map((source, index) => (
-                <Flex key={index} justify="space-between" align="center">
-                  <Text>{source.source}</Text>
-                  <HStack spacing={4}>
-                    <Text fontSize="sm" color="gray.500">
-                      {source.visitors} visitors
-                    </Text>
-                    <Badge colorScheme={source.rate > 0.5 ? 'green' : 'red'} variant="subtle">
-                      {source.rate}% conv.
-                    </Badge>
-                  </HStack>
-                </Flex>
-              ))}
-            </VStack>
+            <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
+              <Box>
+                <Text fontSize="lg" fontWeight="semibold" mb={4} color={textColor}>Stage Views</Text>
+                <Box h="300px">
+                  <Bar data={getStageChartData()} options={chartOptions} />
+                </Box>
+              </Box>
+              
+              <Box>
+                <Text fontSize="lg" fontWeight="semibold" mb={4} color={textColor}>Stage Breakdown</Text>
+                <VStack spacing={3} align="stretch">
+                  {analyticsData.stageAnalytics.map((stage, index) => {
+                    const conversionRate = stage.totalViews > 0 
+                      ? ((stage.uniqueVisitors / stage.totalViews) * 100).toFixed(1)
+                      : 0;
+                    return (
+                      <Box key={index}>
+                        <Flex justify="space-between" align="center" mb={2}>
+                          <Text fontWeight="medium" color={textColor}>Stage {index + 1}</Text>
+                          <Text fontSize="sm" color={secondaryTextColor}>
+                            {stage.totalViews} views, {stage.uniqueVisitors} unique
+                          </Text>
+                        </Flex>
+                        <Progress 
+                          value={parseFloat(conversionRate)} 
+                          size="lg" 
+                          colorScheme="brand"
+                          borderRadius="full"
+                        />
+                        <Text fontSize="xs" color={secondaryTextColor} mt={1}>
+                          Engagement: {conversionRate}%
+                        </Text>
+                      </Box>
+                    );
+                  })}
+                </VStack>
+              </Box>
+            </SimpleGrid>
           </CardBody>
         </Card>
-        
-        <Card>
+      )}
+
+      {/* Additional Metrics */}
+      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={6}>
+        <Card bg={bgColor}>
           <CardHeader>
-            <Heading size="md">Device Breakdown</Heading>
+            <Heading size="md" color={textColor}>Additional Metrics</Heading>
           </CardHeader>
           <CardBody>
             <VStack spacing={4} align="stretch">
-              {mockAnalytics.deviceBreakdown.map((device, index) => (
-                <Box key={index}>
-                  <Flex justify="space-between" align="center" mb={2}>
-                    <Text fontWeight="medium">{device.device}</Text>
-                    <Text fontSize="sm" color="gray.500">
-                      {device.visitors} visitors
-                    </Text>
-                  </Flex>
-                  <Progress 
-                    value={(device.visitors / mockAnalytics.overview.totalVisitors) * 100} 
-                    size="lg" 
-                    colorScheme="brand"
-                    borderRadius="full"
-                  />
-                  <Text fontSize="xs" color="gray.500" mt={1}>
-                    Conversion Rate: {device.rate}%
-                  </Text>
-                </Box>
-              ))}
+              <Box>
+                <Text fontSize="sm" color={secondaryTextColor} mb={1}>Appointments Booked</Text>
+                <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+                  {analyticsData.appointmentsBooked || 0}
+                </Text>
+              </Box>
+              <Box>
+                <Text fontSize="sm" color={secondaryTextColor} mb={1}>Products Purchased</Text>
+                <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+                  {analyticsData.productsPurchased || 0}
+                </Text>
+              </Box>
+              <Box>
+                <Text fontSize="sm" color={secondaryTextColor} mb={1}>Funnel Completions</Text>
+                <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+                  {analyticsData.funnelCompletionCount || 0}
+                </Text>
+              </Box>
+              <Box>
+                <Text fontSize="sm" color={secondaryTextColor} mb={1}>Completion Rate</Text>
+                <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+                  {analyticsData.funnelCompletionRate?.toFixed(2) || 0}%
+                </Text>
+              </Box>
             </VStack>
           </CardBody>
         </Card>
+
+        {analyticsData.hourlyBreakdown && analyticsData.hourlyBreakdown.length > 0 && (
+          <Card bg={bgColor}>
+            <CardHeader>
+              <Heading size="md" color={textColor}>Last 24 Hours</Heading>
+            </CardHeader>
+            <CardBody>
+              <VStack spacing={2} align="stretch">
+                {analyticsData.hourlyBreakdown.map((hour, index) => (
+                  <Box key={index}>
+                    <Flex justify="space-between" align="center" mb={1}>
+                      <Text fontSize="sm" color={textColor}>
+                        {hour.hour}:00
+                      </Text>
+                      <Text fontSize="sm" color={secondaryTextColor}>
+                        {hour.views} views
+                      </Text>
+                    </Flex>
+                    <Progress 
+                      value={(hour.views / Math.max(...analyticsData.hourlyBreakdown.map(h => h.views))) * 100} 
+                      size="sm" 
+                      colorScheme="brand"
+                      borderRadius="full"
+                    />
+                  </Box>
+                ))}
+              </VStack>
+            </CardBody>
+          </Card>
+        )}
       </SimpleGrid>
-
-      {/* Geographic Performance */}
-      <Card mb={6}>
-        <CardHeader>
-          <Heading size="md">Geographic Performance</Heading>
-        </CardHeader>
-        <CardBody>
-          <Table variant="simple">
-            <Thead>
-              <Tr>
-                <Th>Location</Th>
-                <Th>Visitors</Th>
-                <Th>Conversions</Th>
-                <Th>Conversion Rate</Th>
-                <Th>Performance</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {mockAnalytics.geographicData.map((location, index) => (
-                <Tr key={index}>
-                  <Td fontWeight="medium">{location.location}</Td>
-                  <Td>{location.visitors.toLocaleString()}</Td>
-                  <Td>{location.conversions}</Td>
-                  <Td>{location.rate}%</Td>
-                  <Td>
-                    <Badge 
-                      colorScheme={location.rate > 0.5 ? 'green' : location.rate > 0.3 ? 'yellow' : 'red'} 
-                      variant="subtle"
-                    >
-                      {location.rate > 0.5 ? 'High' : location.rate > 0.3 ? 'Medium' : 'Low'}
-                    </Badge>
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </CardBody>
-      </Card>
-
-      {/* Optimization Recommendations */}
-      <Card>
-        <CardHeader>
-          <Heading size="md">Optimization Recommendations</Heading>
-        </CardHeader>
-        <CardBody>
-          <VStack spacing={4} align="stretch">
-            <Alert status="warning">
-              <AlertIcon />
-              <Box>
-                <Text fontWeight="semibold">High Dropoff at Video Sales Letter</Text>
-                <Text fontSize="sm">
-                  Consider A/B testing different video lengths and messaging to improve engagement
-                </Text>
-              </Box>
-            </Alert>
-            
-            <Alert status="info">
-              <AlertIcon />
-              <Box>
-                <Text fontWeight="semibold">Mobile Performance Optimization</Text>
-                <Text fontSize="sm">
-                  Mobile visitors have 0% conversion rate. Review mobile user experience and page speed
-                </Text>
-              </Box>
-            </Alert>
-            
-            <Alert status="success">
-              <AlertIcon />
-              <Box>
-                <Text fontWeight="semibold">Strong Discovery Call Performance</Text>
-                <Text fontSize="sm">
-                  Discovery call stage has excellent conversion rate. Consider expanding this stage
-                </Text>
-              </Box>
-            </Alert>
-          </VStack>
-        </CardBody>
-      </Card>
     </Box>
   );
 };

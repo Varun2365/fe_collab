@@ -11,24 +11,14 @@ const generateDailyPriorityFeed = async (coachId) => {
     const seventyTwoHoursAgo = new Date(now.getTime() - (72 * 60 * 60 * 1000));
     const fifteenDaysAgo = new Date(now.getTime() - (15 * 24 * 60 * 60 * 1000));
 
-    console.log(`[DailyPriorityFeedService] Generating feed for coachId: ${coachId}`);
-    console.log(`[DailyPriorityFeedService] Time ranges - Now: ${now}, 24h ago: ${twentyFourHoursAgo}, 72h ago: ${seventyTwoHoursAgo}`);
-
     // Debug: Check total leads for this coach
     try {
         const totalLeads = await Lead.countDocuments({ coachId: coachId });
-        console.log(`[DailyPriorityFeedService] Total leads for coach ${coachId}: ${totalLeads}`);
+
         
         if (totalLeads > 0) {
             const sampleLead = await Lead.findOne({ coachId: coachId });
-            console.log(`[DailyPriorityFeedService] Sample lead:`, {
-                id: sampleLead._id,
-                name: sampleLead.name,
-                status: sampleLead.status,
-                leadTemperature: sampleLead.leadTemperature,
-                createdAt: sampleLead.createdAt,
-                nextFollowUpAt: sampleLead.nextFollowUpAt
-            });
+
         }
     } catch (error) {
         console.error('[DailyPriorityFeedService] Error checking total leads:', error.message);
@@ -87,7 +77,7 @@ const generateDailyPriorityFeed = async (coachId) => {
             createdAt: { $gte: twentyFourHoursAgo }
         }).sort('-createdAt');
 
-        console.log(`[DailyPriorityFeedService] Found ${newLeads.length} new leads in last 24 hours`);
+   
 
         newLeads.forEach(lead => {
             feedItems.push({
@@ -204,9 +194,6 @@ const generateDailyPriorityFeed = async (coachId) => {
     }
 
     feedItems.sort((a, b) => a.priority - b.priority);
-
-    console.log(`[DailyPriorityFeedService] Generated ${feedItems.length} feed items for coach ${coachId}`);
-    console.log(`[DailyPriorityFeedService] Feed items:`, feedItems.map(item => ({ type: item.type, priority: item.priority, title: item.title })));
 
     return feedItems;
 };

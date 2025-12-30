@@ -63,11 +63,158 @@ const calendarService = {
     }
 };
 
+const Notification = require('../schema/Notification');
+const Staff = require('../schema/Staff');
+
 const internalNotificationService = {
-    sendNotification: async ({ recipientId, message }) => {
-        // WhatsApp manager moved to dustbin/whatsapp-dump/
-        console.log(`[InternalNotificationService] Notification for ${recipientId}: ${message}`);
-        // TODO: Implement alternative notification system
+    sendNotification: async ({ recipientId, recipientType, message, title, type = 'info', priority = 'normal', actionUrl, actionLabel, relatedEntityType, relatedEntityId, source = 'automation', sourceId, coachId, metadata }) => {
+        try {
+            // If recipientType is not provided, try to determine it
+            if (!recipientType) {
+                // Check if it's a coach
+                const coach = await Coach.findById(recipientId);
+                if (coach) {
+                    recipientType = 'coach';
+                    coachId = coachId || coach._id;
+                } else {
+                    // Check if it's a staff
+                    const staff = await Staff.findById(recipientId);
+                    if (staff) {
+                        recipientType = 'staff';
+                        coachId = coachId || staff.coachId;
+                    } else {
+                        recipientType = 'coach'; // Default fallback
+                    }
+                }
+            }
+            
+            // Ensure coachId is set
+            if (!coachId && recipientType === 'staff') {
+                const staff = await Staff.findById(recipientId);
+                coachId = staff?.coachId;
+            } else if (!coachId) {
+                coachId = recipientId; // Assume it's the coach
+            }
+            
+            if (!coachId) {
+                console.error(`[InternalNotificationService] Cannot determine coachId for recipient ${recipientId}`);
+                return;
+            }
+            
+            const notification = await Notification.createNotification({
+                recipientId,
+                recipientType: recipientType || 'coach',
+                title: title || 'Notification',
+                message,
+                type,
+                priority,
+                actionUrl,
+                actionLabel,
+                relatedEntityType,
+                relatedEntityId,
+                source,
+                sourceId,
+                coachId,
+                metadata: metadata || {}
+            });
+            
+            // Emit WebSocket event for real-time notification
+            try {
+                // Get Socket.IO instance from main.js
+                const { getIoInstance } = require('../utils/socketUtils');
+                const io = getIoInstance();
+                
+                if (io) {
+                    const notificationPayload = {
+                        id: notification._id.toString(),
+                        title: notification.title,
+                        message: notification.message,
+                        type: notification.type,
+                        priority: notification.priority,
+                        actionUrl: notification.actionUrl,
+                        actionLabel: notification.actionLabel,
+                        createdAt: notification.createdAt,
+                        isRead: notification.isRead,
+                        recipientId: recipientId.toString(),
+                        recipientType: recipientType
+                    };
+
+                    // Emit to specific user room (primary target)
+                    const userRoom = `user-${recipientId}`;
+                    io.to(userRoom).emit('notification', notificationPayload);
+                    console.log(`[InternalNotificationService] 📡 Emitted to room: ${userRoom}`);
+                    
+                    // Also emit to coach/staff room based on type
+                    if (recipientType === 'coach') {
+                        const coachRoom = `coach-${recipientId}`;
+                        io.to(coachRoom).emit('notification', notificationPayload);
+                        console.log(`[InternalNotificationService] 📡 Emitted to room: ${coachRoom}`);
+                        
+                        // Also emit to general coach room
+                        io.to('coach-room').emit('notification', notificationPayload);
+                        console.log(`[InternalNotificationService] 📡 Emitted to room: coach-room`);
+                    }
+                    
+                    // Log room occupancy for debugging (async operation)
+                    io.in(userRoom).fetchSockets().then((sockets) => {
+                        console.log(`[InternalNotificationService] 📊 Room ${userRoom} has ${sockets.length} connected client(s)`);
+                    }).catch((err) => {
+                        console.warn(`[InternalNotificationService] Could not fetch room sockets:`, err.message);
+                    });
+                    
+                    console.log(`[InternalNotificationService] ✅ WebSocket notification emitted to ${recipientType} ${recipientId}`);
+                } else {
+                    console.warn(`[InternalNotificationService] ⚠️ Socket.IO instance not available`);
+                }
+            } catch (socketError) {
+                console.error(`[InternalNotificationService] ❌ Error emitting WebSocket notification:`, socketError);
+                // Don't fail if WebSocket is not available
+            }
+            
+            console.log(`[InternalNotificationService] ✅ Notification created for ${recipientType} ${recipientId}: ${message}`);
+            return notification;
+        } catch (error) {
+            console.error(`[InternalNotificationService] ❌ Error creating notification:`, error);
+            throw error;
+        }
+    },
+    
+    sendBulkNotifications: async ({ recipients, message, title, type = 'info', priority = 'normal', actionUrl, actionLabel, relatedEntityType, relatedEntityId, source = 'automation', sourceId, coachId, metadata }) => {
+        try {
+            const notifications = [];
+            
+            for (const recipient of recipients) {
+                const recipientId = typeof recipient === 'string' ? recipient : recipient.id || recipient._id;
+                const recipientType = recipient.type || 'coach';
+                
+                const notification = await internalNotificationService.sendNotification({
+                    recipientId,
+                    recipientType,
+                    message,
+                    title,
+                    type,
+                    priority,
+                    actionUrl,
+                    actionLabel,
+                    relatedEntityType,
+                    relatedEntityId,
+                    source,
+                    sourceId,
+                    coachId,
+                    metadata
+                });
+                
+                if (notification) {
+                    notifications.push(notification);
+                }
+            }
+            
+            console.log(`[InternalNotificationService] ✅ Created ${notifications.length} notifications`);
+            return notifications;
+        } catch (error) {
+            console.error(`[InternalNotificationService] ❌ Error creating bulk notifications:`, error);
+            throw error;
+        }
     }
 };
 
@@ -542,9 +689,109 @@ See you there! 👋`;
  * Sends a notification to a coach's dashboard.
  */
 async function sendInternalNotification(config, eventPayload) {
-    const { recipientId, message } = config;
-    if (!recipientId || !message) { throw new Error('Recipient ID and message are required for internal notification.'); }
-    await internalNotificationService.sendNotification({ recipientId, message });
+    try {
+        const {
+            message,
+            title,
+            recipients = 'all', // 'all', 'coach', or array of IDs
+            type = 'info',
+            priority = 'normal',
+            actionUrl,
+            actionLabel,
+            notificationType = 'automation'
+        } = config;
+        
+        if (!message) {
+            throw new Error('Message is required for internal notification.');
+        }
+        
+        const leadData = eventPayload.relatedDoc || eventPayload.payload?.relatedDoc || eventPayload.payload?.leadData;
+        const coachId = eventPayload.coachId || eventPayload.payload?.coachId || leadData?.coachId;
+        
+        if (!coachId) {
+            throw new Error('Coach ID is required for internal notification.');
+        }
+        
+        // Parse template variables in message and title
+        let processedMessage = message;
+        let processedTitle = title || 'Notification';
+        
+        if (leadData) {
+            // Replace common template variables
+            processedMessage = processedMessage.replace(/\{\{lead\.name\}\}/g, leadData.name || 'Lead');
+            processedMessage = processedMessage.replace(/\{\{lead\.email\}\}/g, leadData.email || '');
+            processedMessage = processedTitle.replace(/\{\{lead\.name\}\}/g, leadData.name || 'Lead');
+        }
+        
+        // Determine recipients
+        let recipientList = [];
+        
+        if (recipients === 'self' || recipients === 'coach') {
+            // Send to coach (self) - for testing
+            recipientList = [{ id: coachId, type: 'coach' }];
+        } else if (recipients === 'all') {
+            // Get all staff for this coach
+            const Staff = require('../schema/Staff');
+            const staffMembers = await Staff.find({ coachId, isActive: true }).select('_id');
+            recipientList = [
+                { id: coachId, type: 'coach' },
+                ...staffMembers.map(s => ({ id: s._id, type: 'staff' }))
+            ];
+        } else if (recipients === 'assigned') {
+            // Get assigned staff if available
+            const assignedStaffId = leadData?.assignedStaffId || leadData?.assignedStaff?._id;
+            if (assignedStaffId) {
+                recipientList = [{ id: assignedStaffId, type: 'staff' }];
+            } else {
+                recipientList = [{ id: coachId, type: 'coach' }];
+            }
+        } else if (Array.isArray(recipients)) {
+            // Array of recipient IDs
+            recipientList = recipients.map(id => {
+                // Try to determine type, default to staff
+                return { id, type: 'staff' };
+            });
+        } else if (typeof recipients === 'string') {
+            // Single recipient ID
+            recipientList = [{ id: recipients, type: 'staff' }];
+        }
+        
+        if (recipientList.length === 0) {
+            recipientList = [{ id: coachId, type: 'coach' }];
+        }
+        
+        // Build action URL if related entity exists
+        let finalActionUrl = actionUrl;
+        if (!finalActionUrl && leadData?._id) {
+            finalActionUrl = `/leads/${leadData._id}`;
+        }
+        
+        // Send notifications
+        const notifications = await internalNotificationService.sendBulkNotifications({
+            recipients: recipientList,
+            message: processedMessage,
+            title: processedTitle,
+            type: notificationType || type,
+            priority,
+            actionUrl: finalActionUrl,
+            actionLabel: actionLabel || 'View Details',
+            relatedEntityType: leadData ? 'lead' : null,
+            relatedEntityId: leadData?._id || null,
+            source: 'automation',
+            sourceId: eventPayload.ruleId || null,
+            coachId,
+            metadata: {
+                automationRuleId: eventPayload.ruleId,
+                eventType: eventPayload.eventName || eventPayload.payload?.eventName
+            }
+        });
+        
+        console.log(`[ActionExecutor] ✅ Internal notifications sent to ${notifications.length} recipients`);
+    } catch (error) {
+        console.error(`[ActionExecutor] ❌ Failed to execute action "send_internal_notification": ${error.message}`);
+        console.error(`[ActionExecutor] Error stack:`, error.stack);
+        throw error;
+    }
 }
 
 /**

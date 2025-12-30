@@ -11,110 +11,59 @@ import {
   Button,
   Avatar,
   Icon,
-  Progress,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
   Tabs,
   TabList,
   TabPanels,
   Tab,
   TabPanel,
+  Input,
+  Textarea,
 } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import {
   FiUsers,
-  FiTarget,
-  FiTrendingUp,
-  FiAward,
-  FiGift,
+  FiMessageSquare,
+  FiHeart,
   FiShare2,
-  FiCalendar,
+  FiSend,
+  FiTrendingUp,
 } from 'react-icons/fi';
-import { MdEmojiEvents } from 'react-icons/md';
 
 const Community = () => {
-  const challenges = [
+  const posts = [
     {
       id: 1,
-      title: '21-Day Transformation Challenge',
-      duration: '21 days',
-      participants: 15,
-      startDate: '2024-03-01',
-      endDate: '2024-03-21',
-      status: 'active',
-      prize: '$500',
+      author: 'Alex Johnson',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
+      content: 'Just completed my first week! Feeling amazing and motivated to keep going!',
+      likes: 24,
+      comments: 8,
+      time: '2 hours ago',
     },
     {
       id: 2,
-      title: '10-Day Marathon Sprint',
-      duration: '10 days',
-      participants: 8,
-      startDate: '2024-03-15',
-      endDate: '2024-03-25',
-      status: 'active',
-      prize: '$200',
-    },
-  ];
-
-  const leaderboard = [
-    {
-      rank: 1,
-      name: 'David Brown',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100',
-      points: 2850,
-      progress: 95,
-    },
-    {
-      rank: 2,
-      name: 'Sarah Williams',
+      author: 'Sarah Williams',
       avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100',
-      points: 2650,
-      progress: 88,
+      content: 'Reached my monthly goal today! Thanks to everyone for the support!',
+      likes: 42,
+      comments: 15,
+      time: '5 hours ago',
     },
     {
-      rank: 3,
-      name: 'Alex Johnson',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
-      points: 2450,
-      progress: 82,
-    },
-    {
-      rank: 4,
-      name: 'Mike Chen',
+      id: 3,
+      author: 'Mike Chen',
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
-      points: 2200,
-      progress: 73,
-    },
-    {
-      rank: 5,
-      name: 'Emma Davis',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
-      points: 1800,
-      progress: 60,
+      content: 'Struggling a bit this week but staying committed. Any tips?',
+      likes: 18,
+      comments: 12,
+      time: '1 day ago',
     },
   ];
 
-  const referrals = [
-    {
-      id: 1,
-      client: 'Alex Johnson',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
-      referrals: 3,
-      bonus: '$150',
-      status: 'active',
-    },
-    {
-      id: 2,
-      client: 'Sarah Williams',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100',
-      referrals: 2,
-      bonus: '$100',
-      status: 'active',
-    },
+  const members = [
+    { id: 1, name: 'Alex Johnson', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100', role: 'Member', joined: '2024-01-15' },
+    { id: 2, name: 'Sarah Williams', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100', role: 'Moderator', joined: '2023-12-10' },
+    { id: 3, name: 'Mike Chen', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100', role: 'Member', joined: '2024-02-20' },
   ];
 
   return (
@@ -122,10 +71,10 @@ const Community = () => {
       <VStack align="stretch" spacing={6} mb={8}>
         <Box>
           <Text fontSize="2xl" fontWeight="800" color="gray.900" mb={2}>
-            Community & Social Programs
+            Community
           </Text>
           <Text color="gray.600" fontSize="sm" fontWeight="500">
-            Manage challenges, leaderboards, and referral programs
+            Connect, share, and support each other on the journey
           </Text>
         </Box>
 
@@ -136,27 +85,7 @@ const Community = () => {
                 <Box
                   w="48px"
                   h="48px"
-                  bgGradient="linear(135deg, #667eea 0%, #764ba2 100%)"
-                  borderRadius="xl"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  <Icon as={FiTarget} boxSize={6} color="white" />
-                </Box>
-              </HStack>
-              <Text fontSize="2xl" fontWeight="800" color="gray.900">{challenges.length}</Text>
-              <Text fontSize="sm" color="gray.600" fontWeight="600">Active Challenges</Text>
-            </CardBody>
-          </Card>
-
-          <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)">
-            <CardBody p={5}>
-              <HStack justify="space-between" mb={3}>
-                <Box
-                  w="48px"
-                  h="48px"
-                  bgGradient="linear(135deg, #F59E0B 0%, #D97706 100%)"
+                  bgGradient="linear(135deg, #3B82F6 0%, #2563EB 100%)"
                   borderRadius="xl"
                   display="flex"
                   alignItems="center"
@@ -165,8 +94,8 @@ const Community = () => {
                   <Icon as={FiUsers} boxSize={6} color="white" />
                 </Box>
               </HStack>
-              <Text fontSize="2xl" fontWeight="800" color="gray.900">23</Text>
-              <Text fontSize="sm" color="gray.600" fontWeight="600">Total Participants</Text>
+              <Text fontSize="2xl" fontWeight="800" color="gray.900">{members.length}</Text>
+              <Text fontSize="sm" color="gray.600" fontWeight="600">Active Members</Text>
             </CardBody>
           </Card>
 
@@ -182,11 +111,33 @@ const Community = () => {
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Icon as={FiGift} boxSize={6} color="white" />
+                  <Icon as={FiMessageSquare} boxSize={6} color="white" />
                 </Box>
               </HStack>
-              <Text fontSize="2xl" fontWeight="800" color="gray.900">5</Text>
-              <Text fontSize="sm" color="gray.600" fontWeight="600">Total Referrals</Text>
+              <Text fontSize="2xl" fontWeight="800" color="gray.900">{posts.length}</Text>
+              <Text fontSize="sm" color="gray.600" fontWeight="600">Recent Posts</Text>
+            </CardBody>
+          </Card>
+
+          <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)">
+            <CardBody p={5}>
+              <HStack justify="space-between" mb={3}>
+                <Box
+                  w="48px"
+                  h="48px"
+                  bgGradient="linear(135deg, #F59E0B 0%, #D97706 100%)"
+                  borderRadius="xl"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Icon as={FiHeart} boxSize={6} color="white" />
+                </Box>
+              </HStack>
+              <Text fontSize="2xl" fontWeight="800" color="gray.900">
+                {posts.reduce((acc, p) => acc + p.likes, 0)}
+              </Text>
+              <Text fontSize="sm" color="gray.600" fontWeight="600">Total Likes</Text>
             </CardBody>
           </Card>
 
@@ -202,11 +153,13 @@ const Community = () => {
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Icon as={MdEmojiEvents} boxSize={6} color="white" />
+                  <Icon as={FiTrendingUp} boxSize={6} color="white" />
                 </Box>
               </HStack>
-              <Text fontSize="2xl" fontWeight="800" color="gray.900">$700</Text>
-              <Text fontSize="sm" color="gray.600" fontWeight="600">Total Prizes</Text>
+              <Text fontSize="2xl" fontWeight="800" color="gray.900">
+                {posts.reduce((acc, p) => acc + p.comments, 0)}
+              </Text>
+              <Text fontSize="sm" color="gray.600" fontWeight="600">Total Comments</Text>
             </CardBody>
           </Card>
         </SimpleGrid>
@@ -214,75 +167,121 @@ const Community = () => {
 
       <Tabs>
         <TabList>
-          <Tab fontWeight="700">Challenges</Tab>
-          <Tab fontWeight="700">Leaderboard</Tab>
-          <Tab fontWeight="700">Referrals</Tab>
+          <Tab fontWeight="700">Feed</Tab>
+          <Tab fontWeight="700">Members</Tab>
+          <Tab fontWeight="700">Discussions</Tab>
         </TabList>
 
         <TabPanels>
-          {/* Challenges */}
+          {/* Feed */}
           <TabPanel>
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-              {challenges.map((challenge) => (
-                <motion.div key={challenge.id} whileHover={{ scale: 1.02, y: -4 }}>
+            <VStack align="stretch" spacing={4}>
+              {/* Create Post */}
+              <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)">
+                <CardBody p={5}>
+                  <HStack spacing={3} mb={4}>
+                    <Avatar size="sm" name="You" />
+                    <Text fontWeight="700" color="gray.900">Share something...</Text>
+                  </HStack>
+                  <Textarea
+                    placeholder="What's on your mind?"
+                    borderRadius="xl"
+                    border="2px solid"
+                    borderColor="gray.200"
+                    _focus={{ borderColor: '#667eea' }}
+                    mb={3}
+                  />
+                  <Button
+                    leftIcon={<FiSend />}
+                    bgGradient="linear(135deg, #667eea 0%, #764ba2 100%)"
+                    color="white"
+                    _hover={{ bgGradient: 'linear(135deg, #764ba2 0%, #667eea 100%)' }}
+                    borderRadius="xl"
+                  >
+                    Post
+                  </Button>
+                </CardBody>
+              </Card>
+
+              {/* Posts */}
+              {posts.map((post) => (
+                <motion.div key={post.id} whileHover={{ y: -2 }}>
                   <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)">
-                    <CardBody p={6}>
-                      <HStack justify="space-between" mb={4}>
-                        <Badge
-                          bg={challenge.status === 'active' ? '#10B981' : '#EF4444'}
-                          color="white"
-                          borderRadius="full"
-                          px={3}
-                          py={1}
-                          fontSize="xs"
-                          fontWeight="700"
-                        >
-                          {challenge.status}
-                        </Badge>
-                        <Badge
-                          bgGradient="linear(135deg, #F59E0B 0%, #D97706 100%)"
-                          color="white"
-                          borderRadius="full"
-                          px={3}
-                          py={1}
-                          fontSize="xs"
-                          fontWeight="700"
-                        >
-                          Prize: {challenge.prize}
-                        </Badge>
+                    <CardBody p={5}>
+                      <HStack spacing={3} mb={4}>
+                        <Avatar size="md" name={post.author} src={post.avatar} />
+                        <Box flex={1}>
+                          <Text fontWeight="800" color="gray.900">{post.author}</Text>
+                          <Text fontSize="xs" color="gray.500">{post.time}</Text>
+                        </Box>
                       </HStack>
-                      <Text fontSize="xl" fontWeight="800" color="gray.900" mb={3}>
-                        {challenge.title}
+                      <Text color="gray.700" mb={4} fontSize="sm">
+                        {post.content}
                       </Text>
-                      <VStack align="stretch" spacing={3} mb={4}>
-                        <HStack>
-                          <Icon as={FiCalendar} color="gray.500" boxSize={4} />
-                          <Text fontSize="sm" color="gray.600">
-                            {challenge.startDate} - {challenge.endDate}
-                          </Text>
-                        </HStack>
-                        <HStack>
-                          <Icon as={FiUsers} color="gray.500" boxSize={4} />
-                          <Text fontSize="sm" color="gray.600">
-                            {challenge.participants} participants
-                          </Text>
-                        </HStack>
-                        <HStack>
-                          <Icon as={FiTarget} color="gray.500" boxSize={4} />
-                          <Text fontSize="sm" color="gray.600">
-                            Duration: {challenge.duration}
-                          </Text>
-                        </HStack>
-                      </VStack>
-                      <Button
-                        w="full"
-                        bgGradient="linear(135deg, #667eea 0%, #764ba2 100%)"
+                      <HStack spacing={4}>
+                        <Button
+                          leftIcon={<FiHeart />}
+                          variant="ghost"
+                          size="sm"
+                          colorScheme="red"
+                          borderRadius="lg"
+                        >
+                          {post.likes}
+                        </Button>
+                        <Button
+                          leftIcon={<FiMessageSquare />}
+                          variant="ghost"
+                          size="sm"
+                          colorScheme="blue"
+                          borderRadius="lg"
+                        >
+                          {post.comments}
+                        </Button>
+                        <Button
+                          leftIcon={<FiShare2 />}
+                          variant="ghost"
+                          size="sm"
+                          colorScheme="gray"
+                          borderRadius="lg"
+                        >
+                          Share
+                        </Button>
+                      </HStack>
+                    </CardBody>
+                  </Card>
+                </motion.div>
+              ))}
+            </VStack>
+          </TabPanel>
+
+          {/* Members */}
+          <TabPanel>
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+              {members.map((member) => (
+                <motion.div key={member.id} whileHover={{ scale: 1.02, y: -4 }}>
+                  <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)">
+                    <CardBody p={5} textAlign="center">
+                      <Avatar size="xl" name={member.name} src={member.avatar} mb={3} />
+                      <Text fontWeight="800" color="gray.900" mb={1}>
+                        {member.name}
+                      </Text>
+                      <Badge
+                        bg={member.role === 'Moderator' ? '#F59E0B' : '#3B82F6'}
                         color="white"
-                        _hover={{ bgGradient: 'linear(135deg, #764ba2 0%, #667eea 100%)' }}
-                        borderRadius="xl"
+                        borderRadius="full"
+                        px={3}
+                        py={1}
+                        fontSize="xs"
                         fontWeight="700"
+                        mb={2}
                       >
-                        View Details
+                        {member.role}
+                      </Badge>
+                      <Text fontSize="xs" color="gray.500">
+                        Joined {member.joined}
+                      </Text>
+                      <Button size="sm" colorScheme="blue" borderRadius="lg" mt={3} w="full">
+                        View Profile
                       </Button>
                     </CardBody>
                   </Card>
@@ -291,114 +290,13 @@ const Community = () => {
             </SimpleGrid>
           </TabPanel>
 
-          {/* Leaderboard */}
+          {/* Discussions */}
           <TabPanel>
             <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)">
-              <CardBody p={0}>
-                <Table variant="simple">
-                  <Thead bg="gray.50">
-                    <Tr>
-                      <Th fontWeight="700" color="gray.700">Rank</Th>
-                      <Th fontWeight="700" color="gray.700">Client</Th>
-                      <Th fontWeight="700" color="gray.700">Points</Th>
-                      <Th fontWeight="700" color="gray.700">Progress</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    {leaderboard.map((entry) => (
-                      <Tr key={entry.rank} _hover={{ bg: 'gray.50' }}>
-                        <Td>
-                          <HStack spacing={2}>
-                            {entry.rank <= 3 && (
-                              <Icon
-                                as={MdEmojiEvents}
-                                boxSize={5}
-                                color={entry.rank === 1 ? '#F59E0B' : entry.rank === 2 ? '#94A3B8' : '#CD7F32'}
-                              />
-                            )}
-                            <Text fontWeight="800" color="gray.900" fontSize="lg">
-                              #{entry.rank}
-                            </Text>
-                          </HStack>
-                        </Td>
-                        <Td>
-                          <HStack spacing={3}>
-                            <Avatar size="sm" name={entry.name} src={entry.avatar} />
-                            <Text fontWeight="700" color="gray.900">{entry.name}</Text>
-                          </HStack>
-                        </Td>
-                        <Td>
-                          <Text fontWeight="800" color="gray.900" fontSize="lg">
-                            {entry.points.toLocaleString()}
-                          </Text>
-                        </Td>
-                        <Td>
-                          <VStack align="start" spacing={1} w="150px">
-                            <Progress
-                              value={entry.progress}
-                              colorScheme="green"
-                              size="sm"
-                              borderRadius="full"
-                              w="full"
-                            />
-                            <Text fontSize="xs" color="gray.600">{entry.progress}%</Text>
-                          </VStack>
-                        </Td>
-                      </Tr>
-                    ))}
-                  </Tbody>
-                </Table>
-              </CardBody>
-            </Card>
-          </TabPanel>
-
-          {/* Referrals */}
-          <TabPanel>
-            <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)">
-              <CardBody p={0}>
-                <Table variant="simple">
-                  <Thead bg="gray.50">
-                    <Tr>
-                      <Th fontWeight="700" color="gray.700">Client</Th>
-                      <Th fontWeight="700" color="gray.700">Referrals</Th>
-                      <Th fontWeight="700" color="gray.700">Bonus Earned</Th>
-                      <Th fontWeight="700" color="gray.700">Status</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    {referrals.map((referral) => (
-                      <Tr key={referral.id} _hover={{ bg: 'gray.50' }}>
-                        <Td>
-                          <HStack spacing={3}>
-                            <Avatar size="sm" name={referral.client} src={referral.avatar} />
-                            <Text fontWeight="700" color="gray.900">{referral.client}</Text>
-                          </HStack>
-                        </Td>
-                        <Td>
-                          <Text fontWeight="700" color="gray.900">{referral.referrals}</Text>
-                        </Td>
-                        <Td>
-                          <Text fontWeight="800" color="gray.900" fontSize="lg">
-                            {referral.bonus}
-                          </Text>
-                        </Td>
-                        <Td>
-                          <Badge
-                            bg={referral.status === 'active' ? '#10B981' : '#EF4444'}
-                            color="white"
-                            borderRadius="full"
-                            px={3}
-                            py={1}
-                            fontSize="xs"
-                            fontWeight="700"
-                          >
-                            {referral.status}
-                          </Badge>
-                        </Td>
-                      </Tr>
-                    ))}
-                  </Tbody>
-                </Table>
+              <CardBody>
+                <Text color="gray.600" fontSize="sm" fontWeight="500">
+                  Discussion topics and threads will be displayed here...
+                </Text>
               </CardBody>
             </Card>
           </TabPanel>

@@ -93,6 +93,7 @@ import {
   FiCheckCircle,
   FiX
 } from 'react-icons/fi';
+import FunnelAnalytics from '../FunnelAnalytics';
 
 // Professional Loading Skeleton Component with Smooth Animations
 const ProfessionalLoader = () => {
@@ -537,6 +538,7 @@ function FunnelManagementComponent() {
   const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure();
   const { isOpen: isDeleteModalOpen, onOpen: onDeleteModalOpen, onClose: onDeleteModalClose } = useDisclosure();
   const { isOpen: isAnalyticsModalOpen, onOpen: onAnalyticsModalOpen, onClose: onAnalyticsModalClose } = useDisclosure();
+  const [selectedFunnelForAnalytics, setSelectedFunnelForAnalytics] = useState(null);
   const { isOpen: isViewModalOpen, onOpen: onViewModalOpen, onClose: onViewModalClose } = useDisclosure();
 
   const navigate = useNavigate();
@@ -1793,6 +1795,22 @@ function FunnelManagementComponent() {
                                     _hover={{ bg: 'orange.100', transform: 'scale(1.05)' }}
                                   />
                                 </Tooltip>
+
+                                <Tooltip label="View Analytics">
+                                  <IconButton
+                                    size="sm"
+                                    variant="ghost"
+                                    icon={<Box as={FiBarChart2} />}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedFunnelForAnalytics(funnel);
+                                      onAnalyticsModalOpen();
+                                    }}
+                                    colorScheme="purple"
+                                    aria-label="View analytics"
+                                    _hover={{ bg: 'purple.100', transform: 'scale(1.05)' }}
+                                  />
+                                </Tooltip>
                                 
                                 <Box position="relative">
                                   <IconButton
@@ -2481,6 +2499,46 @@ function FunnelManagementComponent() {
                   Close
                 </Button>
               </ModalFooter>
+            </ModalContent>
+          </Modal>
+
+          {/* Analytics Modal */}
+          <Modal 
+            isOpen={isAnalyticsModalOpen} 
+            onClose={onAnalyticsModalClose} 
+            size="full"
+            scrollBehavior="inside"
+          >
+            <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
+            <ModalContent maxW="95vw" maxH="95vh" bg={useColorModeValue('white', 'gray.800')}>
+              <ModalHeader 
+                display="flex" 
+                alignItems="center" 
+                justifyContent="space-between"
+                borderBottom="1px"
+                borderColor={useColorModeValue('gray.200', 'gray.700')}
+                pb={4}
+              >
+                <HStack spacing={3}>
+                  <Box as={FiBarChart2} size={6} color="purple.500" />
+                  <Box>
+                    <Text fontSize="xl" fontWeight="bold" color={useColorModeValue('gray.800', 'gray.100')}>
+                      Funnel Analytics
+                    </Text>
+                    {selectedFunnelForAnalytics && (
+                      <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')} fontWeight="normal">
+                        {selectedFunnelForAnalytics.name}
+                      </Text>
+                    )}
+                  </Box>
+                </HStack>
+                <ModalCloseButton />
+              </ModalHeader>
+              <ModalBody p={6} overflowY="auto">
+                {selectedFunnelForAnalytics && (
+                  <FunnelAnalytics funnelId={selectedFunnelForAnalytics.id} />
+                )}
+              </ModalBody>
             </ModalContent>
           </Modal>
         </VStack>

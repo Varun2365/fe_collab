@@ -22,6 +22,7 @@ import {
   Spinner,
   Badge,
   Icon,
+  IconButton,
   useToast,
   useColorModeValue,
   useColorMode,
@@ -34,11 +35,27 @@ import {
   SimpleGrid,
   Skeleton,
   Heading,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  useDisclosure,
+  Divider,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  TableContainer,
 } from '@chakra-ui/react';
 import { 
   FaRupeeSign, FaClock, FaRegMoneyBillAlt, 
   FaPercentage, FaTrophy, FaExclamationTriangle, 
-  FaDownload, FaSyncAlt, FaArrowUp, FaSpinner, FaBell, FaBolt, FaCalendar, FaUser, FaTasks
+  FaDownload, FaSyncAlt, FaArrowUp, FaSpinner, FaBell, FaBolt, FaCalendar, FaUser, FaTasks, FaEye, FaChartLine
 } from 'react-icons/fa';
 import { 
   IoStatsChart, IoReceiptOutline, IoWalletOutline, IoBarChart, 
@@ -405,6 +422,7 @@ const Dashboard = () => {
     calendar: null,
     tasks: null,
     dailyFeed: null,
+    funnels: null,
   });
   
   // User context state
@@ -420,6 +438,9 @@ const Dashboard = () => {
   const [isOffline, setIsOffline] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState(null);
   
+  // Modal state for funnel distribution
+  const { isOpen: isFunnelModalOpen, onOpen: onFunnelModalOpen, onClose: onFunnelModalClose } = useDisclosure();
+  
   // Timeline filter state
   const [trendsTimeFilter, setTrendsTimeFilter] = useState('1W');
   const [leadsTimeFilter, setLeadsTimeFilter] = useState('1M');
@@ -429,81 +450,7 @@ const Dashboard = () => {
   const [funnelMap, setFunnelMap] = useState({}); // Map funnelId to funnel name
 
   // No mock data - all data must come from backend
-
-  // Fetch tasks data separately for Tasks Overview
-  const fetchTasksData = async () => {
-    if (!token || !coachId) return null;
-    
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/workflow/tasks?limit=200`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Coach-ID': coachId,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data) {
-          const tasks = Array.isArray(data.data) ? data.data : [];
-          
-          // Calculate distributions and metrics
-          const statusDistribution = {};
-          const stageDistribution = {};
-          const priorityDistribution = {};
-          let overdueTasks = 0;
-          let upcomingTasks = 0;
-          const now = new Date();
-          
-          tasks.forEach(task => {
-            // Status distribution
-            const status = task.status || 'Pending';
-            statusDistribution[status] = (statusDistribution[status] || 0) + 1;
-            
-            // Stage distribution
-            const stage = task.stage || task.customStage || 'Unassigned';
-            stageDistribution[stage] = (stageDistribution[stage] || 0) + 1;
-            
-            // Priority distribution
-            const priority = task.priority || 'LOW';
-            priorityDistribution[priority] = (priorityDistribution[priority] || 0) + 1;
-            
-            // Overdue and upcoming tasks
-            if (task.dueDate) {
-              const dueDate = new Date(task.dueDate);
-              if (dueDate < now && status !== 'Completed' && status !== 'Done') {
-                overdueTasks++;
-              } else if (dueDate > now && status !== 'Completed' && status !== 'Done') {
-                upcomingTasks++;
-              }
-            }
-          });
-          
-          const completedTasks = tasks.filter(t => 
-            t.status === 'Completed' || t.status === 'Done'
-          ).length;
-          
-          return {
-            totalTasks: tasks.length,
-            completedTasks,
-            pendingTasks: tasks.length - completedTasks,
-            statusDistribution,
-            stageDistribution,
-            priorityDistribution,
-            overdueTasks,
-            upcomingTasks,
-            tasks: tasks.slice(0, 10) // Keep recent tasks for reference
-          };
-        }
-      }
-      return null;
-    } catch (error) {
-      console.error('Error fetching tasks data:', error);
-      return null;
-    }
-  };
+  // Tasks and funnels data are now included in the unified dashboard endpoint
 
   // Enhanced retry mechanism with exponential backoff
   const retryWithBackoff = async (fn, maxRetries = 3, baseDelay = 1000) => {
@@ -606,9 +553,8 @@ const Dashboard = () => {
 
       // Try to fetch real data from API with enhanced error handling
       try {
-        // Use the new unified endpoint
+        // Use the new unified endpoint - includes all data (tasks, funnels, etc.)
         let completeData = null;
-        let tasksData = null;
         try {
           console.log('🚀 Attempting unified API call...');
           console.log('🔐 Using token:', token ? `${token.substring(0, 20)}...` : 'No token');
@@ -618,10 +564,6 @@ const Dashboard = () => {
             () => dashboardAPI.getCompleteData()
           );
           console.log('✅ Unified API response:', completeData);
-          
-          // Fetch tasks data separately
-          tasksData = await fetchTasksData();
-          console.log('✅ Tasks data:', tasksData);
         } catch (completeError) {
           console.log('⚠️ Complete data fetch failed, trying individual endpoints:', completeError.message);
         }
@@ -730,8 +672,8 @@ const Dashboard = () => {
               trends: null,
               marketing: null,
               calendar: null,
-              tasks: tasksData || {
-                // Fallback for staff if tasks fetch failed
+              tasks: apiData.tasks || {
+                // Fallback for staff if tasks data not available
                 totalTasks: 0,
                 completedTasks: 0,
                 pendingTasks: 0,
@@ -741,7 +683,8 @@ const Dashboard = () => {
                 overdueTasks: 0,
                 upcomingTasks: 0
               },
-              dailyFeed: null
+              dailyFeed: null,
+              funnels: apiData.funnels || null
             });
           } else {
             // Coach dashboard data mapping (existing logic)
@@ -810,18 +753,19 @@ const Dashboard = () => {
                 upcomingAppointments: apiData.calendar?.upcomingAppointments || 0,
                 todayAppointments: apiData.calendar?.todayAppointments || 0
             },
-            tasks: tasksData || {
-              // Fallback to API data if tasks fetch failed
-              totalTasks: apiData.tasks?.total || 0,
-              completedTasks: apiData.tasks?.completed || 0,
-              pendingTasks: apiData.tasks?.pending || 0,
-              statusDistribution: apiData.tasks?.tasksByStatus || {},
+            tasks: apiData.tasks || {
+              // Fallback if tasks data not available
+              totalTasks: 0,
+              completedTasks: 0,
+              pendingTasks: 0,
+              statusDistribution: {},
               stageDistribution: {},
               priorityDistribution: {},
               overdueTasks: 0,
               upcomingTasks: 0
             },
-              dailyFeed: apiData.dailyFeed || null
+              dailyFeed: apiData.dailyFeed || null,
+              funnels: apiData.funnels || null
             });
           }
         } else {
@@ -927,38 +871,59 @@ const Dashboard = () => {
     };
   }, []);
 
-  // Fetch funnels to create mapping
+  // Funnels data is now included in the unified dashboard endpoint
+  // Update funnels state when dashboard data is loaded
   useEffect(() => {
-    const fetchFunnels = async () => {
-      if (!coachId || !token) return;
+    if (dashboardData && dashboardData.funnels) {
+      const funnelsData = dashboardData.funnels;
+      // Handle both array format and object with funnels array
+      let funnelsArray = [];
+      if (Array.isArray(funnelsData)) {
+        funnelsArray = funnelsData;
+      } else if (funnelsData.funnels && Array.isArray(funnelsData.funnels)) {
+        funnelsArray = funnelsData.funnels;
+      } else if (funnelsData.funnelMap) {
+        // If only funnelMap is provided, extract funnels from it
+        // Backend now returns funnelMap with string values (funnel names)
+        // But handle both cases for backward compatibility
+        const mapEntries = Object.entries(funnelsData.funnelMap);
+        funnelsArray = mapEntries.map(([id, value]) => {
+          // If value is an object, extract properties
+          if (typeof value === 'object' && value !== null && value.name) {
+            return { id, name: value.name, url: value.url };
+          }
+          // If value is a string (funnel name), create object
+          return { id, name: value, url: null };
+        });
+      }
       
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/funnels/coach/${coachId}/funnels`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+      if (funnelsArray.length > 0) {
+        setFunnels(funnelsArray);
+        // Create a map from funnelId to funnel name (always strings)
+        const map = {};
+        funnelsArray.forEach(funnel => {
+          const funnelId = funnel.id || funnel._id;
+          const funnelName = typeof funnel === 'object' && funnel !== null ? funnel.name : funnel;
+          if (funnelId && funnelName) {
+            // Ensure we store only the string name
+            map[funnelId] = typeof funnelName === 'string' ? funnelName : (funnelName?.name || 'Unknown');
           }
         });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && Array.isArray(data.data)) {
-            setFunnels(data.data);
-            // Create a map from funnelId to funnel name
-            const map = {};
-            data.data.forEach(funnel => {
-              map[funnel._id] = funnel.name;
-            });
-            setFunnelMap(map);
-          }
+        // Also use funnelMap if provided (backend now returns string values)
+        if (funnelsData.funnelMap) {
+          Object.entries(funnelsData.funnelMap).forEach(([key, value]) => {
+            // Extract name if value is object, otherwise use value directly (should be string)
+            if (typeof value === 'object' && value !== null && value.name) {
+              map[key] = value.name;
+            } else if (typeof value === 'string') {
+              map[key] = value;
+            }
+          });
         }
-      } catch (error) {
-        console.error('Error fetching funnels:', error);
+        setFunnelMap(map);
       }
-    };
-    
-    fetchFunnels();
-  }, [coachId, token]);
+    }
+  }, [dashboardData]);
 
   // Real-time data fetching
   useEffect(() => {
@@ -1021,7 +986,7 @@ const Dashboard = () => {
     };
   };
 
-  // Helper function to get funnel name from lead
+  // Helper function to get funnel name from lead (ONLY from funnel, not source)
   const getFunnelName = (lead) => {
     // Try to get funnel name from various possible fields
     const funnelId = lead.funnelId?._id || lead.funnelId || lead.funnel?.id || lead.funnel?._id;
@@ -1029,128 +994,152 @@ const Dashboard = () => {
       return funnelMap[funnelId];
     }
     // If funnel name is directly available
-    if (lead.funnelId?.name || lead.funnel?.name) {
-      return lead.funnelId.name || lead.funnel.name;
+    if (lead.funnelId?.name || lead.funnel?.name || lead.funnelName) {
+      return lead.funnelId?.name || lead.funnel?.name || lead.funnelName;
     }
-    // Fallback to status if no funnel info available
-    return lead.status || 'Unknown';
+    // Return null if no funnel info - don't fallback to source or status
+    return null;
   };
 
-  // Filter leads data based on selected timeline
+  // Filter leads data based on selected timeline - returns funnel distribution
   const getFilteredLeadsData = () => {
     const leads = dashboardData.leads;
-    if (!leads?.recentLeads) {
-      // If we have statusDistribution from API, convert it to funnel distribution if possible
-      const statusDist = leads?.statusDistribution || {};
-      const funnelDistribution = {};
-      // Try to map status to funnel names (this is a fallback)
-      Object.keys(statusDist).forEach(status => {
-        // If status looks like a page name, we'll keep it as is for now
-        // Otherwise, try to find matching funnel
-        funnelDistribution[status] = statusDist[status];
-      });
-      return { statusDistribution: funnelDistribution, totalLeads: leads?.totalLeads || 0 };
-    }
-
-    const now = new Date();
-    let cutoffDate;
     
-    if (leadsTimeFilter === '1W') {
-      cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    } else { // 1M
-      cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    }
-
-    const filteredLeads = leads.recentLeads.filter(lead => {
-      const leadDate = new Date(lead.createdAt);
-      return leadDate >= cutoffDate;
-    });
-
-    // Recalculate distribution by funnel name instead of status
-    const funnelDistribution = {};
-    filteredLeads.forEach(lead => {
-      const funnelName = getFunnelName(lead);
-      funnelDistribution[funnelName] = (funnelDistribution[funnelName] || 0) + 1;
-    });
-
-    // If no filtered leads, use original statusDistribution but try to convert
-    if (Object.keys(funnelDistribution).length === 0 && leads?.statusDistribution) {
-      const convertedDist = {};
-      Object.keys(leads.statusDistribution).forEach(status => {
-        convertedDist[status] = leads.statusDistribution[status];
+    // Use leadsBySource from API (which now contains funnel names)
+    if (leads?.leadsBySource && Array.isArray(leads.leadsBySource) && leads.leadsBySource.length > 0) {
+      // Convert array format to object for chart
+      const funnelDistribution = {};
+      leads.leadsBySource.forEach(item => {
+        funnelDistribution[item.name] = item.count;
       });
-      return {
-        statusDistribution: convertedDist,
-        totalLeads: leads?.totalLeads || 0
+      return { 
+        statusDistribution: funnelDistribution, 
+        totalLeads: leads?.totalLeads || 0,
+        leadsBySource: leads.leadsBySource
       };
     }
 
-    return {
-      statusDistribution: funnelDistribution,
-      totalLeads: filteredLeads.length > 0 ? filteredLeads.length : (leads?.totalLeads || 0)
+    // Fallback: If we have recentLeads, filter and calculate
+    if (leads?.recentLeads && Array.isArray(leads.recentLeads)) {
+      const now = new Date();
+      let cutoffDate;
+      
+      if (leadsTimeFilter === '1W') {
+        cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      } else { // 1M
+        cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      }
+
+      const filteredLeads = leads.recentLeads.filter(lead => {
+        const leadDate = new Date(lead.createdAt);
+        return leadDate >= cutoffDate;
+      });
+
+      // Recalculate distribution by funnel name (ONLY leads with funnels)
+      const funnelDistribution = {};
+      filteredLeads.forEach(lead => {
+        const funnelName = getFunnelName(lead);
+        // Only count leads that have a funnel - ignore leads without funnels
+        if (funnelName) {
+          funnelDistribution[funnelName] = (funnelDistribution[funnelName] || 0) + 1;
+        }
+      });
+
+      return {
+        statusDistribution: funnelDistribution,
+        totalLeads: filteredLeads.length > 0 ? filteredLeads.length : (leads?.totalLeads || 0)
+      };
+    }
+
+    // Final fallback: use statusDistribution if available
+    const statusDist = leads?.statusDistribution || {};
+    return { 
+      statusDistribution: statusDist, 
+      totalLeads: leads?.totalLeads || 0 
     };
   };
 
-  // Common chart options with dark mode support
-  const commonChartOptions = () => ({
-    cutout: '70%',
-    plugins: {
-      legend: {
-        display: false
-      },
-      tooltip: {
-        enabled: true,
-        backgroundColor: colorMode === 'dark' ? 'rgba(31, 41, 55, 0.95)' : 'rgba(30, 41, 59, 0.95)',
-        titleColor: colorMode === 'dark' ? '#f9fafb' : '#f8fafc',
-        bodyColor: colorMode === 'dark' ? '#d1d5db' : '#cbd5e1',
-        borderColor: '#6366f1',
-        borderWidth: 2,
-        cornerRadius: 12,
-        displayColors: true,
-        titleFont: {
-          family: 'Inter',
-          size: 14,
-          weight: '600'
+  // Professional chart options with dark mode support
+  const commonChartOptions = () => {
+    const isDark = colorMode === 'dark';
+    const professionalColors = [
+      '#6366f1', // Indigo
+      '#ec4899', // Pink
+      '#10b981', // Emerald
+      '#f59e0b', // Amber
+      '#3b82f6', // Blue
+      '#8b5cf6', // Purple
+      '#06b6d4', // Cyan
+      '#f97316', // Orange
+      '#84cc16', // Lime
+      '#ef4444'  // Red
+    ];
+    
+    return {
+      cutout: '65%',
+      plugins: {
+        legend: {
+          display: false
         },
-        bodyFont: {
-          family: 'Inter',
-          size: 13
-        },
-        callbacks: {
-          label: function(context) {
-            if (!context || !context.label || context.parsed === null || context.parsed === undefined) {
-              return 'No data';
+        tooltip: {
+          enabled: true,
+          backgroundColor: isDark ? 'rgba(17, 24, 39, 0.98)' : 'rgba(255, 255, 255, 0.98)',
+          titleColor: isDark ? '#f9fafb' : '#111827',
+          bodyColor: isDark ? '#d1d5db' : '#4b5563',
+          borderColor: isDark ? '#4b5563' : '#e5e7eb',
+          borderWidth: 1,
+          cornerRadius: 16,
+          displayColors: true,
+          padding: 16,
+          titleFont: {
+            family: 'Inter, system-ui, sans-serif',
+            size: 15,
+            weight: '700',
+            lineHeight: 1.4
+          },
+          bodyFont: {
+            family: 'Inter, system-ui, sans-serif',
+            size: 14,
+            weight: '500',
+            lineHeight: 1.5
+          },
+          boxPadding: 8,
+          callbacks: {
+            label: function(context) {
+              if (!context || !context.label || context.parsed === null || context.parsed === undefined) {
+                return 'No data';
+              }
+              const label = context.label || '';
+              const value = context.parsed;
+              const total = context.dataset.data.reduce((a, b) => (a || 0) + (b || 0), 0);
+              if (total === 0) return `${label}: ${value.toLocaleString()} (0%)`;
+              const percentage = ((value / total) * 100).toFixed(1);
+              return `${label}: ${value.toLocaleString()} leads (${percentage}%)`;
             }
-            const label = context.label || '';
-            const value = context.parsed;
-            const total = context.dataset.data.reduce((a, b) => (a || 0) + (b || 0), 0);
-            if (total === 0) return `${label}: ${value.toLocaleString()} (0%)`;
-            const percentage = ((value / total) * 100).toFixed(1);
-            return `${label}: ${value.toLocaleString()} (${percentage}%)`;
           }
         }
+      },
+      maintainAspectRatio: false,
+      responsive: true,
+      animation: {
+        animateRotate: true,
+        animateScale: true,
+        duration: 2000,
+        easing: 'easeOutCubic',
+        delay: function(context) {
+          return context.dataIndex * 150;
+        }
+      },
+      elements: {
+        arc: {
+          borderWidth: 3,
+          borderColor: isDark ? '#1f2937' : '#ffffff',
+          hoverBorderWidth: 5,
+          hoverBorderColor: isDark ? '#374151' : '#f3f4f6'
+        }
       }
-    },
-    maintainAspectRatio: false,
-    responsive: true,
-    animation: {
-      animateRotate: true,
-      animateScale: true,
-      duration: 1500,
-      easing: 'easeOutQuart',
-      delay: function(context) {
-        return context.dataIndex * 200;
-      }
-    },
-    elements: {
-      arc: {
-        borderWidth: 3,
-        borderColor: colorMode === 'dark' ? '#374151' : '#ffffff',
-        hoverBorderWidth: 4,
-        hoverBorderColor: colorMode === 'dark' ? '#374151' : '#ffffff'
-      }
-    }
-  });
+    };
+  };
 
   // Loading component
   if (loading) {
@@ -1440,100 +1429,14 @@ const Dashboard = () => {
               </Text>
             )}
           </Box>
-          <Box display="flex" gap={3}>
-            <Button
-              leftIcon={<FaDownload />}
-              variant="outline"
-              colorScheme="brand"
-              size="sm"
-              onClick={async () => {
-                try {
-                  const response = await fetch(`${API_BASE_URL}/api/coach-dashboard/export?format=csv&timeRange=30`, {
-                    headers: {
-                      'Authorization': `Bearer ${token}`,
-                      'Content-Type': 'application/json',
-                      'Accept': 'text/csv',
-                      'Coach-ID': coachId,
-                    },
-                  });
-                  
-                  if (response.ok) {
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `dashboard-export-${new Date().toISOString().split('T')[0]}.csv`;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                    
-                    toast({
-                      title: 'Export Successful',
-                      description: 'Dashboard data exported successfully',
-                      status: 'success',
-                      duration: 3000,
-                      isClosable: true,
-                    });
-                  } else {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.message || 'Export failed');
-                  }
-                } catch (error) {
-                  console.error('Export error:', error);
-                  toast({
-                    title: 'Export Failed',
-                    description: error.message || 'Failed to export dashboard data',
-                    status: 'error',
-                    duration: 3000,
-                    isClosable: true,
-                  });
-                }
-              }}
-            >
-              Export
-            </Button>
-            <Button
-              leftIcon={refreshing ? <FaSpinner className="fa-spin" /> : <FaSyncAlt />}
-              colorScheme="brand"
-              size="sm"
-              onClick={() => fetchDashboardData(true)}
-              isLoading={refreshing}
-            >
-              {refreshing ? 'Refreshing...' : 'Refresh'}
-            </Button>
-            <Button
-              leftIcon={<FaSpinner />}
-              variant="outline"
-              colorScheme="brand"
-              size="sm"
-              onClick={async () => {
-                try {
-                  console.log('🧪 Testing authentication...');
-                  const result = await dashboardAPI.testAuth();
-                  console.log('✅ Auth test successful:', result);
-                  toast({
-                    title: 'Authentication Test',
-                    description: 'Token is working correctly!',
-                    status: 'success',
-                    duration: 3000,
-                    isClosable: true,
-                  });
-                } catch (error) {
-                  console.error('❌ Auth test failed:', error);
-                  toast({
-                    title: 'Authentication Test Failed',
-                    description: error.message,
-                    status: 'error',
-                    duration: 5000,
-                    isClosable: true,
-                  });
-                }
-              }}
-            >
-              Test Auth
-            </Button>
-          </Box>
+          <IconButton
+            icon={refreshing ? <FaSpinner className="fa-spin" /> : <FaSyncAlt />}
+            aria-label="Refresh Dashboard"
+            colorScheme="brand"
+            size="sm"
+            onClick={() => fetchDashboardData(true)}
+            isLoading={refreshing}
+          />
         </Box>
         
         {/* Middle Row - Date, Coach ID, and Status */}
@@ -1544,9 +1447,9 @@ const Dashboard = () => {
               {new Date(Date.now() - 30*24*60*60*1000).toLocaleDateString()} - {new Date().toLocaleDateString()}
             </Text>
           </Box>
-          {coachId && (
+          {(user?.selfCoachId || JSON.parse(localStorage.getItem('user') || '{}')?.selfCoachId) && (
             <Badge colorScheme="brand" variant="subtle">
-              Coach ID: {coachId}
+              Coach ID: {user?.selfCoachId || JSON.parse(localStorage.getItem('user') || '{}')?.selfCoachId}
             </Badge>
           )}
           {isOffline && (
@@ -1686,10 +1589,6 @@ const Dashboard = () => {
                       {dashboardData.overview?.myTotalAppointments || 0}
                     </Text>
                     <Text color={useColorModeValue('orange.700', 'orange.300')} fontSize="sm">My Appointments</Text>
-                    <Box display="flex" gap={2} mt={2}>
-                      <Badge size="sm" colorScheme="blue">📅 {dashboardData.overview?.myCompletedAppointments || 0} completed</Badge>
-                      <Badge size="sm" colorScheme="green">⏰ {dashboardData.overview?.myAppointmentCompletionRate || '0'}% rate</Badge>
-                    </Box>
                   </Box>
                 </Box>
               </Box>
@@ -1817,10 +1716,6 @@ const Dashboard = () => {
                   {overview?.totalAppointments || 0}
                 </Text>
                 <Text color={useColorModeValue('purple.700', 'purple.300')} fontSize="sm">Total Appointments</Text>
-                <Box display="flex" gap={2} mt={2}>
-                  <Badge size="sm" colorScheme="blue">📅 {overview?.completedAppointments || 0} completed</Badge>
-                  <Badge size="sm" colorScheme="green">⏰ {overview?.appointmentCompletionRate?.toFixed(1) || 0}% rate</Badge>
-                </Box>
               </Box>
             </Box>
           </Box>
@@ -2331,42 +2226,285 @@ const Dashboard = () => {
             </Box>
           </Box>
           <Box 
-            h="300px"
+            h="320px"
             w="100%"
             overflow="hidden"
             maxW="100%"
             minW="0"
+            position="relative"
           >
             <Doughnut 
-              data={{
-                labels: Object.keys(getFilteredLeadsData().statusDistribution),
-                datasets: [{
-                  data: Object.values(getFilteredLeadsData().statusDistribution).map(val => val || 0),
-                  backgroundColor: ['#6366f1', '#ec4899', '#10b981', '#f59e0b'],
-                  borderWidth: 0,
-                  hoverBackgroundColor: ['#4f46e5', '#db2777', '#059669', '#d97706'],
-                  hoverBorderWidth: 4,
-                  hoverBorderColor: colorMode === 'dark' ? '#374151' : '#1e293b'
-                }]
-              }} 
+              data={(() => {
+                const filteredData = Object.entries(getFilteredLeadsData().statusDistribution)
+                  .filter(([name]) => name && name !== 'Unknown' && name !== null);
+                const colors = [
+                  '#6366f1', '#ec4899', '#10b981', '#f59e0b', 
+                  '#3b82f6', '#8b5cf6', '#06b6d4', '#f97316',
+                  '#84cc16', '#ef4444'
+                ];
+                const hoverColors = [
+                  '#4f46e5', '#db2777', '#059669', '#d97706',
+                  '#2563eb', '#7c3aed', '#0891b2', '#ea580c',
+                  '#65a30d', '#dc2626'
+                ];
+                
+                return {
+                  labels: filteredData.map(([name]) => name),
+                  datasets: [{
+                    data: filteredData.map(([, val]) => val || 0),
+                    backgroundColor: filteredData.map((_, index) => colors[index % colors.length]),
+                    borderWidth: 3,
+                    borderColor: colorMode === 'dark' ? '#1f2937' : '#ffffff',
+                    hoverBackgroundColor: filteredData.map((_, index) => hoverColors[index % hoverColors.length]),
+                    hoverBorderWidth: 5,
+                    hoverBorderColor: colorMode === 'dark' ? '#374151' : '#f3f4f6'
+                  }]
+                };
+              })()} 
               options={commonChartOptions()}
             />
           </Box>
-          <Box display="flex" flexDirection="column" gap={3} mt={4}>
-            {Object.entries(getFilteredLeadsData().statusDistribution).map(([status, count], index) => (
-              <Box key={status} display="flex" alignItems="center" gap={2}>
-                <Box w={3} h={3} bg={['#6366f1', '#ec4899', '#10b981', '#f59e0b'][index % 4]} borderRadius="full" />
-                <Text fontSize="sm" color={secondaryTextColor}>{status}</Text>
-                <Text fontSize="sm" fontWeight="semibold" ml="auto" color={textColor}>{count?.toLocaleString() || 0}</Text>
+          {(() => {
+            const filteredData = Object.entries(getFilteredLeadsData().statusDistribution)
+              .filter(([name]) => name && name !== 'Unknown' && name !== null)
+              .sort(([, a], [, b]) => (b || 0) - (a || 0));
+            
+            const colors = [
+              '#6366f1', '#ec4899', '#10b981', '#f59e0b', 
+              '#3b82f6', '#8b5cf6', '#06b6d4', '#f97316',
+              '#84cc16', '#ef4444'
+            ];
+            
+            // Show at least 2 funnels, show more if available (up to 3-4), then "..." if there are more
+            const minShow = 2;
+            const maxShow = 4;
+            const showCount = Math.min(Math.max(minShow, filteredData.length), maxShow);
+            const funnelsToShow = filteredData.slice(0, showCount);
+            const hasMore = filteredData.length > showCount;
+            
+            if (funnelsToShow.length === 0) {
+              return null;
+            }
+            
+            return (
+              <Box mt={4} mb={3}>
+                <HStack spacing={3} flexWrap="wrap" justify="center">
+                  {funnelsToShow.map(([funnelName], index) => (
+                    <HStack key={funnelName} spacing={2}>
+                      <Box 
+                        w={3} 
+                        h={3} 
+                        bg={colors[index % colors.length]} 
+                        borderRadius="full"
+                        flexShrink={0}
+                      />
+                      <Text 
+                        fontSize="sm" 
+                        color={textColor}
+                        fontWeight="500"
+                        noOfLines={1}
+                        maxW="120px"
+                      >
+                        {funnelName}
+                      </Text>
+                    </HStack>
+                  ))}
+                  {hasMore && (
+                    <Text fontSize="sm" color={secondaryTextColor} fontWeight="500">
+                      ...
+                    </Text>
+                  )}
+                </HStack>
               </Box>
-            ))}
-            {Object.keys(getFilteredLeadsData().statusDistribution).length === 0 && (
-              <Box textAlign="center" py={4}>
-                <Text fontSize="sm" color={secondaryTextColor}>No leads data available</Text>
-              </Box>
-            )}
-          </Box>
+            );
+          })()}
+          <Button
+            w="100%"
+            mt={2}
+            colorScheme="brand"
+            size="md"
+            onClick={onFunnelModalOpen}
+            leftIcon={<FaChartLine />}
+            variant="outline"
+            _hover={{
+              transform: 'translateY(-2px)',
+              boxShadow: 'md'
+            }}
+            transition="all 0.2s"
+          >
+            View Funnel Distribution
+          </Button>
         </Box>
+
+        {/* Funnel Distribution Modal */}
+        <Modal isOpen={isFunnelModalOpen} onClose={onFunnelModalClose} size="xl" isCentered>
+          <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px)" />
+          <ModalContent bg={cardBgColor} borderRadius="xl" maxH="90vh" overflow="hidden">
+            <ModalHeader 
+              display="flex" 
+              alignItems="center" 
+              gap={3}
+              borderBottom="1px"
+              borderColor={borderColor}
+              pb={4}
+            >
+              <Icon as={FaChartLine} boxSize={6} color="brand.500" />
+              <Box>
+                <Text fontSize="xl" fontWeight="bold" color={textColor}>
+                  Funnel Distribution
+                </Text>
+                <Text fontSize="sm" color={secondaryTextColor} fontWeight="normal">
+                  Leads and views by funnel
+                </Text>
+              </Box>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody p={0} overflowY="auto" maxH="calc(90vh - 140px)">
+              {(() => {
+                const filteredData = Object.entries(getFilteredLeadsData().statusDistribution)
+                  .filter(([funnelName]) => funnelName && funnelName !== 'Unknown' && funnelName !== null)
+                  .sort(([, a], [, b]) => (b || 0) - (a || 0));
+                
+                const leadsBySource = dashboardData.leads?.leadsBySource || [];
+                const totalLeads = Object.values(getFilteredLeadsData().statusDistribution)
+                  .reduce((sum, val) => sum + (val || 0), 0);
+                
+                if (filteredData.length === 0) {
+                  return (
+                    <Box textAlign="center" py={12} px={6}>
+                      <Icon as={FaChartLine} boxSize={12} color={mutedTextColor} mb={4} />
+                      <Text fontSize="md" color={secondaryTextColor} fontWeight="medium" mb={2}>
+                        No Funnel Data Available
+                      </Text>
+                      <Text fontSize="sm" color={mutedTextColor}>
+                        Leads from funnels will appear here
+                      </Text>
+                    </Box>
+                  );
+                }
+
+                return (
+                  <TableContainer>
+                    <Table variant="simple" size="md">
+                      <Thead bg={useColorModeValue('gray.50', 'gray.700')} position="sticky" top={0} zIndex={1}>
+                        <Tr>
+                          <Th color={textColor} fontWeight="700" fontSize="sm" textTransform="uppercase" letterSpacing="0.5px">
+                            Funnel Name
+                          </Th>
+                          <Th color={textColor} fontWeight="700" fontSize="sm" textTransform="uppercase" letterSpacing="0.5px" isNumeric>
+                            Leads
+                          </Th>
+                          <Th color={textColor} fontWeight="700" fontSize="sm" textTransform="uppercase" letterSpacing="0.5px" isNumeric>
+                            Views
+                          </Th>
+                          <Th color={textColor} fontWeight="700" fontSize="sm" textTransform="uppercase" letterSpacing="0.5px" isNumeric>
+                            %
+                          </Th>
+                        </Tr>
+                      </Thead>
+                      <Tbody>
+                        {filteredData.map(([funnelName, count], index) => {
+                          const percentage = totalLeads > 0 ? ((count / totalLeads) * 100).toFixed(1) : 0;
+                          const funnelData = leadsBySource.find(item => item.name === funnelName);
+                          const views = funnelData?.views || 0;
+                          const uniqueViews = funnelData?.uniqueViews || 0;
+                          const colors = [
+                            '#6366f1', '#ec4899', '#10b981', '#f59e0b', 
+                            '#3b82f6', '#8b5cf6', '#06b6d4', '#f97316',
+                            '#84cc16', '#ef4444'
+                          ];
+                          
+                          return (
+                            <Tr 
+                              key={funnelName}
+                              borderBottom="1px"
+                              borderColor={borderColor}
+                            >
+                              <Td>
+                                <HStack spacing={3}>
+                                  <Box 
+                                    w={3} 
+                                    h={3} 
+                                    bg={colors[index % colors.length]} 
+                                    borderRadius="full"
+                                    flexShrink={0}
+                                  />
+                                  <Text 
+                                    fontSize="sm" 
+                                    fontWeight="600" 
+                                    color={textColor}
+                                    noOfLines={1}
+                                    title={funnelName}
+                                  >
+                                    {funnelName}
+                                  </Text>
+                                </HStack>
+                              </Td>
+                              <Td isNumeric>
+                                <Badge 
+                                  colorScheme="blue" 
+                                  variant="subtle" 
+                                  fontSize="sm"
+                                  px={2}
+                                  py={1}
+                                  borderRadius="md"
+                                >
+                                  {count?.toLocaleString() || 0}
+                                </Badge>
+                              </Td>
+                              <Td isNumeric>
+                                <HStack spacing={2} justify="flex-end">
+                                  <Icon as={FaEye} color={secondaryTextColor} boxSize={4} />
+                                  <Text fontSize="sm" fontWeight="600" color={textColor}>
+                                    {views.toLocaleString()}
+                                  </Text>
+                                  {uniqueViews > 0 && (
+                                    <Text fontSize="xs" color={secondaryTextColor}>
+                                      ({uniqueViews} unique)
+                                    </Text>
+                                  )}
+                                </HStack>
+                              </Td>
+                              <Td isNumeric>
+                                <Badge 
+                                  colorScheme="green" 
+                                  variant="subtle" 
+                                  fontSize="sm"
+                                  px={2}
+                                  py={1}
+                                  borderRadius="md"
+                                >
+                                  {percentage}%
+                                </Badge>
+                              </Td>
+                            </Tr>
+                          );
+                        })}
+                      </Tbody>
+                    </Table>
+                  </TableContainer>
+                );
+              })()}
+            </ModalBody>
+            <ModalFooter borderTop="1px" borderColor={borderColor} pt={4}>
+              <HStack spacing={4} w="100%" justify="space-between">
+                <Text fontSize="sm" color={secondaryTextColor}>
+                  Total: <Text as="span" fontWeight="bold" color={textColor}>
+                    {Object.values(getFilteredLeadsData().statusDistribution)
+                      .reduce((sum, val) => sum + (val || 0), 0).toLocaleString()}
+                  </Text> leads
+                </Text>
+                <Button 
+                  colorScheme="brand" 
+                  onClick={onFunnelModalClose}
+                  size="sm"
+                >
+                  Close
+                </Button>
+              </HStack>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
       </Box>
       )}
 

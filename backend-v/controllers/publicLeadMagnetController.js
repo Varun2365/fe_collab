@@ -4,6 +4,7 @@ const Lead = require('../schema/Lead');
 const User = require('../schema/User');
 const leadMagnetsService = require('../services/leadMagnetsService');
 const path = require('path');
+const fs = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
 
 // Helper function to extract user info from request
@@ -95,7 +96,37 @@ exports.serveMagnetPage = asyncHandler(async (req, res) => {
         await interaction.save();
     }
     
-    // Get magnet-specific HTML
+    // Map magnet types to HTML file names
+    const magnetFileMap = {
+        'ai_diet_planner': 'ai-diet-planner.html',
+        'bmi_calculator': 'bmi-calculator.html',
+        'fitness_ebook': 'fitness-ebook.html',
+        'meal_planner': 'meal-planner.html',
+        'workout_calculator': 'workout-calculator.html',
+        'stress_assessment': 'stress-assessment.html'
+    };
+    
+    // Try to serve static HTML file first
+    const htmlFileName = magnetFileMap[magnetType];
+    if (htmlFileName) {
+        try {
+            const htmlPath = path.join(__dirname, '../public/lead-magnets', htmlFileName);
+            const htmlContent = await fs.readFile(htmlPath, 'utf8');
+            
+            // Inject coach ID into the HTML for API calls
+            const modifiedHtml = htmlContent.replace(
+                /const coachId = .*?;/g,
+                `const coachId = '${coachId}';`
+            );
+            
+            res.set('Content-Type', 'text/html');
+            return res.send(modifiedHtml);
+        } catch (error) {
+            console.log(`Static HTML not found for ${magnetType}, using dynamic generation`);
+        }
+    }
+    
+    // Fallback to dynamic HTML generation
     const magnetHtml = await generateMagnetHtml(magnetType, coach, interactionId, leadId);
     
     res.send(magnetHtml);

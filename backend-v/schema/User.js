@@ -24,7 +24,15 @@ const userSchema = new mongoose.Schema({
         type: Number,
         min: 0
     },
+    dateOfBirth: {
+        type: Date
+    },
     bio: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    tagline: {
         type: String,
         trim: true,
         default: ''
@@ -58,6 +66,94 @@ const userSchema = new mongoose.Schema({
         trim: true,
         match: [/^https?:\/\//, 'Please use a valid URL for the profile picture.']
     },
+    profilePicture: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    bannerImage: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    website: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    linkedin: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    twitter: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    facebook: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    instagram: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    youtube: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    address: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    zipCode: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    state: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    achievements: {
+        type: [{
+            image: { type: String, trim: true, default: '' },
+            title: { type: String, trim: true, required: true },
+            description: { type: String, trim: true, default: '' }
+        }],
+        default: [],
+        validate: {
+            validator: function(v) {
+                return v.length <= 10;
+            },
+            message: 'Maximum 10 achievements allowed'
+        }
+    },
+    experiences: {
+        type: [{
+            company: { type: String, trim: true, required: true },
+            position: { type: String, trim: true, required: true },
+            startDate: { type: Date, required: true },
+            endDate: { type: Date, default: null },
+            isCurrent: { type: Boolean, default: false },
+            description: { type: String, trim: true, default: '' },
+            location: { type: String, trim: true, default: '' },
+            employmentType: { type: String, enum: ['Full-time', 'Part-time', 'Contract', 'Freelance', 'Internship', 'Self-employed'], default: 'Full-time' },
+            specializations: { type: [String], default: [] },
+            certifications: { type: [String], default: [] },
+            clientCount: { type: Number, default: null },
+            keyResults: { type: String, trim: true, default: '' },
+            programsCreated: { type: [String], default: [] },
+            trainingMethodologies: { type: [String], default: [] }
+        }],
+        default: []
+    },
     isActive: {
         type: Boolean,
         default: true
@@ -90,6 +186,52 @@ const userSchema = new mongoose.Schema({
     deletedAt: {
         type: Date,
         default: null
+    },
+    // Lead Magnet configurations
+    leadMagnets: {
+        ai_diet_planner: {
+            isEnabled: { type: Boolean, default: false },
+            downloads: { type: Number, default: 0 },
+            leads: { type: Number, default: 0 },
+            config: { type: mongoose.Schema.Types.Mixed, default: {} }
+        },
+        bmi_calculator: {
+            isEnabled: { type: Boolean, default: false },
+            downloads: { type: Number, default: 0 },
+            leads: { type: Number, default: 0 },
+            config: { type: mongoose.Schema.Types.Mixed, default: {} }
+        },
+        fitness_ebook: {
+            isEnabled: { type: Boolean, default: false },
+            downloads: { type: Number, default: 0 },
+            leads: { type: Number, default: 0 },
+            config: {
+                ebooks: [{
+                    title: String,
+                    category: String,
+                    fileUrl: String,
+                    isEnabled: { type: Boolean, default: true }
+                }]
+            }
+        },
+        meal_planner: {
+            isEnabled: { type: Boolean, default: false },
+            downloads: { type: Number, default: 0 },
+            leads: { type: Number, default: 0 },
+            config: { type: mongoose.Schema.Types.Mixed, default: {} }
+        },
+        workout_calculator: {
+            isEnabled: { type: Boolean, default: false },
+            downloads: { type: Number, default: 0 },
+            leads: { type: Number, default: 0 },
+            config: { type: mongoose.Schema.Types.Mixed, default: {} }
+        },
+        stress_assessment: {
+            isEnabled: { type: Boolean, default: false },
+            downloads: { type: Number, default: 0 },
+            leads: { type: Number, default: 0 },
+            config: { type: mongoose.Schema.Types.Mixed, default: {} }
+        }
     },
     
 }, {

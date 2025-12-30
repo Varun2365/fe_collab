@@ -107,6 +107,7 @@ const logsRoutes = require('./routes/logsRoutes');
 const centralMessagingRoutes = require('./routes/centralMessagingRoutes');
 const contentRoutes = require('./routes/contentRoutes');
 const coursePurchaseRoutes = require('./routes/coursePurchaseRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 // --- Import the worker initialization functions ---
 const initRulesEngineWorker = require('./workers/worker_rules_engine');
@@ -124,31 +125,155 @@ const messageQueueService = require('./services/messageQueueService');
 // 🌐 Initialize Express App
 const app = express();
 const server = http.createServer(app);
+
+// Socket.IO configuration for notifications
 const io = new Server(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"],
-        credentials: false
-    }
+        credentials: false,
+        allowedHeaders: ["*"]
+    },
+    transports: ['websocket', 'polling'],
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    path: '/socket.io' // Explicit Socket.IO path
 });
 
-// Socket.IO event handlers for admin notifications and log streaming
+console.log('🔌 [Socket.IO] Main Socket.IO server initialized');
+
+// Log all connection attempts to main namespace (for debugging)
 io.on('connection', (socket) => {
+    console.log(`🔌 [Socket.IO] ⚠️ Connection to MAIN namespace (not /notification): ${socket.id}`);
+    console.log(`🔌 [Socket.IO] Main namespace connection from: ${socket.handshake.address}`);
+    console.log(`🔌 [Socket.IO] Main namespace handshake query:`, socket.handshake.query);
+    console.log(`🔌 [Socket.IO] Main namespace handshake auth:`, socket.handshake.auth);
+    socket.on('disconnect', () => {
+        console.log(`🔌 [Socket.IO] Main namespace client disconnected: ${socket.id}`);
+    });
+});
+
+// Create notification namespace at /notification
+const notificationNamespace = io.of('/notification');
+
+console.log('🔌 [Socket.IO] ✅ Notification namespace created at /notification');
+
+// Add error handler for namespace (if supported)
+try {
+    notificationNamespace.on('connect_error', (error) => {
+        console.error('🔌 [Socket.IO] ❌ Connection error in /notification namespace:', error);
+    });
+} catch (err) {
+    console.warn('🔌 [Socket.IO] Note: connect_error event not available on namespace');
+}
+
+// Add error handler for engine connection attempts (only if engine exists)
+if (notificationNamespace.engine) {
+    notificationNamespace.engine.on('connection_error', (error) => {
+        console.error('🔌 [Socket.IO] ❌ Engine connection error in /notification namespace:', error);
+        console.error('🔌 [Socket.IO] Error details:', {
+            message: error.message,
+            type: error.type,
+            description: error.description,
+            context: error.context
+        });
+    });
+} else {
+    console.log('🔌 [Socket.IO] Note: Engine not available yet, will attach error handler after connection');
+}
+
+// Log namespace connection attempts BEFORE the connection handler
+notificationNamespace.use((socket, next) => {
+    console.log(`🔌 [Socket.IO] 📥 Incoming connection attempt to /notification namespace`);
+    console.log(`🔌 [Socket.IO] Connection attempt details:`, {
+        address: socket.handshake.address,
+        headers: {
+            origin: socket.handshake.headers.origin,
+            referer: socket.handshake.headers.referer,
+            'user-agent': socket.handshake.headers['user-agent']?.substring(0, 50)
+        },
+        query: socket.handshake.query,
+        auth: socket.handshake.auth ? { 
+            hasToken: !!socket.handshake.auth.token,
+            tokenLength: socket.handshake.auth.token ? socket.handshake.auth.token.length : 0
+        } : null,
+        url: socket.handshake.url,
+        method: socket.handshake.method
+    });
+    next(); // Allow the connection
+});
+
+// Set Socket.IO instance for use in services (use the namespace)
+const { setIoInstance } = require('./utils/socketUtils');
+setIoInstance(notificationNamespace);
+
+console.log('🔌 [Socket.IO] ✅ Socket.IO instance set in socketUtils');
+
+// Socket.IO event handlers for notifications namespace
+notificationNamespace.on('connection', (socket) => {
+    console.log(`🔌 [Socket.IO] ✅✅✅ SUCCESS: New client connected to /notification namespace: ${socket.id}`);
+    console.log(`🔌 [Socket.IO] Client transport: ${socket.conn.transport.name}`);
+    console.log(`🔌 [Socket.IO] Full connection details:`, {
+        socketId: socket.id,
+        transport: socket.conn.transport.name,
+        address: socket.handshake.address,
+        headers: {
+            origin: socket.handshake.headers.origin,
+            referer: socket.handshake.headers.referer
+        },
+        query: socket.handshake.query,
+        auth: socket.handshake.auth ? { 
+            hasToken: !!socket.handshake.auth.token,
+            tokenLength: socket.handshake.auth.token ? socket.handshake.auth.token.length : 0
+        } : null,
+        rooms: Array.from(socket.rooms)
+    });
+    
+    // Send connection confirmation immediately
+    socket.emit('connected', {
+        socketId: socket.id,
+        message: 'Connected to notification server',
+        namespace: '/notification',
+        timestamp: new Date().toISOString()
+    });
+    
+    console.log(`🔌 [Socket.IO] ✅ Sent connection confirmation to ${socket.id}`);
+
     // Admin joins admin room
     socket.on('admin-join', (adminId) => {
         socket.join('admin-room');
         socket.join(`admin-${adminId}`);
+        console.log(`[Socket.IO] Admin ${adminId} joined notification rooms`);
+        socket.emit('room-joined', { room: 'admin-room', adminId });
     });
 
     // Coach joins coach room
     socket.on('coach-join', (coachId) => {
+        if (!coachId) {
+            console.warn(`[Socket.IO] ⚠️ Coach join called without coachId`);
+            return;
+        }
         socket.join('coach-room');
         socket.join(`user-${coachId}`);
+        socket.join(`coach-${coachId}`);
+        console.log(`[Socket.IO] ✅ Coach ${coachId} joined notification rooms: coach-room, user-${coachId}, coach-${coachId}`);
+        socket.emit('room-joined', { 
+            room: 'coach-room', 
+            coachId,
+            rooms: ['coach-room', `user-${coachId}`, `coach-${coachId}`]
+        });
     });
 
     // User joins specific user room
     socket.on('user-join', (userId) => {
+        if (!userId) {
+            console.warn(`[Socket.IO] ⚠️ User join called without userId`);
+            return;
+        }
         socket.join(`user-${userId}`);
+        console.log(`[Socket.IO] ✅ User ${userId} joined user room: user-${userId}`);
+        socket.emit('room-joined', { room: `user-${userId}`, userId });
     });
 
     // Handle admin notifications
@@ -163,7 +288,7 @@ io.on('connection', (socket) => {
 
     // Handle global notifications
     socket.on('global-notification', (data) => {
-        io.emit('global-notification', data);
+        notificationNamespace.emit('global-notification', data);
     });
 
     // Handle log streaming connections
@@ -175,10 +300,16 @@ io.on('connection', (socket) => {
         socket.emit('initial-logs', initialLogs);
     });
 
-    socket.on('disconnect', () => {
-        socket.leave('logs-room');
+    socket.on('disconnect', (reason) => {
+        console.log(`🔌 [Socket.IO] ❌ Client disconnected: ${socket.id}, reason: ${reason}`);
+    });
+
+    socket.on('error', (error) => {
+        console.error(`🔌 [Socket.IO] ❌ Socket error for ${socket.id}:`, error);
     });
 });
+
+console.log('🔌 [Socket.IO] ✅ Notification namespace ready and listening');
 
 // Create a single WebSocket server for log streaming
 const WebSocket = require('ws');
@@ -295,6 +426,7 @@ app.use('/api/lead-scoring', leadScoringTrackingRoutes);
 // ===== AUTOMATION & WORKFLOW =====
 app.use('/api/automation-rules', automationRuleRoutes);
 app.use('/api/workflow', workflowRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // ===== ACTIVITIES =====
 const activityRoutes = require('./routes/activityRoutes');
@@ -789,6 +921,14 @@ const startServer = async () => {
 
         server.listen(PORT, () => {
             console.log(`Local Development Base URL: http://localhost:${PORT}`);
+            console.log(`🔌 [Socket.IO] ==========================================`);
+            console.log(`🔌 [Socket.IO] Server listening on port ${PORT}`);
+            console.log(`🔌 [Socket.IO] Socket.IO handshake path: /socket.io`);
+            console.log(`🔌 [Socket.IO] Notification namespace: /notification`);
+            console.log(`🔌 [Socket.IO] Client should connect to: http://localhost:${PORT}/notification`);
+            console.log(`🔌 [Socket.IO] (Socket.IO will use /socket.io path automatically)`);
+            console.log(`🔌 [Socket.IO] Ready for WebSocket connections!`);
+            console.log(`🔌 [Socket.IO] ==========================================`);
 
             // --- Start the scheduled task ---
             checkInactiveCoaches.start();

@@ -2,7 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ChakraProvider, extendTheme } from '@chakra-ui/react';
 import Dashboard from './dashboard';
-import './styles.css';
 
 const theme = extendTheme({
   colors: {

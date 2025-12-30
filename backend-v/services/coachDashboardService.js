@@ -1,4 +1,5 @@
-const { Lead, Task, AdCampaign, RazorpayPayment, Staff, Coach, Appointment } = require('../schema');
+const mongoose = require('mongoose');
+const { Lead, Task, AdCampaign, RazorpayPayment, Staff, Coach, Appointment, Funnel, FunnelEvent } = require('../schema');
 const dailyPriorityFeedService = require('./dailyPriorityFeedService');
 const staffLeaderboardService = require('./staffLeaderboardService');
 const aiAdsAgentService = require('./aiAdsAgentService');
@@ -29,33 +30,44 @@ class CoachDashboardService {
                 overview,
                 leadsData,
                 tasksData,
+                detailedTasksData,
                 marketingData,
                 financialData,
                 teamData,
                 performanceData,
                 calendarData,
+                funnelsData,
                 dailyFeed
             ] = await Promise.all([
                 this.getOverviewData(coachId, startDate),
                 this.getLeadsData(coachId, startDate),
                 this.getTasksData(coachId, startDate),
+                this.getDetailedTasksData(coachId),
                 this.getMarketingData(coachId, startDate),
                 this.getFinancialData(coachId, startDate, timeRange),
                 this.getTeamData(coachId, startDate),
                 this.getPerformanceData(coachId, startDate),
                 this.getCalendarData(coachId, startDate), // NEW: Added calendar data
+                this.getFunnelsData(coachId),
                 dailyPriorityFeedService.generateDailyPriorityFeed(coachId)
             ]);
+
+            // Merge tasks data with detailed tasks
+            const mergedTasksData = {
+                ...tasksData,
+                ...detailedTasksData
+            };
 
             return {
                 overview,
                 leads: leadsData,
-                tasks: tasksData,
+                tasks: mergedTasksData,
                 marketing: marketingData,
                 financial: financialData,
                 team: teamData,
                 performance: performanceData,
                 calendar: calendarData, // NEW: Added calendar data
+                funnels: funnelsData,
                 dailyFeed,
                 lastUpdated: new Date().toISOString()
             };
@@ -68,8 +80,19 @@ class CoachDashboardService {
     async getOverviewData(coachId, startDate) {
         const leads = await Lead.find({ coachId, createdAt: { $gte: startDate } });
         const tasks = await Task.find({ coachId, createdAt: { $gte: startDate } });
-        const payments = await RazorpayPayment.find({ coachId, createdAt: { $gte: startDate } });
+        const allPayments = await RazorpayPayment.find({ 
+            coachId, 
+            createdAt: { $gte: startDate },
+            status: 'captured' // Only successful payments
+        });
         const appointments = await Appointment.find({ coachId, startTime: { $gte: startDate } }); // NEW: Added appointments
+
+        // Filter to only include revenue-generating payments (exclude platform_subscription, coach_payout, refund)
+        const revenuePayments = allPayments.filter(payment => {
+            return payment.businessType === 'coach_plan_purchase' || 
+                   payment.businessType === 'mlm_commission' ||
+                   (payment.businessType === 'other' && payment.userType === 'customer');
+        });
 
         const totalLeads = leads.length;
         const convertedLeads = leads.filter(lead => lead.status === 'Converted').length;
@@ -79,7 +102,8 @@ class CoachDashboardService {
         const completedTasks = tasks.filter(task => task.status === 'Completed').length;
         const taskCompletionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
-        const totalRevenue = payments.reduce((sum, payment) => sum + payment.amount, 0);
+        // Calculate revenue only from revenue-generating payments
+        const totalRevenue = revenuePayments.reduce((sum, payment) => sum + payment.amount, 0);
         const avgRevenuePerLead = convertedLeads > 0 ? totalRevenue / convertedLeads : 0;
 
         // NEW: Appointment metrics
@@ -153,7 +177,9 @@ class CoachDashboardService {
     }
 
     async getLeadsData(coachId, startDate) {
-        const leads = await Lead.find({ coachId, createdAt: { $gte: startDate } });
+        const leads = await Lead.find({ coachId, createdAt: { $gte: startDate } })
+            .populate('funnelId', 'name')
+            .lean();
 
         // Lead status distribution
         const statusDistribution = {};
@@ -161,12 +187,125 @@ class CoachDashboardService {
             statusDistribution[lead.status] = (statusDistribution[lead.status] || 0) + 1;
         });
 
-        // Lead source analysis
-        const sourceAnalysis = {};
+        // Lead distribution by Funnel Name ONLY (not by source)
+        // Only count leads that have a funnelId - ignore leads without funnels
+        const leadsBySource = [];
+        const funnelDistribution = {};
+        
         leads.forEach(lead => {
-            const source = lead.source || 'Unknown';
-            sourceAnalysis[source] = (sourceAnalysis[source] || 0) + 1;
+            // Only get funnel name from funnelId or funnelName field - NO fallback to source
+            let funnelName = null;
+            if (lead.funnelId && lead.funnelId.name) {
+                funnelName = lead.funnelId.name;
+            } else if (lead.funnelName) {
+                funnelName = lead.funnelName;
+            }
+            
+            // Only count leads that have a funnel
+            if (funnelName) {
+                funnelDistribution[funnelName] = (funnelDistribution[funnelName] || 0) + 1;
+            }
         });
+
+        // Get all unique funnel IDs from leads
+        const funnelIdSet = new Set();
+        const funnelNameToIdMap = {};
+        
+        leads.forEach(lead => {
+            let funnelId = null;
+            let funnelName = null;
+            
+            if (lead.funnelId) {
+                if (lead.funnelId._id) {
+                    funnelId = lead.funnelId._id;
+                    funnelName = lead.funnelId.name;
+                } else if (typeof lead.funnelId === 'object' && lead.funnelId.toString) {
+                    funnelId = lead.funnelId;
+                    funnelName = lead.funnelName;
+                } else if (typeof lead.funnelId === 'string') {
+                    funnelId = lead.funnelId;
+                    funnelName = lead.funnelName;
+                }
+            } else if (lead.funnelName) {
+                funnelName = lead.funnelName;
+            }
+            
+            if (funnelId) {
+                const idStr = funnelId.toString ? funnelId.toString() : funnelId;
+                funnelIdSet.add(idStr);
+                if (funnelName && !funnelNameToIdMap[funnelName]) {
+                    funnelNameToIdMap[funnelName] = idStr;
+                }
+            }
+        });
+
+        // Get view counts for each funnel from FunnelEvent
+        const funnelIdsArray = Array.from(funnelIdSet).map(id => {
+            try {
+                return new mongoose.Types.ObjectId(id);
+            } catch (e) {
+                return id;
+            }
+        });
+        
+        let viewsMap = {};
+        if (funnelIdsArray.length > 0) {
+            try {
+                // Use same pattern as analyticsController for consistency
+                const viewCounts = await FunnelEvent.aggregate([
+                    {
+                        $match: {
+                            funnelId: { $in: funnelIdsArray },
+                            eventType: 'PageView'
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: '$funnelId',
+                            totalViews: { $sum: 1 },
+                            uniqueVisitors: { $addToSet: '$sessionId' }
+                        }
+                    },
+                    {
+                        $project: {
+                            _id: 1,
+                            totalViews: 1,
+                            uniqueVisitors: { $size: '$uniqueVisitors' }
+                        }
+                    }
+                ]);
+
+                // Create a map of funnelId to views
+                viewCounts.forEach(item => {
+                    const idStr = item._id.toString();
+                    viewsMap[idStr] = {
+                        totalViews: item.totalViews,
+                        uniqueViews: item.uniqueVisitors
+                    };
+                });
+            } catch (error) {
+                console.error('Error getting funnel views:', error);
+                // Continue with empty viewsMap if there's an error
+            }
+        }
+
+        // Convert to array format for frontend with views
+        Object.entries(funnelDistribution).forEach(([funnelName, count]) => {
+            const totalLeadsWithFunnels = Object.values(funnelDistribution).reduce((sum, val) => sum + val, 0);
+            const funnelId = funnelNameToIdMap[funnelName];
+            const views = funnelId ? (viewsMap[funnelId] || { totalViews: 0, uniqueViews: 0 }) : { totalViews: 0, uniqueViews: 0 };
+            
+            leadsBySource.push({
+                name: funnelName,
+                count: count,
+                percentage: totalLeadsWithFunnels > 0 ? ((count / totalLeadsWithFunnels) * 100).toFixed(1) : 0,
+                views: views.totalViews,
+                uniqueViews: views.uniqueViews
+            });
+        });
+
+        // Sort by count descending
+        leadsBySource.sort((a, b) => b.count - a.count);
 
         // Conversion funnel
         const funnel = {
@@ -186,13 +325,16 @@ class CoachDashboardService {
                 email: lead.email,
                 status: lead.status,
                 source: lead.source,
+                funnelId: lead.funnelId?._id || lead.funnelId,
+                funnelName: lead.funnelId?.name || lead.funnelName,
                 createdAt: lead.createdAt,
                 assignedTo: lead.assignedTo
             }));
 
         return {
             statusDistribution,
-            sourceAnalysis,
+            sourceAnalysis: funnelDistribution, // Keep for backward compatibility
+            leadsBySource, // New format with funnel names
             funnel,
             recentLeads,
             totalLeads: leads.length
@@ -246,6 +388,146 @@ class CoachDashboardService {
         };
     }
 
+    async getDetailedTasksData(coachId) {
+        try {
+            // Get all tasks with full details (limit to 200 for performance)
+            const tasks = await Task.find({ coachId })
+                .sort({ createdAt: -1 })
+                .limit(200)
+                .lean();
+
+            // Calculate distributions and metrics
+            const statusDistribution = {};
+            const stageDistribution = {};
+            const priorityDistribution = {};
+            let overdueTasks = 0;
+            let upcomingTasks = 0;
+            const now = new Date();
+
+            tasks.forEach(task => {
+                // Status distribution
+                const status = task.status || 'Pending';
+                statusDistribution[status] = (statusDistribution[status] || 0) + 1;
+                
+                // Stage distribution
+                const stage = task.stage || task.customStage || 'Unassigned';
+                stageDistribution[stage] = (stageDistribution[stage] || 0) + 1;
+                
+                // Priority distribution
+                const priority = task.priority || 'LOW';
+                priorityDistribution[priority] = (priorityDistribution[priority] || 0) + 1;
+                
+                // Overdue and upcoming tasks
+                if (task.dueDate) {
+                    const dueDate = new Date(task.dueDate);
+                    if (dueDate < now && status !== 'Completed' && status !== 'Done') {
+                        overdueTasks++;
+                    } else if (dueDate > now && status !== 'Completed' && status !== 'Done') {
+                        upcomingTasks++;
+                    }
+                }
+            });
+
+            const completedTasks = tasks.filter(t => 
+                t.status === 'Completed' || t.status === 'Done'
+            ).length;
+
+            return {
+                totalTasks: tasks.length,
+                completedTasks,
+                pendingTasks: tasks.length - completedTasks,
+                statusDistribution,
+                stageDistribution,
+                priorityDistribution,
+                overdueTasks,
+                upcomingTasks,
+                tasks: tasks.slice(0, 10) // Keep recent tasks for reference
+            };
+        } catch (error) {
+            console.error('Error getting detailed tasks data:', error);
+            // Return empty structure on error
+            return {
+                totalTasks: 0,
+                completedTasks: 0,
+                pendingTasks: 0,
+                statusDistribution: {},
+                stageDistribution: {},
+                priorityDistribution: {},
+                overdueTasks: 0,
+                upcomingTasks: 0,
+                tasks: []
+            };
+        }
+    }
+
+    async getFunnelsData(coachId) {
+        try {
+            // Get all funnels for the coach
+            const funnels = await Funnel.find({ coachId })
+                .select('name _id stages funnelUrl')
+                .lean();
+
+            // Get view counts for each funnel from FunnelEvent (using same pattern as analyticsController)
+            const funnelIds = funnels.map(f => f._id);
+            const viewCounts = await FunnelEvent.aggregate([
+                {
+                    $match: {
+                        funnelId: { $in: funnelIds },
+                        eventType: 'PageView'
+                    }
+                },
+                {
+                    $group: {
+                        _id: '$funnelId',
+                        totalViews: { $sum: 1 },
+                        uniqueVisitors: { $addToSet: '$sessionId' }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 1,
+                        totalViews: 1,
+                        uniqueVisitors: { $size: '$uniqueVisitors' }
+                    }
+                }
+            ]);
+
+            // Create a map of funnelId to view count
+            const viewsMap = {};
+            viewCounts.forEach(item => {
+                viewsMap[item._id.toString()] = {
+                    totalViews: item.totalViews,
+                    uniqueViews: item.uniqueVisitors
+                };
+            });
+
+            // Create a map of funnelId to funnel name (string) for easy lookup
+            const funnelMap = {};
+            funnels.forEach(funnel => {
+                funnelMap[funnel._id.toString()] = funnel.name; // Just the name as string
+            });
+
+            return {
+                funnels: funnels.map(f => ({
+                    id: f._id.toString(),
+                    name: f.name,
+                    url: f.funnelUrl,
+                    stages: f.stages || [],
+                    views: viewsMap[f._id.toString()]?.totalViews || 0,
+                    uniqueViews: viewsMap[f._id.toString()]?.uniqueViews || 0
+                })),
+                funnelMap // Now contains string values, not objects
+            };
+        } catch (error) {
+            console.error('Error getting funnels data:', error);
+            // Return empty structure on error
+            return {
+                funnels: [],
+                funnelMap: {}
+            };
+        }
+    }
+
     async getMarketingData(coachId, startDate) {
         const campaigns = await AdCampaign.find({ coachId, createdAt: { $gte: startDate } });
 
@@ -289,30 +571,45 @@ class CoachDashboardService {
     }
 
     async getFinancialData(coachId, startDate, timeRange) {
-        const payments = await RazorpayPayment.find({ coachId, createdAt: { $gte: startDate } });
+        // Only get payments that are REVENUE (money coming IN to the coach)
+        // Exclude: platform_subscription (coach paying for platform), coach_payout (money going out), refunds
+        const allPayments = await RazorpayPayment.find({ 
+            coachId, 
+            createdAt: { $gte: startDate },
+            status: 'captured' // Only successful payments
+        });
 
-        // Revenue by month
+        // Filter to only include revenue-generating payments
+        // Include: coach_plan_purchase (clients buying coach's plans), mlm_commission (earnings)
+        // Exclude: platform_subscription, coach_payout, refund
+        const revenuePayments = allPayments.filter(payment => {
+            return payment.businessType === 'coach_plan_purchase' || 
+                   payment.businessType === 'mlm_commission' ||
+                   (payment.businessType === 'other' && payment.userType === 'customer');
+        });
+
+        // Revenue by month (only from revenue payments)
         const revenueByMonth = {};
-        payments.forEach(payment => {
+        revenuePayments.forEach(payment => {
             const month = new Date(payment.createdAt).toISOString().slice(0, 7);
             revenueByMonth[month] = (revenueByMonth[month] || 0) + payment.amount;
         });
 
-        // Payment status distribution
+        // Payment status distribution (for all payments, but revenue calculated separately)
         const paymentStatusDistribution = {};
-        payments.forEach(payment => {
+        allPayments.forEach(payment => {
             paymentStatusDistribution[payment.status] = (paymentStatusDistribution[payment.status] || 0) + 1;
         });
 
-        // Revenue trends
-        const totalRevenue = payments.reduce((sum, payment) => sum + payment.amount, 0);
+        // Revenue trends (only from revenue payments)
+        const totalRevenue = revenuePayments.reduce((sum, payment) => sum + payment.amount, 0);
         const avgRevenuePerDay = timeRange > 0 ? totalRevenue / timeRange : 0;
 
         // Projected revenue (based on current conversion rate and leads)
         const leads = await Lead.find({ coachId, createdAt: { $gte: startDate } });
         const conversionRate = leads.length > 0 ? 
             leads.filter(lead => lead.status === 'Converted').length / leads.length : 0;
-        const avgRevenuePerClient = payments.length > 0 ? totalRevenue / payments.length : 0;
+        const avgRevenuePerClient = revenuePayments.length > 0 ? totalRevenue / revenuePayments.length : 0;
         const projectedRevenue = leads.filter(lead => lead.status === 'Qualified').length * 
             conversionRate * avgRevenuePerClient;
 
@@ -323,7 +620,7 @@ class CoachDashboardService {
                 totalRevenue,
                 avgRevenuePerDay,
                 projectedRevenue,
-                totalPayments: payments.length,
+                totalPayments: revenuePayments.length, // Only count revenue payments
                 avgRevenuePerClient
             }
         };

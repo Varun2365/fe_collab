@@ -9,12 +9,8 @@ import {
   SimpleGrid,
   Badge,
   Button,
-  Input,
-  InputGroup,
-  InputLeftElement,
   Avatar,
   Icon,
-  Image,
   Tabs,
   TabList,
   TabPanels,
@@ -23,97 +19,50 @@ import {
 } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import {
-  FiSearch,
   FiBook,
+  FiVideo,
   FiFileText,
   FiDownload,
-  FiEye,
-  FiTrendingUp,
-  FiUsers,
+  FiPlay,
+  FiBookOpen,
   FiClock,
 } from 'react-icons/fi';
 
 const EducationalHub = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-
-  const recipes = [
+  const courses = [
     {
       id: 1,
-      title: 'High Protein Chicken Bowl',
-      category: 'Meal Prep',
-      image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
-      calories: 450,
-      protein: 35,
-      prepTime: '30 min',
-      views: 150,
+      title: 'Goal Setting Fundamentals',
+      type: 'Course',
+      duration: '2 hours',
+      lessons: 8,
+      enrolled: 24,
+      status: 'active',
     },
     {
       id: 2,
-      title: 'Green Smoothie Power',
-      category: 'Breakfast',
-      image: 'https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=400',
-      calories: 250,
-      protein: 15,
-      prepTime: '10 min',
-      views: 200,
+      title: 'Time Management Mastery',
+      type: 'Course',
+      duration: '1.5 hours',
+      lessons: 6,
+      enrolled: 18,
+      status: 'active',
     },
     {
       id: 3,
-      title: 'Quinoa Salad Delight',
-      category: 'Lunch',
-      image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
-      calories: 320,
-      protein: 12,
-      prepTime: '20 min',
-      views: 180,
-    },
-  ];
-
-  const guides = [
-    {
-      id: 1,
-      title: 'Nutrition Fundamentals',
-      category: 'Nutrition',
-      type: 'PDF',
-      pages: 24,
-      downloads: 45,
-      icon: FiFileText,
-    },
-    {
-      id: 2,
-      title: 'Workout Form Guide',
-      category: 'Training',
-      type: 'PDF',
-      pages: 18,
-      downloads: 38,
-      icon: FiFileText,
-    },
-    {
-      id: 3,
-      title: 'Meal Planning Basics',
-      category: 'Nutrition',
-      type: 'PDF',
-      pages: 15,
-      downloads: 52,
-      icon: FiFileText,
+      title: 'Building Healthy Habits',
+      type: 'Course',
+      duration: '3 hours',
+      lessons: 12,
+      enrolled: 32,
+      status: 'active',
     },
   ];
 
   const resources = [
-    {
-      id: 1,
-      title: 'Macro Calculator',
-      category: 'Tools',
-      description: 'Calculate your daily macronutrient needs',
-      icon: FiTrendingUp,
-    },
-    {
-      id: 2,
-      title: 'BMI Calculator',
-      category: 'Tools',
-      description: 'Check your Body Mass Index',
-      icon: FiTrendingUp,
-    },
+    { id: 1, title: 'Progress Tracking Guide', type: 'PDF', downloads: 45 },
+    { id: 2, title: 'Weekly Planning Template', type: 'Template', downloads: 38 },
+    { id: 3, title: 'Motivation Techniques', type: 'Video', views: 120 },
   ];
 
   return (
@@ -124,31 +73,11 @@ const EducationalHub = () => {
             Educational Hub
           </Text>
           <Text color="gray.600" fontSize="sm" fontWeight="500">
-            Recipes, nutrition guides, and educational resources for your clients
+            Courses, resources, and learning materials for clients
           </Text>
         </Box>
 
         <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
-          <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)">
-            <CardBody p={5}>
-              <HStack justify="space-between" mb={3}>
-                <Box
-                  w="48px"
-                  h="48px"
-                  bgGradient="linear(135deg, #10B981 0%, #059669 100%)"
-                  borderRadius="xl"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  <Icon as={FiBook} boxSize={6} color="white" />
-                </Box>
-              </HStack>
-              <Text fontSize="2xl" fontWeight="800" color="gray.900">{recipes.length}</Text>
-              <Text fontSize="sm" color="gray.600" fontWeight="600">Recipes</Text>
-            </CardBody>
-          </Card>
-
           <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)">
             <CardBody p={5}>
               <HStack justify="space-between" mb={3}>
@@ -161,11 +90,33 @@ const EducationalHub = () => {
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Icon as={FiFileText} boxSize={6} color="white" />
+                  <Icon as={FiBook} boxSize={6} color="white" />
                 </Box>
               </HStack>
-              <Text fontSize="2xl" fontWeight="800" color="gray.900">{guides.length}</Text>
-              <Text fontSize="sm" color="gray.600" fontWeight="600">Guides</Text>
+              <Text fontSize="2xl" fontWeight="800" color="gray.900">{courses.length}</Text>
+              <Text fontSize="sm" color="gray.600" fontWeight="600">Active Courses</Text>
+            </CardBody>
+          </Card>
+
+          <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)">
+            <CardBody p={5}>
+              <HStack justify="space-between" mb={3}>
+                <Box
+                  w="48px"
+                  h="48px"
+                  bgGradient="linear(135deg, #10B981 0%, #059669 100%)"
+                  borderRadius="xl"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Icon as={FiVideo} boxSize={6} color="white" />
+                </Box>
+              </HStack>
+              <Text fontSize="2xl" fontWeight="800" color="gray.900">
+                {courses.reduce((acc, c) => acc + c.lessons, 0)}
+              </Text>
+              <Text fontSize="sm" color="gray.600" fontWeight="600">Total Lessons</Text>
             </CardBody>
           </Card>
 
@@ -181,11 +132,11 @@ const EducationalHub = () => {
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Icon as={FiTrendingUp} boxSize={6} color="white" />
+                  <Icon as={FiFileText} boxSize={6} color="white" />
                 </Box>
               </HStack>
               <Text fontSize="2xl" fontWeight="800" color="gray.900">{resources.length}</Text>
-              <Text fontSize="sm" color="gray.600" fontWeight="600">Tools</Text>
+              <Text fontSize="sm" color="gray.600" fontWeight="600">Resources</Text>
             </CardBody>
           </Card>
 
@@ -195,152 +146,92 @@ const EducationalHub = () => {
                 <Box
                   w="48px"
                   h="48px"
-                  bgGradient="linear(135deg, #8B5CF6 0%, #7C3AED 100%)"
+                  bgGradient="linear(135deg, #EC4899 0%, #DB2777 100%)"
                   borderRadius="xl"
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Icon as={FiUsers} boxSize={6} color="white" />
+                  <Icon as={FiBookOpen} boxSize={6} color="white" />
                 </Box>
               </HStack>
-              <Text fontSize="2xl" fontWeight="800" color="gray.900">135</Text>
-              <Text fontSize="sm" color="gray.600" fontWeight="600">Total Downloads</Text>
+              <Text fontSize="2xl" fontWeight="800" color="gray.900">
+                {courses.reduce((acc, c) => acc + c.enrolled, 0)}
+              </Text>
+              <Text fontSize="sm" color="gray.600" fontWeight="600">Total Enrollments</Text>
             </CardBody>
           </Card>
         </SimpleGrid>
       </VStack>
 
-      <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)" mb={6}>
-        <CardBody p={4}>
-          <InputGroup>
-            <InputLeftElement pointerEvents="none">
-              <Icon as={FiSearch} color="gray.400" />
-            </InputLeftElement>
-            <Input
-              placeholder="Search recipes, guides, or resources..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              borderRadius="xl"
-              border="2px solid"
-              borderColor="gray.200"
-              _focus={{ borderColor: '#667eea' }}
-            />
-          </InputGroup>
-        </CardBody>
-      </Card>
-
       <Tabs>
         <TabList>
-          <Tab fontWeight="700">Recipes</Tab>
-          <Tab fontWeight="700">Guides</Tab>
+          <Tab fontWeight="700">Courses</Tab>
           <Tab fontWeight="700">Resources</Tab>
+          <Tab fontWeight="700">Library</Tab>
         </TabList>
 
         <TabPanels>
-          {/* Recipes */}
+          {/* Courses */}
           <TabPanel>
-            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-              {recipes.map((recipe) => (
-                <motion.div key={recipe.id} whileHover={{ scale: 1.02, y: -4 }}>
-                  <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)" overflow="hidden">
-                    <Box position="relative" h="200px" overflow="hidden">
-                      <Image src={recipe.image} alt={recipe.title} w="100%" h="100%" objectFit="cover" />
-                      <Box position="absolute" top={3} right={3}>
-                        <Badge bg="rgba(0, 0, 0, 0.6)" color="white" borderRadius="full" px={3} py={1} fontSize="xs" fontWeight="700">
-                          {recipe.calories} cal
-                        </Badge>
-                      </Box>
-                    </Box>
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+              {courses.map((course) => (
+                <motion.div key={course.id} whileHover={{ scale: 1.02, y: -4 }}>
+                  <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)">
                     <CardBody p={5}>
-                      <Badge
-                        bgGradient="linear(135deg, #10B981 0%, #059669 100%)"
-                        color="white"
-                        borderRadius="full"
-                        px={3}
-                        py={1}
-                        fontSize="xs"
-                        fontWeight="700"
-                        mb={3}
-                      >
-                        {recipe.category}
-                      </Badge>
-                      <Text fontSize="lg" fontWeight="800" color="gray.900" mb={3}>
-                        {recipe.title}
-                      </Text>
-                      <HStack justify="space-between" mb={4}>
+                      <HStack spacing={3} mb={4}>
+                        <Box
+                          w="48px"
+                          h="48px"
+                          bgGradient="linear(135deg, #667eea 0%, #764ba2 100%)"
+                          borderRadius="xl"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                        >
+                          <Icon as={FiBook} boxSize={6} color="white" />
+                        </Box>
+                        <Box flex={1}>
+                          <Text fontWeight="800" color="gray.900">{course.title}</Text>
+                          <Badge
+                            bg="#10B981"
+                            color="white"
+                            borderRadius="full"
+                            px={2}
+                            py={0.5}
+                            fontSize="xs"
+                            fontWeight="700"
+                            mt={1}
+                          >
+                            {course.status}
+                          </Badge>
+                        </Box>
+                      </HStack>
+                      <VStack align="stretch" spacing={2} mb={4}>
+                        <HStack>
+                          <Icon as={FiVideo} color="gray.500" boxSize={4} />
+                          <Text fontSize="sm" color="gray.600">
+                            {course.lessons} lessons
+                          </Text>
+                        </HStack>
                         <HStack>
                           <Icon as={FiClock} color="gray.500" boxSize={4} />
-                          <Text fontSize="xs" color="gray.600">{recipe.prepTime}</Text>
+                          <Text fontSize="sm" color="gray.600">{course.duration}</Text>
                         </HStack>
-                        <Text fontSize="xs" color="gray.600" fontWeight="600">{recipe.protein}g protein</Text>
-                      </HStack>
+                        <Text fontSize="sm" color="gray.600">
+                          <strong>{course.enrolled}</strong> enrolled
+                        </Text>
+                      </VStack>
                       <Button
-                        leftIcon={<FiEye />}
-                        w="full"
+                        leftIcon={<FiPlay />}
+                        size="sm"
                         bgGradient="linear(135deg, #667eea 0%, #764ba2 100%)"
                         color="white"
                         _hover={{ bgGradient: 'linear(135deg, #764ba2 0%, #667eea 100%)' }}
-                        borderRadius="xl"
-                        fontWeight="700"
-                      >
-                        View Recipe
-                      </Button>
-                    </CardBody>
-                  </Card>
-                </motion.div>
-              ))}
-            </SimpleGrid>
-          </TabPanel>
-
-          {/* Guides */}
-          <TabPanel>
-            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-              {guides.map((guide) => (
-                <motion.div key={guide.id} whileHover={{ scale: 1.02, y: -4 }}>
-                  <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)">
-                    <CardBody p={6}>
-                      <Box
-                        w="64px"
-                        h="64px"
-                        bgGradient="linear(135deg, #3B82F6 0%, #2563EB 100%)"
-                        borderRadius="xl"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        mb={4}
-                      >
-                        <Icon as={guide.icon} boxSize={8} color="white" />
-                      </Box>
-                      <Badge
-                        bg="#3B82F6"
-                        color="white"
-                        borderRadius="full"
-                        px={3}
-                        py={1}
-                        fontSize="xs"
-                        fontWeight="700"
-                        mb={3}
-                      >
-                        {guide.category}
-                      </Badge>
-                      <Text fontSize="lg" fontWeight="800" color="gray.900" mb={3}>
-                        {guide.title}
-                      </Text>
-                      <HStack justify="space-between" mb={4}>
-                        <Text fontSize="sm" color="gray.600">{guide.pages} pages</Text>
-                        <Text fontSize="sm" color="gray.600">{guide.downloads} downloads</Text>
-                      </HStack>
-                      <Button
-                        leftIcon={<FiDownload />}
+                        borderRadius="lg"
                         w="full"
-                        bgGradient="linear(135deg, #3B82F6 0%, #2563EB 100%)"
-                        color="white"
-                        _hover={{ bgGradient: 'linear(135deg, #2563EB 0%, #3B82F6 100%)' }}
-                        borderRadius="xl"
-                        fontWeight="700"
                       >
-                        Download PDF
+                        View Course
                       </Button>
                     </CardBody>
                   </Card>
@@ -351,58 +242,70 @@ const EducationalHub = () => {
 
           {/* Resources */}
           <TabPanel>
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
               {resources.map((resource) => (
                 <motion.div key={resource.id} whileHover={{ scale: 1.02, y: -4 }}>
                   <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)">
-                    <CardBody p={6}>
-                      <HStack spacing={4}>
-                        <Box
-                          w="64px"
-                          h="64px"
-                          bgGradient="linear(135deg, #F59E0B 0%, #D97706 100%)"
-                          borderRadius="xl"
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="center"
-                        >
-                          <Icon as={resource.icon} boxSize={8} color="white" />
-                        </Box>
+                    <CardBody p={5}>
+                      <HStack spacing={3} mb={4}>
+                        <Icon
+                          as={resource.type === 'Video' ? FiVideo : FiFileText}
+                          boxSize={6}
+                          color="#3B82F6"
+                        />
                         <Box flex={1}>
+                          <Text fontWeight="800" color="gray.900">{resource.title}</Text>
                           <Badge
-                            bg="#F59E0B"
+                            bg="#3B82F6"
                             color="white"
                             borderRadius="full"
-                            px={3}
-                            py={1}
+                            px={2}
+                            py={0.5}
                             fontSize="xs"
                             fontWeight="700"
-                            mb={2}
+                            mt={1}
                           >
-                            {resource.category}
+                            {resource.type}
                           </Badge>
-                          <Text fontSize="lg" fontWeight="800" color="gray.900" mb={1}>
-                            {resource.title}
-                          </Text>
-                          <Text fontSize="sm" color="gray.600">
-                            {resource.description}
-                          </Text>
                         </Box>
-                        <Button
-                          bgGradient="linear(135deg, #F59E0B 0%, #D97706 100%)"
-                          color="white"
-                          _hover={{ bgGradient: 'linear(135deg, #D97706 0%, #F59E0B 100%)' }}
-                          borderRadius="xl"
-                          fontWeight="700"
-                        >
-                          Use Tool
-                        </Button>
                       </HStack>
+                      <VStack align="stretch" spacing={2} mb={4}>
+                        {resource.downloads && (
+                          <Text fontSize="sm" color="gray.600">
+                            Downloads: <strong>{resource.downloads}</strong>
+                          </Text>
+                        )}
+                        {resource.views && (
+                          <Text fontSize="sm" color="gray.600">
+                            Views: <strong>{resource.views}</strong>
+                          </Text>
+                        )}
+                      </VStack>
+                      <Button
+                        leftIcon={<FiDownload />}
+                        size="sm"
+                        colorScheme="blue"
+                        borderRadius="lg"
+                        w="full"
+                      >
+                        Download
+                      </Button>
                     </CardBody>
                   </Card>
                 </motion.div>
               ))}
             </SimpleGrid>
+          </TabPanel>
+
+          {/* Library */}
+          <TabPanel>
+            <Card bg="white" borderRadius="xl" boxShadow="0 4px 16px rgba(0, 0, 0, 0.06)">
+              <CardBody>
+                <Text color="gray.600" fontSize="sm" fontWeight="500">
+                  Library and archived materials will be displayed here...
+                </Text>
+              </CardBody>
+            </Card>
           </TabPanel>
         </TabPanels>
       </Tabs>

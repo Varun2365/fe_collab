@@ -74,5 +74,25 @@ router.post('/upgrade-to-coach', protect, updateLastActive, authController.upgra
 // Required Body Fields: { "coachId": "string" }
 router.post('/lock-hierarchy', protect, updateLastActive, authController.lockHierarchy);
 
+// Update profile route: Update user profile information
+// PUT /api/auth/profile
+// Optional Body Fields: { "name", "bio", "company", "phone", "country", "city", "state", "zipCode", "address", "website", "linkedin", "twitter", "facebook", "instagram", "youtube", "age" }
+router.put('/profile', authController.updateProfile);
+
+// Update profile picture route: Update user profile picture
+// PUT /api/auth/profile/picture
+// Required Body Fields: { "profilePicture": "string" }
+router.put('/profile/picture', authController.updateProfilePicture);
+
+// Update achievements route: Update user achievements
+// PUT /api/auth/profile/achievements
+// Required Body Fields: { "achievements": [{ "image": "string", "title": "string", "description": "string" }] }
+router.put('/profile/achievements', authController.updateAchievements);
+
+// Update experiences route: Update user experiences
+// PUT /api/auth/profile/experiences
+// Required Body Fields: { "experiences": [{ "company": "string", "position": "string", "startDate": "date", "endDate": "date", "isCurrent": "boolean", "description": "string", "location": "string" }] }
+router.put('/profile/experiences', authController.updateExperiences);
+
 
 module.exports = router;
