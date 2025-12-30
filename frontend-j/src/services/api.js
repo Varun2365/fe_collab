@@ -238,7 +238,7 @@ export const dashboardAPI = {
     return handleResponse(response);
   },
 
-  // Get funnel analytics
+  // Get funnel analytics (deprecated - use funnelAnalyticsAPI instead)
   getFunnelAnalytics: async () => {
     const token = localStorage.getItem('token');
     if (!token) throw new Error('No authentication token');
@@ -467,6 +467,27 @@ export const authAPI = {
       method: 'GET',
       headers: getAuthHeaders(),
     });
+    return handleResponse(response);
+  },
+};
+
+// Funnel Analytics API
+export const funnelAnalyticsAPI = {
+  // Get analytics for a specific funnel
+  getFunnelAnalytics: async (funnelId, startDate = null, endDate = null) => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No authentication token');
+
+    let url = `${API_BASE_URL}/api/funnels/${funnelId}/analytics`;
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    if (params.toString()) url += `?${params.toString()}`;
+
+    const response = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    }, 15000);
     return handleResponse(response);
   },
 };

@@ -167,6 +167,103 @@ const getFunnelAnalytics = asyncHandler(async (req, res, next) => {
         { $sort: { stageId: 1 } }
     ]);
 
+    // --- DAILY BREAKDOWN (TIME SERIES) ---
+    const dailyBreakdown = await FunnelEvent.aggregate([
+        { $match: { ...commonMatch, eventType: 'PageView' }},
+        {
+            $group: {
+                _id: {
+                    date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }
+                },
+                views: { $sum: 1 },
+                uniqueVisitors: { $addToSet: '$sessionId' }
+            }
+        },
+        {
+            $project: {
+                _id: 0,
+                date: '$_id.date',
+                views: 1,
+                uniqueVisitors: { $size: '$uniqueVisitors' }
+            }
+        },
+        { $sort: { date: 1 } }
+    ]);
+
+    // Get daily breakdown for conversions
+    const dailyConversions = await FunnelEvent.aggregate([
+        { $match: { ...commonMatch, eventType: 'FormSubmission' }},
+        {
+            $group: {
+                _id: {
+                    date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }
+                },
+                conversions: { $sum: 1 }
+            }
+        },
+        {
+            $project: {
+                _id: 0,
+                date: '$_id.date',
+                conversions: 1
+            }
+        },
+        { $sort: { date: 1 } }
+    ]);
+
+    // Merge daily data
+    const dailyDataMap = {};
+    dailyBreakdown.forEach(item => {
+        dailyDataMap[item.date] = {
+            date: item.date,
+            views: item.views,
+            uniqueVisitors: item.uniqueVisitors,
+            conversions: 0
+        };
+    });
+    dailyConversions.forEach(item => {
+        if (dailyDataMap[item.date]) {
+            dailyDataMap[item.date].conversions = item.conversions;
+        } else {
+            dailyDataMap[item.date] = {
+                date: item.date,
+                views: 0,
+                uniqueVisitors: 0,
+                conversions: item.conversions
+            };
+        }
+    });
+    const dailyTrends = Object.values(dailyDataMap).sort((a, b) => a.date.localeCompare(b.date));
+
+    // --- HOURLY BREAKDOWN (LAST 24 HOURS) ---
+    const last24Hours = new Date();
+    last24Hours.setHours(last24Hours.getHours() - 24);
+    const hourlyBreakdown = await FunnelEvent.aggregate([
+        { $match: { 
+            ...commonMatch, 
+            eventType: 'PageView',
+            createdAt: { $gte: last24Hours }
+        }},
+        {
+            $group: {
+                _id: {
+                    hour: { $hour: '$createdAt' }
+                },
+                views: { $sum: 1 },
+                uniqueVisitors: { $addToSet: '$sessionId' }
+            }
+        },
+        {
+            $project: {
+                _id: 0,
+                hour: '$_id.hour',
+                views: 1,
+                uniqueVisitors: { $size: '$uniqueVisitors' }
+            }
+        },
+        { $sort: { hour: 1 } }
+    ]);
+
     // Filter response data based on staff permissions
     const analyticsData = {
         overall: overallViewsData[0] || { totalViews: 0, uniqueVisitors: 0 },
@@ -183,7 +280,15 @@ const getFunnelAnalytics = asyncHandler(async (req, res, next) => {
         loggedInFunnelCompletionCount: loggedInFunnelCompletionCount,
         loggedInConversionToLead: parseFloat(loggedInConversionToLead.toFixed(2)),
         loggedInFunnelCompletionRate: parseFloat(loggedInFunnelCompletionRate.toFixed(2)),
-        stageAnalytics: stageAnalytics
+        stageAnalytics: stageAnalytics,
+        dailyTrends: dailyTrends,
+        hourlyBreakdown: hourlyBreakdown,
+        funnelInfo: {
+            id: funnel._id,
+            name: funnel.name,
+            createdAt: funnel.createdAt,
+            isPublished: funnel.isPublished || funnel.isActive || false
+        }
     };
     
     const filteredAnalytics = CoachStaffService.filterResponseData(req, analyticsData, 'funnels');

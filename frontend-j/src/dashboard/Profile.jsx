@@ -1653,13 +1653,14 @@ const Profile = () => {
                           {profile.bio ? (
                             <Text 
                               color={mutedTextColor} 
-                              lineHeight="tall"
+                              fontSize="sm"
+                              lineHeight="1.7"
                               whiteSpace="pre-wrap"
                             >
                               {profile.bio}
                             </Text>
                           ) : (
-                            <Text color={mutedTextColor} fontStyle="italic">
+                            <Text color={mutedTextColor} fontStyle="italic" fontSize="sm">
                               No bio available.
                             </Text>
                           )}
