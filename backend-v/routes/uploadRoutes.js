@@ -351,8 +351,21 @@ router.post('/banner-image', protect, uploadImage.single('image'), async (req, r
       }
     }
 
-    user.bannerImage = fileUrl;
-    await user.save();
+    // Use findOneAndUpdate to only update bannerImage field
+    // This avoids validation issues with required fields like selfCoachId
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: { bannerImage: fileUrl } },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      // Clean up uploaded file if update failed
+      if (fs.existsSync(compressedFilePath)) {
+        fs.unlinkSync(compressedFilePath);
+      }
+      return res.status(404).json({ success: false, message: 'User not found or update failed.' });
+    }
 
     res.status(200).json({
       success: true,
