@@ -1530,6 +1530,32 @@ const TopNav = () => {
 
         <HStack spacing={4}>
 
+          {/* Priority Feed Button */}
+
+          <Tooltip label="Daily Priority Feed">
+
+            <Button
+
+              variant="ghost"
+
+              size="md"
+
+              leftIcon={<FiBell />}
+
+              onClick={() => window.dispatchEvent(new CustomEvent('openPriorityFeed'))}
+
+              fontSize="sm"
+
+              _hover={{ bg: 'rgba(102, 126, 234, 0.1)' }}
+
+            >
+
+              Show Priority Feed
+
+            </Button>
+
+          </Tooltip>
+
           {/* Notifications Dropdown */}
 
           <Box position="relative">

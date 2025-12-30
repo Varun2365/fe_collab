@@ -2502,41 +2502,58 @@ function FunnelManagementComponent() {
             </ModalContent>
           </Modal>
 
-          {/* Analytics Modal */}
+          {/* Analytics Modal - Compact, Centered */}
           <Modal 
             isOpen={isAnalyticsModalOpen} 
             onClose={onAnalyticsModalClose} 
-            size="full"
+            isCentered={true}
+            size="xl"
             scrollBehavior="inside"
           >
-            <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
-            <ModalContent maxW="95vw" maxH="95vh" bg={useColorModeValue('white', 'gray.800')}>
+            <ModalOverlay 
+              bg="blackAlpha.800" 
+              backdropFilter="blur(2px)"
+              onClick={onAnalyticsModalClose}
+            />
+            <ModalContent 
+              maxW="550px"
+              maxH="85vh"
+              w="90%"
+              bg={useColorModeValue('white', 'gray.800')}
+              borderRadius="xl"
+              boxShadow="2xl"
+              border="1px"
+              borderColor={useColorModeValue('gray.200', 'gray.700')}
+              m={0}
+            >
               <ModalHeader 
                 display="flex" 
                 alignItems="center" 
                 justifyContent="space-between"
                 borderBottom="1px"
                 borderColor={useColorModeValue('gray.200', 'gray.700')}
-                pb={4}
+                pb={3}
+                pt={4}
+                px={5}
               >
-                <HStack spacing={3}>
-                  <Box as={FiBarChart2} size={6} color="purple.500" />
+                <HStack spacing={2}>
+                  <Box as={FiBarChart2} size={5} color="purple.500" />
                   <Box>
-                    <Text fontSize="xl" fontWeight="bold" color={useColorModeValue('gray.800', 'gray.100')}>
-                      Funnel Analytics
+                    <Text fontSize="lg" fontWeight="bold" color={useColorModeValue('gray.800', 'gray.100')}>
+                      Analytics
                     </Text>
                     {selectedFunnelForAnalytics && (
-                      <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')} fontWeight="normal">
+                      <Text fontSize="xs" color={useColorModeValue('gray.600', 'gray.400')} fontWeight="normal" noOfLines={1}>
                         {selectedFunnelForAnalytics.name}
                       </Text>
                     )}
                   </Box>
                 </HStack>
-                <ModalCloseButton />
+                <ModalCloseButton size="sm" />
               </ModalHeader>
-              <ModalBody p={6} overflowY="auto">
+              <ModalBody p={4} overflowY="auto" maxH="calc(85vh - 80px)">
                 {selectedFunnelForAnalytics && (
-                  <FunnelAnalytics funnelId={selectedFunnelForAnalytics.id} />
+                  <FunnelAnalytics funnelId={selectedFunnelForAnalytics.id} isCompact={true} />
                 )}
               </ModalBody>
             </ModalContent>

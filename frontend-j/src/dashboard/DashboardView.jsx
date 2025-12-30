@@ -441,6 +441,9 @@ const Dashboard = () => {
   // Modal state for funnel distribution
   const { isOpen: isFunnelModalOpen, onOpen: onFunnelModalOpen, onClose: onFunnelModalClose } = useDisclosure();
   
+  // Modal state for priority feed
+  const { isOpen: isPriorityFeedOpen, onOpen: onPriorityFeedOpen, onClose: onPriorityFeedClose } = useDisclosure();
+  
   // Timeline filter state
   const [trendsTimeFilter, setTrendsTimeFilter] = useState('1W');
   const [leadsTimeFilter, setLeadsTimeFilter] = useState('1M');
@@ -871,6 +874,19 @@ const Dashboard = () => {
     };
   }, []);
 
+  // Priority Feed modal event listener
+  useEffect(() => {
+    const handleOpenPriorityFeed = () => {
+      onPriorityFeedOpen();
+    };
+
+    window.addEventListener('openPriorityFeed', handleOpenPriorityFeed);
+
+    return () => {
+      window.removeEventListener('openPriorityFeed', handleOpenPriorityFeed);
+    };
+  }, [onPriorityFeedOpen]);
+
   // Funnels data is now included in the unified dashboard endpoint
   // Update funnels state when dashboard data is loaded
   useEffect(() => {
@@ -1123,12 +1139,10 @@ const Dashboard = () => {
       responsive: true,
       animation: {
         animateRotate: true,
-        animateScale: true,
-        duration: 2000,
-        easing: 'easeOutCubic',
-        delay: function(context) {
-          return context.dataIndex * 150;
-        }
+        animateScale: false,
+        duration: 600,
+        easing: 'easeOutQuart',
+        delay: 0
       },
       elements: {
         arc: {
@@ -2081,34 +2095,9 @@ const Dashboard = () => {
                     }
                   },
                   animation: {
-                    duration: 2000,
+                    duration: 600,
                     easing: 'easeOutQuart',
-                    delay: function(context) {
-                      return context.dataIndex * 200;
-                    },
-                    onProgress: function(animation) {
-                      const chart = animation.chart;
-                      const ctx = chart.ctx;
-                      const dataset = chart.data.datasets[0];
-                      const meta = chart.getDatasetMeta(0);
-                      
-                      if (meta.data.length > 0) {
-                        ctx.save();
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.font = 'bold 13px Inter';
-                        ctx.fillStyle = '#6366f1';
-                        
-                        meta.data.forEach((point, index) => {
-                          const data = dataset.data[index];
-                          if (data !== null && data !== undefined) {
-                            const position = point.getCenterPoint();
-                            ctx.fillText(`${data.toLocaleString()}`, position.x, position.y - 20);
-                          }
-                        });
-                        ctx.restore();
-                      }
-                    }
+                    delay: 0
                   },
                   scales: {
                     y: {
@@ -2766,22 +2755,6 @@ const Dashboard = () => {
             )}
           </Box>
         </Box>
-
-        {/* Daily Priority Feed - Comprehensive Interactive Component */}
-        <Box flex="1">
-          <DailyPriorityFeed 
-            token={token} 
-            coachId={coachId}
-            onItemClick={(item) => {
-              // Handle item click - navigate to relevant section
-              if (item.leadId) {
-                navigate(`/dashboard/leads?leadId=${item.leadId}`);
-              } else if (item.appointmentId) {
-                navigate(`/dashboard/calendar?appointmentId=${item.appointmentId}`);
-              }
-            }}
-          />
-        </Box>
       </Box>
       )}
 
@@ -3162,6 +3135,29 @@ const Dashboard = () => {
         </Box>
       </Box>
       )}
+
+      {/* Priority Feed Modal */}
+      <Modal isOpen={isPriorityFeedOpen} onClose={onPriorityFeedClose} size="2xl" isCentered>
+        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
+        <ModalContent borderRadius="xl" boxShadow="2xl" h="80vh" display="flex" flexDirection="column">
+          <ModalCloseButton />
+          <ModalBody flex={1} py={4} px={6} overflowY="hidden">
+            <DailyPriorityFeed
+              token={token}
+              coachId={coachId}
+              onItemClick={(item) => {
+                // Handle item click - navigate to relevant section
+                if (item.leadId) {
+                  navigate(`/dashboard/leads?leadId=${item.leadId}`);
+                } else if (item.appointmentId) {
+                  navigate(`/dashboard/calendar?appointmentId=${item.appointmentId}`);
+                }
+                onPriorityFeedClose();
+              }}
+            />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };

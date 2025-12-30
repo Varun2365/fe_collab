@@ -4,3 +4,9 @@ baileys_auth/
 code.zip
 .env
 admin-uploads/
+
+# Upload directories - user-generated content
+public/uploads/
+public/uploads/**
+uploads/
+uploads/**
