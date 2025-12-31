@@ -11,18 +11,24 @@ import {
   Tabs, TabList, TabPanels, Tab, TabPanel, Checkbox, CheckboxGroup,
   Tooltip, Popover, PopoverTrigger, PopoverContent, PopoverArrow, PopoverCloseButton, PopoverHeader, PopoverBody,
   useColorModeValue, Container, Spacer, Tag, TagLabel, TagCloseButton,
-  Progress, CircularProgress, Center, Wrap, WrapItem,
+  Progress, CircularProgress, CircularProgressLabel, Center, Wrap, WrapItem,
   GridItem, Grid, Stack, ButtonGroup, FormErrorMessage,
   NumberInput, NumberInputField, NumberInputStepper, NumberIncrementStepper, NumberDecrementStepper,
   Slider, SliderTrack, SliderFilledTrack, SliderThumb,
   AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader,
   AlertDialogContent, AlertDialogOverlay, MenuDivider
 } from '@chakra-ui/react';
-// Custom SVG Icons
+// Custom SVG Icons hii
 const SearchIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="11" cy="11" r="8"/>
     <path d="m21 21-4.35-4.35"/>
+  </svg>
+);
+
+const ChevronDownIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="m6 9 6 6 6-6"/>
   </svg>
 );
 
@@ -121,6 +127,48 @@ const ListIcon = () => (
     <line x1="3" y1="18" x2="3.01" y2="18"/>
   </svg>
 );
+
+const DownloadIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="7 10 12 15 17 10"/>
+    <line x1="12" y1="15" x2="12" y2="3"/>
+  </svg>
+);
+
+const CalendarIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+    <line x1="16" y1="2" x2="16" y2="6"/>
+    <line x1="8" y1="2" x2="8" y2="6"/>
+    <line x1="3" y1="10" x2="21" y2="10"/>
+  </svg>
+);
+
+const FileIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+    <polyline points="13 2 13 9 20 9"/>
+  </svg>
+);
+
+const ClockIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12 6 12 12 16 14"/>
+  </svg>
+);
+
+const ReportIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <line x1="16" y1="13" x2="8" y2="13"/>
+    <line x1="16" y1="17" x2="8" y2="17"/>
+    <polyline points="10 9 9 9 8 9"/>
+  </svg>
+);
+
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import { getCoachId, getToken, isAuthenticated, debugAuthState } from '../../utils/authUtils';
@@ -140,8 +188,8 @@ const ProfessionalLoader = () => {
         {/* Header Section with Professional Animation */}
         <Card 
           bg="white" 
-          borderRadius="xl" 
-          boxShadow="lg" 
+          borderRadius="7px" 
+          boxShadow="sm" 
           border="1px" 
           borderColor="gray.200"
           overflow="hidden"
@@ -166,12 +214,12 @@ const ProfessionalLoader = () => {
             <VStack spacing={6} align="stretch">
               <Flex justify="space-between" align="center" direction={{ base: 'column', md: 'row' }} gap={4}>
                 <VStack align={{ base: 'center', md: 'start' }} spacing={2}>
-                  <Skeleton height="40px" width="400px" borderRadius="lg" />
+                  <Skeleton height="40px" width="400px" borderRadius="7px" />
                   <Skeleton height="20px" width="600px" borderRadius="md" />
                 </VStack>
                 <HStack spacing={4}>
-                  <Skeleton height="40px" width="300px" borderRadius="lg" />
-                  <Skeleton height="40px" width="150px" borderRadius="xl" />
+                  <Skeleton height="40px" width="300px" borderRadius="7px" />
+                  <Skeleton height="40px" width="150px" borderRadius="7px" />
                 </HStack>
               </Flex>
               
@@ -181,7 +229,7 @@ const ProfessionalLoader = () => {
                   <Card 
                     key={i} 
                     variant="outline"
-                    borderRadius="xl"
+                    borderRadius="7px"
                     overflow="hidden"
                     position="relative"
                     _hover={{ transform: 'translateY(-2px)', transition: 'all 0.3s' }}
@@ -208,13 +256,13 @@ const ProfessionalLoader = () => {
                         <Skeleton 
                           height="60px" 
                           width="60px" 
-                          borderRadius="xl" 
+                          borderRadius="7px" 
                           startColor="gray.200"
                           endColor="gray.300"
                         />
                         <VStack align="start" spacing={2} flex={1}>
                           <Skeleton height="16px" width="120px" borderRadius="md" />
-                          <Skeleton height="32px" width="80px" borderRadius="lg" />
+                          <Skeleton height="32px" width="80px" borderRadius="7px" />
                         </VStack>
                         <Skeleton height="24px" width="60px" borderRadius="full" />
                       </HStack>
@@ -229,8 +277,8 @@ const ProfessionalLoader = () => {
         {/* Professional Table Skeleton */}
         <Card 
           bg="white" 
-          borderRadius="xl" 
-          boxShadow="lg" 
+          borderRadius="7px" 
+          boxShadow="sm" 
           border="1px" 
           borderColor="gray.200"
           overflow="hidden"
@@ -254,18 +302,18 @@ const ProfessionalLoader = () => {
           <CardHeader py={6}>
             <Flex justify="space-between" align="center">
               <VStack align="start" spacing={1}>
-                <Skeleton height="32px" width="200px" borderRadius="lg" />
+                <Skeleton height="32px" width="200px" borderRadius="7px" />
                 <Skeleton height="16px" width="300px" borderRadius="md" />
               </VStack>
               <HStack spacing={3}>
-                <Skeleton height="32px" width="150px" borderRadius="lg" />
-                <Skeleton height="32px" width="150px" borderRadius="lg" />
+                <Skeleton height="32px" width="150px" borderRadius="7px" />
+                <Skeleton height="32px" width="150px" borderRadius="7px" />
               </HStack>
             </Flex>
           </CardHeader>
           
           <CardBody pt={0} px={0}>
-            <TableContainer w="full" overflowX="auto" borderRadius="lg" border="1px" borderColor="gray.100" className="hide-scrollbar">
+            <TableContainer w="full" overflowX="auto" borderRadius="7px" border="1px" borderColor="gray.100" className="hide-scrollbar">
               <Table variant="simple" size="md" w="full">
                 <Thead>
                   <Tr bg="gray.50">
@@ -395,42 +443,44 @@ const useCustomToast = () => {
 
 // --- BEAUTIFUL STATS CARDS ---
 const StatsCard = ({ title, value, icon, color = "blue", trend, isLoading = false }) => {
-  const bgColor = useColorModeValue(`${color}.50`, `${color}.900`);
-  const borderColor = useColorModeValue(`${color}.200`, `${color}.700`);
+  const cardBgColor = useColorModeValue(`${color}.50`, `${color}.900`);
+  const cardBorderColor = useColorModeValue(`${color}.200`, `${color}.700`);
+  const iconBg = useColorModeValue(`${color}.100`, `${color}.800`);
+  const iconColor = useColorModeValue(`${color}.600`, `${color}.300`);
   
   return (
     <Card 
-      bg={bgColor} 
+      bg={cardBgColor} 
       border="1px" 
-      borderColor={borderColor}
-      borderRadius="xl"
+      borderColor={cardBorderColor}
+      borderRadius="7px"
       _hover={{ transform: 'translateY(-3px)', shadow: 'xl', borderColor: `${color}.300` }}
       transition="all 0.3s"
       position="relative"
       overflow="hidden"
-      boxShadow="md"
+      boxShadow="sm"
     >
-      <CardBody p={6}>
+      <CardBody p={4}>
         <HStack spacing={4} align="center" w="full">
           <Box
-            p={4}
-            bg={`${color}.100`}
-            borderRadius="xl"
-            color={`${color}.600`}
-            boxShadow="md"
+            p={3}
+            bg={iconBg}
+            borderRadius="7px"
+            color={iconColor}
+            boxShadow="sm"
             _groupHover={{ transform: 'scale(1.1)', bg: `${color}.200` }}
             transition="all 0.3s"
           >
             {icon}
           </Box>
-          <VStack align="start" spacing={1} flex={1}>
-            <Text fontSize={{ base: "xs", md: "sm" }} color={`${color}.700`} fontWeight="medium" textTransform="uppercase" letterSpacing="wide">
+          <VStack align="start" spacing={0} flex={1}>
+            <Text fontSize="xs" color={`${color}.700`} fontWeight="600" textTransform="uppercase" letterSpacing="wider">
               {title}
             </Text>
             {isLoading ? (
               <Skeleton height="28px" width="70px" />
             ) : (
-              <Text fontSize="3xl" fontWeight="bold" color={`${color}.800`}>
+              <Text fontSize="2xl" fontWeight="800" color={`${color}.800`}>
                 {value}
               </Text>
             )}
@@ -438,11 +488,11 @@ const StatsCard = ({ title, value, icon, color = "blue", trend, isLoading = fals
           {trend && (
             <Badge 
               colorScheme={trend > 0 ? 'green' : 'red'} 
-              variant="solid" 
+              variant="subtle" 
               size="sm"
               borderRadius="full"
-              px={3}
-              py={1}
+              px={2}
+              py={0.5}
             >
               {trend > 0 ? '+' : ''}{trend}%
             </Badge>
@@ -476,12 +526,72 @@ const StaffManagement = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [selectedStaffIds, setSelectedStaffIds] = useState([]);
   
+  // Advanced filtering states
+  const [permissionFilter, setPermissionFilter] = useState('');
+  const [performanceFilter, setPerformanceFilter] = useState('');
+  const [dateRangeFilter, setDateRangeFilter] = useState({ start: '', end: '' });
+  const [sortBy, setSortBy] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
+  
+  // Bulk operations states
+  const [bulkAction, setBulkAction] = useState('');
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  
+  // Analytics and reports states
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  
+  // Communication states
+  const [showCommunicationModal, setShowCommunicationModal] = useState(false);
+  const [communicationType, setCommunicationType] = useState('email');
+  
+  // Export/Import states
+  const [exportFormat, setExportFormat] = useState('csv');
+  
+  // Additional feature states
+  const [staffNotes, setStaffNotes] = useState({});
+  const [staffDocuments, setStaffDocuments] = useState({});
+  const [staffSchedule, setStaffSchedule] = useState({});
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [performanceReviews, setPerformanceReviews] = useState({});
+  const [savedFilters, setSavedFilters] = useState([]);
+  const [currentFilter, setCurrentFilter] = useState(null);
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [selectedForComparison, setSelectedForComparison] = useState([]);
+  const [staffOnboarding, setStaffOnboarding] = useState({});
+  const [trainingData, setTrainingData] = useState({});
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [taskAssignments, setTaskAssignments] = useState({});
+  const [communicationHistory, setCommunicationHistory] = useState({});
+  const [customFields, setCustomFields] = useState({});
+  const [staffHierarchy, setStaffHierarchy] = useState(null);
+  const [timeTracking, setTimeTracking] = useState({});
+  const [notifications, setNotifications] = useState([]);
+  
   // Modal controls
   const { isOpen: isStaffModalOpen, onOpen: onStaffModalOpen, onClose: onStaffModalClose } = useDisclosure();
   const { isOpen: isPermissionModalOpen, onOpen: onPermissionModalOpen, onClose: onPermissionModalClose } = useDisclosure();
   const { isOpen: isDistributionModalOpen, onOpen: onDistributionModalOpen, onClose: onDistributionModalClose } = useDisclosure();
   const { isOpen: isDeleteModalOpen, onOpen: onDeleteModalOpen, onClose: onDeleteModalClose } = useDisclosure();
   const { isOpen: isDetailsModalOpen, onOpen: onDetailsModalOpen, onClose: onDetailsModalClose } = useDisclosure();
+  const { isOpen: isBulkActionModalOpen, onOpen: onBulkActionModalOpen, onClose: onBulkActionModalClose } = useDisclosure();
+  const { isOpen: isExportModalOpen, onOpen: onExportModalOpen, onClose: onExportModalClose } = useDisclosure();
+  const { isOpen: isAnalyticsModalOpen, onOpen: onAnalyticsModalOpen, onClose: onAnalyticsModalClose } = useDisclosure();
+  const { isOpen: isActivityLogModalOpen, onOpen: onActivityLogModalOpen, onClose: onActivityLogModalClose } = useDisclosure();
+  const { isOpen: isCommunicationModalOpen, onOpen: onCommunicationModalOpen, onClose: onCommunicationModalClose } = useDisclosure();
+  const { isOpen: isNotesModalOpen, onOpen: onNotesModalOpen, onClose: onNotesModalClose } = useDisclosure();
+  const { isOpen: isDocumentsModalOpen, onOpen: onDocumentsModalOpen, onClose: onDocumentsModalClose } = useDisclosure();
+  const { isOpen: isScheduleModalOpen, onOpen: onScheduleModalOpen, onClose: onScheduleModalClose } = useDisclosure();
+  const { isOpen: isAttendanceModalOpen, onOpen: onAttendanceModalOpen, onClose: onAttendanceModalClose } = useDisclosure();
+  const { isOpen: isReviewModalOpen, onOpen: onReviewModalOpen, onClose: onReviewModalClose } = useDisclosure();
+  const { isOpen: isComparisonModalOpen, onOpen: onComparisonModalOpen, onClose: onComparisonModalClose } = useDisclosure();
+  const { isOpen: isOnboardingModalOpen, onOpen: onOnboardingModalOpen, onClose: onOnboardingModalClose } = useDisclosure();
+  const { isOpen: isTrainingModalOpen, onOpen: onTrainingModalOpen, onClose: onTrainingModalClose } = useDisclosure();
+  const { isOpen: isLeaveModalOpen, onOpen: onLeaveModalOpen, onClose: onLeaveModalClose } = useDisclosure();
+  const { isOpen: isHierarchyModalOpen, onOpen: onHierarchyModalOpen, onClose: onHierarchyModalClose } = useDisclosure();
+  const { isOpen: isTimeTrackingModalOpen, onOpen: onTimeTrackingModalOpen, onClose: onTimeTrackingModalClose } = useDisclosure();
+  const { isOpen: isReportsModalOpen, onOpen: onReportsModalOpen, onClose: onReportsModalClose } = useDisclosure();
   
   // Form states
   const [newStaff, setNewStaff] = useState({
@@ -509,7 +619,7 @@ const StaffManagement = () => {
   const fetchStaff = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/coach/staff`, apiConfig);
+      const response = await axios.get(`${API_BASE_URL}/api/coach/staff`, apiConfig);
       if (response.data.success) {
         setStaffData(response.data.data || []);
       } else {
@@ -526,7 +636,7 @@ const StaffManagement = () => {
   // Fetch permissions
   const fetchPermissions = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/public/permissions`);
+      const response = await axios.get(`${API_BASE_URL}/api/public/permissions`);
       if (response.data.success) {
         setPermissions(response.data.data);
       }
@@ -538,7 +648,7 @@ const StaffManagement = () => {
   // Fetch team performance
   const fetchTeamPerformance = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/coach/staff/team-performance`, apiConfig);
+      const response = await axios.get(`${API_BASE_URL}/api/coach/staff/team-performance`, apiConfig);
       if (response.data.success) {
         setTeamPerformance(response.data.data);
       }
@@ -551,9 +661,9 @@ const StaffManagement = () => {
   const fetchStaffDetails = useCallback(async (staffId) => {
     try {
       const [tasksRes, metricsRes, leadsRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/coach/staff/${staffId}/tasks`, apiConfig),
-        axios.get(`${API_BASE_URL}/coach/staff/${staffId}/metrics`, apiConfig),
-        axios.get(`${API_BASE_URL}/coach/staff/${staffId}/leads`, apiConfig)
+        axios.get(`${API_BASE_URL}/api/coach/staff/${staffId}/tasks`, apiConfig),
+        axios.get(`${API_BASE_URL}/api/coach/staff/${staffId}/metrics`, apiConfig),
+        axios.get(`${API_BASE_URL}/api/coach/staff/${staffId}/leads`, apiConfig)
       ]);
       
       if (tasksRes.data.success) setStaffTasks(tasksRes.data.data);
@@ -569,7 +679,7 @@ const StaffManagement = () => {
     if (!isCoach) return;
     
     try {
-      const response = await axios.get(`${API_BASE_URL}/coach/staff/lead-distribution`, apiConfig);
+      const response = await axios.get(`${API_BASE_URL}/api/coach/staff/lead-distribution`, apiConfig);
       if (response.data.success) {
         setLeadDistribution(response.data.data.staff || []);
       }
@@ -600,7 +710,7 @@ const StaffManagement = () => {
 
     try {
       setLoading(true);
-      const response = await axios.post(`${API_BASE_URL}/coach/staff`, {
+      const response = await axios.post(`${API_BASE_URL}/api/coach/staff`, {
         name: newStaff.name.trim(),
         email: newStaff.email.trim(),
         password: newStaff.password.trim(),
@@ -629,7 +739,7 @@ const StaffManagement = () => {
   const updateStaffPermissions = useCallback(async (staffId, permissions) => {
     try {
       setLoading(true);
-      const response = await axios.put(`${API_BASE_URL}/coach/staff/${staffId}/permissions`, {
+      const response = await axios.put(`${API_BASE_URL}/api/coach/staff/${staffId}/permissions`, {
         permissions
       }, apiConfig);
       
@@ -651,7 +761,7 @@ const StaffManagement = () => {
   const assignPreset = useCallback(async (staffId, presetName) => {
     try {
       setLoading(true);
-      const response = await axios.post(`${API_BASE_URL}/coach/staff/${staffId}/permission-group`, {
+      const response = await axios.post(`${API_BASE_URL}/api/coach/staff/${staffId}/permission-group`, {
         presetName
       }, apiConfig);
       
@@ -673,7 +783,7 @@ const StaffManagement = () => {
   const toggleStaffStatus = useCallback(async (staffId) => {
     try {
       setLoading(true);
-      const response = await axios.put(`${API_BASE_URL}/coach/staff/${staffId}/toggle-status`, {}, apiConfig);
+      const response = await axios.put(`${API_BASE_URL}/api/coach/staff/${staffId}/toggle-status`, {}, apiConfig);
       
       if (response.data.success) {
         showToast('Staff status updated successfully', 'success');
@@ -693,7 +803,7 @@ const StaffManagement = () => {
   const updateLeadDistribution = useCallback(async (distributions) => {
     try {
       setLoading(true);
-      const response = await axios.put(`${API_BASE_URL}/coach/staff/lead-distribution`, {
+      const response = await axios.put(`${API_BASE_URL}/api/coach/staff/lead-distribution`, {
         distributions
       }, apiConfig);
       
@@ -715,7 +825,7 @@ const StaffManagement = () => {
   const deleteStaff = useCallback(async (staffId) => {
     try {
       setLoading(true);
-      const response = await axios.delete(`${API_BASE_URL}/coach/staff/${staffId}`, apiConfig);
+      const response = await axios.delete(`${API_BASE_URL}/api/coach/staff/${staffId}`, apiConfig);
       
       if (response.data.success) {
         showToast('Staff member deleted successfully', 'success');
@@ -730,6 +840,562 @@ const StaffManagement = () => {
       setLoading(false);
     }
   }, [apiConfig, showToast, fetchStaff]);
+
+  // --- BULK OPERATIONS ---
+  const bulkUpdateStatus = useCallback(async (staffIds, status) => {
+    try {
+      setLoading(true);
+      const promises = staffIds.map(id => 
+        axios.put(`${API_BASE_URL}/api/coach/staff/${id}/toggle-status`, {}, apiConfig)
+      );
+      await Promise.all(promises);
+      showToast(`${staffIds.length} staff members ${status === 'active' ? 'activated' : 'deactivated'} successfully`, 'success');
+      fetchStaff();
+      setSelectedStaffIds([]);
+    } catch (error) {
+      console.error('Error bulk updating status:', error);
+      showToast('Failed to update staff status', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [apiConfig, showToast, fetchStaff]);
+
+  const bulkDeleteStaff = useCallback(async (staffIds) => {
+    try {
+      setLoading(true);
+      const response = await axios.post(`${API_BASE_URL}/api/coach/staff/bulk-delete`, {
+        staffIds
+      }, apiConfig);
+      
+      if (response.data.success) {
+        showToast(`Successfully deleted ${response.data.data.deletedCount} staff member(s)`, 'success');
+        setSelectedStaffIds([]);
+        fetchStaff();
+      } else {
+        showToast('Failed to delete staff members', 'error');
+      }
+    } catch (error) {
+      console.error('Error bulk deleting staff:', error);
+      showToast(error.response?.data?.message || 'Failed to delete staff members', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [apiConfig, showToast, fetchStaff]);
+
+  const bulkUpdatePermissions = useCallback(async (staffIds, permissions) => {
+    try {
+      setLoading(true);
+      const response = await axios.put(`${API_BASE_URL}/api/coach/staff/bulk-permissions`, {
+        staffIds,
+        permissions
+      }, apiConfig);
+      
+      if (response.data.success) {
+        showToast(`Permissions updated for ${staffIds.length} staff members`, 'success');
+        fetchStaff();
+        setSelectedStaffIds([]);
+      } else {
+        showToast('Failed to update permissions', 'error');
+      }
+    } catch (error) {
+      console.error('Error bulk updating permissions:', error);
+      showToast('Failed to update permissions', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [apiConfig, showToast, fetchStaff]);
+
+  // --- EXPORT/IMPORT ---
+  const exportStaffData = useCallback(async (format = 'csv') => {
+    try {
+      setLoading(true);
+      
+      // Apply same filtering logic as filteredStaff
+      let filtered = [...staffData];
+      
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        filtered = filtered.filter(staff => 
+          staff.name?.toLowerCase().includes(searchLower) ||
+          staff.email?.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      if (statusFilter) {
+        filtered = filtered.filter(staff => 
+          statusFilter === 'active' ? staff.isActive : !staff.isActive
+        );
+      }
+      
+      if (permissionFilter) {
+        filtered = filtered.filter(staff => 
+          staff.permissions?.includes(permissionFilter)
+        );
+      }
+      
+      if (performanceFilter) {
+        filtered = filtered.filter(staff => {
+          const score = teamPerformance?.teamLeaderboard?.find(m => m.staffId === staff._id)?.performanceScore || 0;
+          if (performanceFilter === 'high') return score >= 80;
+          if (performanceFilter === 'medium') return score >= 50 && score < 80;
+          if (performanceFilter === 'low') return score < 50;
+          return true;
+        });
+      }
+      
+      if (dateRangeFilter.start || dateRangeFilter.end) {
+        filtered = filtered.filter(staff => {
+          const createdDate = new Date(staff.createdAt);
+          if (dateRangeFilter.start && createdDate < new Date(dateRangeFilter.start)) return false;
+          if (dateRangeFilter.end && createdDate > new Date(dateRangeFilter.end)) return false;
+          return true;
+        });
+      }
+      
+      const data = filtered.map(staff => ({
+        Name: staff.name,
+        Email: staff.email,
+        Status: staff.isActive ? 'Active' : 'Inactive',
+        Permissions: staff.permissions?.length || 0,
+        'Last Active': staff.lastActive ? new Date(staff.lastActive).toLocaleDateString() : 'Never',
+        'Lead Ratio': staff.distributionRatio || 1,
+        'Created At': staff.createdAt ? new Date(staff.createdAt).toLocaleDateString() : ''
+      }));
+
+      if (format === 'csv') {
+        const headers = Object.keys(data[0] || {});
+        const csvContent = [
+          headers.join(','),
+          ...data.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `staff_export_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+        showToast('Staff data exported successfully', 'success');
+      } else if (format === 'json') {
+        const jsonContent = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonContent], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `staff_export_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        showToast('Staff data exported successfully', 'success');
+      }
+    } catch (error) {
+      console.error('Error exporting staff data:', error);
+      showToast('Failed to export staff data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [staffData, searchTerm, statusFilter, permissionFilter, performanceFilter, dateRangeFilter, teamPerformance, showToast]);
+
+  const importStaffData = useCallback(async (file) => {
+    try {
+      setLoading(true);
+      const text = await file.text();
+      const lines = text.split('\n');
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      const importedData = lines.slice(1).filter(line => line.trim()).map(line => {
+        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+        const staff = {};
+        headers.forEach((header, index) => {
+          staff[header.toLowerCase().replace(/\s+/g, '')] = values[index] || '';
+        });
+        return staff;
+      });
+
+      // Create staff members
+      let successCount = 0;
+      for (const staffData of importedData) {
+        try {
+          await axios.post(`${API_BASE_URL}/api/coach/staff`, {
+            name: staffData.name || staffData.Name,
+            email: staffData.email || staffData.Email,
+            password: 'TempPassword123!', // Default password, should be changed
+            permissions: []
+          }, apiConfig);
+          successCount++;
+        } catch (error) {
+          console.error('Error importing staff:', error);
+        }
+      }
+
+      showToast(`${successCount} staff members imported successfully`, 'success');
+      fetchStaff();
+    } catch (error) {
+      console.error('Error importing staff data:', error);
+      showToast('Failed to import staff data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [apiConfig, showToast, fetchStaff]);
+
+  // --- ANALYTICS & REPORTS ---
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/coach/staff/team-performance`, apiConfig);
+      if (response.data.success) {
+        setAnalyticsData(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+    }
+  }, [apiConfig]);
+
+  const fetchActivityLogs = useCallback(async (staffId = null) => {
+    try {
+      const url = staffId 
+        ? `${API_BASE_URL}/api/coach/staff/${staffId}/activity`
+        : `${API_BASE_URL}/api/coach/staff/activity`;
+      const response = await axios.get(url, apiConfig);
+      if (response.data.success) {
+        setActivityLogs(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching activity logs:', error);
+      // If endpoint doesn't exist, create mock data
+      setActivityLogs([]);
+    }
+  }, [apiConfig]);
+
+  // --- COMMUNICATION ---
+  const sendCommunication = useCallback(async (staffIds, type, subject, message) => {
+    try {
+      setLoading(true);
+      // This would integrate with your messaging system
+      const response = await axios.post(`${API_BASE_URL}/api/central-messaging/v1/send`, {
+        recipients: staffIds.map(id => {
+          const staff = staffData.find(s => s._id === id);
+          return type === 'email' ? staff?.email : staff?.phone;
+        }),
+        type,
+        subject,
+        message
+      }, apiConfig);
+      
+      if (response.data.success) {
+        showToast(`Message sent to ${staffIds.length} staff members`, 'success');
+        // Update communication history
+        staffIds.forEach(id => {
+          setCommunicationHistory(prev => ({
+            ...prev,
+            [id]: [...(prev[id] || []), {
+              type,
+              subject,
+              message,
+              timestamp: new Date().toISOString(),
+              sentBy: user?.email || 'System'
+            }]
+          }));
+        });
+      } else {
+        showToast('Failed to send message', 'error');
+      }
+    } catch (error) {
+      console.error('Error sending communication:', error);
+      showToast('Failed to send message', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [apiConfig, showToast, staffData, user]);
+
+  // --- NOTES MANAGEMENT ---
+  const saveStaffNote = useCallback(async (staffId, note) => {
+    try {
+      setStaffNotes(prev => ({
+        ...prev,
+        [staffId]: [...(prev[staffId] || []), {
+          note,
+          timestamp: new Date().toISOString(),
+          createdBy: user?.email || 'System'
+        }]
+      }));
+      showToast('Note saved successfully', 'success');
+    } catch (error) {
+      console.error('Error saving note:', error);
+      showToast('Failed to save note', 'error');
+    }
+  }, [showToast, user]);
+
+  const deleteStaffNote = useCallback((staffId, noteIndex) => {
+    setStaffNotes(prev => ({
+      ...prev,
+      [staffId]: prev[staffId]?.filter((_, index) => index !== noteIndex) || []
+    }));
+    showToast('Note deleted successfully', 'success');
+  }, [showToast]);
+
+  // --- DOCUMENT MANAGEMENT ---
+  const uploadStaffDocument = useCallback(async (staffId, file) => {
+    try {
+      setLoading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('staffId', staffId);
+      
+      const response = await axios.post(`${API_BASE_URL}/api/files/upload`, formData, {
+        ...apiConfig,
+        headers: {
+          ...apiConfig.headers,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      if (response.data.success) {
+        setStaffDocuments(prev => ({
+          ...prev,
+          [staffId]: [...(prev[staffId] || []), {
+            name: file.name,
+            url: response.data.data.url,
+            size: file.size,
+            type: file.type,
+            uploadedAt: new Date().toISOString()
+          }]
+        }));
+        showToast('Document uploaded successfully', 'success');
+      }
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      showToast('Failed to upload document', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [apiConfig, showToast]);
+
+  // --- ATTENDANCE MANAGEMENT ---
+  const markAttendance = useCallback(async (staffId, status, date = new Date()) => {
+    try {
+      const attendanceRecord = {
+        staffId,
+        date: date.toISOString().split('T')[0],
+        status, // 'present', 'absent', 'late', 'half-day'
+        markedAt: new Date().toISOString(),
+        markedBy: user?.email || 'System'
+      };
+      
+      setAttendanceData(prev => {
+        const filtered = prev.filter(a => 
+          a.staffId !== staffId || a.date !== attendanceRecord.date
+        );
+        return [...filtered, attendanceRecord];
+      });
+      
+      showToast('Attendance marked successfully', 'success');
+    } catch (error) {
+      console.error('Error marking attendance:', error);
+      showToast('Failed to mark attendance', 'error');
+    }
+  }, [showToast, user]);
+
+  // --- PERFORMANCE REVIEWS ---
+  const createPerformanceReview = useCallback(async (staffId, reviewData) => {
+    try {
+      setPerformanceReviews(prev => ({
+        ...prev,
+        [staffId]: [...(prev[staffId] || []), {
+          ...reviewData,
+          reviewDate: new Date().toISOString(),
+          reviewedBy: user?.email || 'System'
+        }]
+      }));
+      showToast('Performance review created successfully', 'success');
+    } catch (error) {
+      console.error('Error creating review:', error);
+      showToast('Failed to create review', 'error');
+    }
+  }, [showToast, user]);
+
+  // --- SCHEDULING ---
+  const updateStaffSchedule = useCallback(async (staffId, schedule) => {
+    try {
+      setStaffSchedule(prev => ({
+        ...prev,
+        [staffId]: schedule
+      }));
+      showToast('Schedule updated successfully', 'success');
+    } catch (error) {
+      console.error('Error updating schedule:', error);
+      showToast('Failed to update schedule', 'error');
+    }
+  }, [showToast]);
+
+  // --- TIME TRACKING ---
+  const startTimeTracking = useCallback((staffId) => {
+    setTimeTracking(prev => ({
+      ...prev,
+      [staffId]: {
+        startTime: new Date().toISOString(),
+        isTracking: true
+      }
+    }));
+    showToast('Time tracking started', 'success');
+  }, [showToast]);
+
+  const stopTimeTracking = useCallback((staffId) => {
+    const tracking = timeTracking[staffId];
+    if (tracking) {
+      const duration = new Date() - new Date(tracking.startTime);
+      setTimeTracking(prev => ({
+        ...prev,
+        [staffId]: {
+          ...prev[staffId],
+          isTracking: false,
+          endTime: new Date().toISOString(),
+          duration: duration
+        }
+      }));
+      showToast('Time tracking stopped', 'success');
+    }
+  }, [timeTracking, showToast]);
+
+  // --- LEAVE MANAGEMENT ---
+  const requestLeave = useCallback(async (staffId, leaveData) => {
+    try {
+      const leaveRequest = {
+        staffId,
+        ...leaveData,
+        status: 'pending',
+        requestedAt: new Date().toISOString()
+      };
+      
+      setLeaveRequests(prev => [...prev, leaveRequest]);
+      showToast('Leave request submitted successfully', 'success');
+    } catch (error) {
+      console.error('Error submitting leave request:', error);
+      showToast('Failed to submit leave request', 'error');
+    }
+  }, [showToast]);
+
+  const approveLeave = useCallback((requestId) => {
+    setLeaveRequests(prev => prev.map(req => 
+      req._id === requestId ? { ...req, status: 'approved' } : req
+    ));
+    showToast('Leave request approved', 'success');
+  }, [showToast]);
+
+  // --- TASK ASSIGNMENT ---
+  const assignTask = useCallback(async (staffId, taskData) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/workflow/tasks`, {
+        ...taskData,
+        assignedTo: staffId
+      }, apiConfig);
+      
+      if (response.data.success) {
+        setTaskAssignments(prev => ({
+          ...prev,
+          [staffId]: [...(prev[staffId] || []), response.data.data]
+        }));
+        showToast('Task assigned successfully', 'success');
+      }
+    } catch (error) {
+      console.error('Error assigning task:', error);
+      showToast('Failed to assign task', 'error');
+    }
+  }, [apiConfig, showToast]);
+
+  // --- STAFF ONBOARDING ---
+  const updateOnboardingStatus = useCallback((staffId, step, completed) => {
+    setStaffOnboarding(prev => ({
+      ...prev,
+      [staffId]: {
+        ...prev[staffId],
+        [step]: completed,
+        updatedAt: new Date().toISOString()
+      }
+    }));
+    showToast('Onboarding status updated', 'success');
+  }, [showToast]);
+
+  // --- TRAINING MANAGEMENT ---
+  const assignTraining = useCallback((staffId, trainingData) => {
+    setTrainingData(prev => ({
+      ...prev,
+      [staffId]: [...(prev[staffId] || []), {
+        ...trainingData,
+        assignedAt: new Date().toISOString(),
+        status: 'assigned'
+      }]
+    }));
+    showToast('Training assigned successfully', 'success');
+  }, [showToast]);
+
+  // --- SAVED FILTERS ---
+  const saveCurrentFilter = useCallback(() => {
+    const filter = {
+      id: Date.now().toString(),
+      name: `Filter ${savedFilters.length + 1}`,
+      searchTerm,
+      statusFilter,
+      permissionFilter,
+      performanceFilter,
+      dateRangeFilter,
+      sortBy,
+      sortOrder
+    };
+    setSavedFilters(prev => [...prev, filter]);
+    showToast('Filter saved successfully', 'success');
+  }, [searchTerm, statusFilter, permissionFilter, performanceFilter, dateRangeFilter, sortBy, sortOrder, savedFilters.length, showToast]);
+
+  const loadFilter = useCallback((filter) => {
+    setSearchTerm(filter.searchTerm || '');
+    setStatusFilter(filter.statusFilter || '');
+    setPermissionFilter(filter.permissionFilter || '');
+    setPerformanceFilter(filter.performanceFilter || '');
+    setDateRangeFilter(filter.dateRangeFilter || { start: '', end: '' });
+    setSortBy(filter.sortBy || 'name');
+    setSortOrder(filter.sortOrder || 'asc');
+    setCurrentFilter(filter);
+    showToast('Filter loaded successfully', 'success');
+  }, [showToast]);
+
+  // --- STAFF COMPARISON ---
+  const toggleComparisonMode = useCallback(() => {
+    setComparisonMode(prev => !prev);
+    if (!comparisonMode) {
+      setSelectedForComparison([]);
+    }
+  }, [comparisonMode]);
+
+  const handleTabChange = useCallback((index) => {
+    if (index === 1) {
+      if (selectedForComparison.length === 0 && selectedStaffIds.length > 0) {
+        setSelectedForComparison(selectedStaffIds);
+      }
+    }
+  }, [selectedForComparison.length, selectedStaffIds]);
+
+  // --- REPORTS GENERATION ---
+  const generateReport = useCallback(async (reportType, options = {}) => {
+    try {
+      setLoading(true);
+      const reportData = {
+        type: reportType,
+        staffIds: options.staffIds || staffData.map(s => s._id),
+        dateRange: options.dateRange || dateRangeFilter,
+        format: options.format || 'pdf'
+      };
+      
+      // Generate report data
+      const report = {
+        generatedAt: new Date().toISOString(),
+        type: reportType,
+        data: reportData
+      };
+      
+      showToast(`${reportType} report generated successfully`, 'success');
+      return report;
+    } catch (error) {
+      console.error('Error generating report:', error);
+      showToast('Failed to generate report', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [staffData, dateRangeFilter, showToast]);
 
   // --- UTILITY FUNCTIONS ---
   const handlePresetSelect = useCallback((presetName) => {
@@ -758,15 +1424,96 @@ const StaffManagement = () => {
     }
   }, [staffToDelete, deleteStaff, onDeleteModalClose]);
 
-  // Filter staff based on search and status
+  // Advanced filtering and sorting
   const filteredStaff = useMemo(() => {
-    return staffData.filter(staff => {
-      const matchesSearch = staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           staff.email.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = !statusFilter || (statusFilter === 'active' ? staff.isActive : !staff.isActive);
-      return matchesSearch && matchesStatus;
+    let filtered = [...staffData];
+    
+    // Search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(staff => 
+        staff.name?.toLowerCase().includes(searchLower) ||
+        staff.email?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Status filter
+    if (statusFilter) {
+      filtered = filtered.filter(staff => 
+        statusFilter === 'active' ? staff.isActive : !staff.isActive
+      );
+    }
+    
+    // Permission filter
+    if (permissionFilter) {
+      filtered = filtered.filter(staff => 
+        staff.permissions?.includes(permissionFilter)
+      );
+    }
+    
+    // Performance filter
+    if (performanceFilter) {
+      filtered = filtered.filter(staff => {
+        const score = teamPerformance?.teamLeaderboard?.find(m => m.staffId === staff._id)?.performanceScore || 0;
+        if (performanceFilter === 'high') return score >= 80;
+        if (performanceFilter === 'medium') return score >= 50 && score < 80;
+        if (performanceFilter === 'low') return score < 50;
+        return true;
+      });
+    }
+    
+    // Date range filter
+    if (dateRangeFilter.start || dateRangeFilter.end) {
+      filtered = filtered.filter(staff => {
+        const createdDate = new Date(staff.createdAt);
+        if (dateRangeFilter.start && createdDate < new Date(dateRangeFilter.start)) return false;
+        if (dateRangeFilter.end && createdDate > new Date(dateRangeFilter.end)) return false;
+        return true;
+      });
+    }
+    
+    // Sorting
+    filtered.sort((a, b) => {
+      let aVal, bVal;
+      switch (sortBy) {
+        case 'name':
+          aVal = a.name?.toLowerCase() || '';
+          bVal = b.name?.toLowerCase() || '';
+          break;
+        case 'email':
+          aVal = a.email?.toLowerCase() || '';
+          bVal = b.email?.toLowerCase() || '';
+          break;
+        case 'status':
+          aVal = a.isActive ? 1 : 0;
+          bVal = b.isActive ? 1 : 0;
+          break;
+        case 'permissions':
+          aVal = a.permissions?.length || 0;
+          bVal = b.permissions?.length || 0;
+          break;
+        case 'performance':
+          aVal = teamPerformance?.teamLeaderboard?.find(m => m.staffId === a._id)?.performanceScore || 0;
+          bVal = teamPerformance?.teamLeaderboard?.find(m => m.staffId === b._id)?.performanceScore || 0;
+          break;
+        case 'created':
+          aVal = new Date(a.createdAt).getTime();
+          bVal = new Date(b.createdAt).getTime();
+          break;
+        default:
+          aVal = a.name?.toLowerCase() || '';
+          bVal = b.name?.toLowerCase() || '';
+      }
+      
+      if (sortOrder === 'asc') {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      } else {
+        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+      }
     });
-  }, [staffData, searchTerm, statusFilter]);
+    
+    return filtered;
+  }, [staffData, searchTerm, statusFilter, permissionFilter, performanceFilter, dateRangeFilter, sortBy, sortOrder, teamPerformance]);
 
   // Load data on component mount
   useEffect(() => {
@@ -774,7 +1521,9 @@ const StaffManagement = () => {
     fetchPermissions();
     fetchTeamPerformance();
     fetchLeadDistribution();
-  }, [fetchStaff, fetchPermissions, fetchTeamPerformance, fetchLeadDistribution]);
+    fetchAnalytics();
+    fetchActivityLogs();
+  }, [fetchStaff, fetchPermissions, fetchTeamPerformance, fetchLeadDistribution, fetchAnalytics, fetchActivityLogs]);
 
   // Load staff details when selected
   useEffect(() => {
@@ -827,7 +1576,7 @@ const StaffManagement = () => {
         colorScheme={selectedPreset === name ? 'green' : 'gray'}
         mb={2}
         mr={2}
-        borderRadius="xl"
+        borderRadius="7px"
         _hover={{ 
           transform: 'translateY(-2px)', 
           boxShadow: 'lg',
@@ -859,102 +1608,169 @@ const StaffManagement = () => {
     ));
   };
 
-  const renderStaffCard = (staff) => (
-    <Card 
-      key={staff._id} 
-      bg="white" 
-      borderRadius="xl" 
-      boxShadow="md" 
-      border="1px" 
-      borderColor="gray.200"
-      _hover={{ transform: 'translateY(-2px)', shadow: 'lg' }}
-      transition="all 0.3s"
-    >
-      <CardHeader>
-        <Flex justify="space-between" align="center">
-          <HStack>
-            <Avatar name={staff.name} size="md" />
-            <VStack align="start" spacing={1}>
-              <Text fontWeight="bold" color="gray.800">
-                {staff.name}
-              </Text>
-              <Text fontSize="sm" color="gray.500">
-                {staff.email}
-              </Text>
-            </VStack>
-          </HStack>
-          <Menu>
-            <MenuButton as={IconButton} icon={<MoreVerticalIcon />} variant="ghost" />
-            <MenuList>
-              <MenuItem icon={<ViewIcon />} onClick={() => handleStaffSelect(staff)}>
-                View Details
-              </MenuItem>
-              {isCoach && (
-                <>
-                  <MenuItem icon={<EditIcon />} onClick={() => {
-                    setSelectedStaff(staff);
-                    setSelectedPermissions(staff.permissions || []);
-                    onPermissionModalOpen();
-                  }}>
-                    Manage Permissions
-                  </MenuItem>
-                  <MenuItem icon={<SettingsIcon />} onClick={() => toggleStaffStatus(staff._id)}>
-                    {staff.isActive ? 'Deactivate' : 'Activate'}
-                  </MenuItem>
-                  <MenuDivider />
-                  <MenuItem icon={<DeleteIcon />} color="red.500" onClick={() => handleDeleteClick(staff)}>
-                    Delete
-                  </MenuItem>
-                </>
-              )}
-            </MenuList>
-          </Menu>
-        </Flex>
-      </CardHeader>
-      <CardBody>
-        <VStack spacing={3} align="stretch">
-          <HStack justify="space-between">
-            <Text fontSize="sm" color="gray.500">Status</Text>
-            <Badge colorScheme={staff.isActive ? 'green' : 'red'}>
-              {staff.isActive ? 'Active' : 'Inactive'}
-            </Badge>
-          </HStack>
-          
-          <HStack justify="space-between">
-            <Text fontSize="sm" color="gray.500">Permissions</Text>
-            <Text fontSize="sm" fontWeight="medium">
-              {staff.permissions?.length || 0}
-            </Text>
-          </HStack>
-          
-          {isCoach && (
+  const renderStaffCard = (staff) => {
+    const isSelected = selectedStaffIds.includes(staff._id);
+    return (
+      <Card 
+        key={staff._id} 
+        bg={isSelected ? "blue.50" : "white"}
+        borderRadius="7px" 
+        boxShadow={isSelected ? "md" : "sm"}
+        border={isSelected ? "2px" : "1px"}
+        borderColor={isSelected ? "blue.300" : "gray.200"}
+        _hover={{ shadow: 'md' }}
+        transition="all 0.3s"
+        position="relative"
+      >
+        {isCoach && (
+          <Box position="absolute" top={3} left={3} zIndex={1}>
+            {comparisonMode ? (
+              <Checkbox
+                isChecked={selectedForComparison.includes(staff._id)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedForComparison([...selectedForComparison, staff._id]);
+                  } else {
+                    setSelectedForComparison(selectedForComparison.filter(id => id !== staff._id));
+                  }
+                }}
+                colorScheme="purple"
+                size="lg"
+              />
+            ) : (
+              <Checkbox
+                isChecked={isSelected}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedStaffIds([...selectedStaffIds, staff._id]);
+                  } else {
+                    setSelectedStaffIds(selectedStaffIds.filter(id => id !== staff._id));
+                  }
+                }}
+                colorScheme="blue"
+                size="lg"
+              />
+            )}
+          </Box>
+        )}
+        <CardHeader>
+          <Flex justify="space-between" align="center">
+            <HStack>
+              <Avatar name={staff.name} size="md" />
+              <VStack align="start" spacing={1}>
+                <Text fontWeight="bold" color="gray.800">
+                  {staff.name}
+                </Text>
+                <Text fontSize="sm" color="gray.500">
+                  {staff.email}
+                </Text>
+              </VStack>
+            </HStack>
+            <Menu>
+              <MenuButton as={IconButton} icon={<MoreVerticalIcon />} variant="ghost" />
+              <MenuList>
+                <MenuItem icon={<ViewIcon />} onClick={() => handleStaffSelect(staff)}>
+                  View Details
+                </MenuItem>
+                {isCoach && (
+                  <>
+                    <MenuItem icon={<EditIcon />} onClick={() => {
+                      setSelectedStaff(staff);
+                      setSelectedPermissions(staff.permissions || []);
+                      onPermissionModalOpen();
+                    }}>
+                      Manage Permissions
+                    </MenuItem>
+                    <MenuItem icon={<SettingsIcon />} onClick={() => toggleStaffStatus(staff._id)}>
+                      {staff.isActive ? 'Deactivate' : 'Activate'}
+                    </MenuItem>
+                    <MenuItem icon={<ViewIcon />} onClick={() => {
+                      setSelectedStaff(staff);
+                      fetchActivityLogs(staff._id);
+                      onActivityLogModalOpen();
+                    }}>
+                      View Activity Logs
+                    </MenuItem>
+                    
+                    <MenuItem icon={<ViewIcon />} onClick={() => {
+                      setSelectedStaff(staff);
+                      onAttendanceModalOpen();
+                    }}>
+                      Mark Attendance
+                    </MenuItem>
+                    <MenuItem icon={<AwardIcon />} onClick={() => {
+                      setSelectedStaff(staff);
+                      onReviewModalOpen();
+                    }}>
+                      Performance Review
+                    </MenuItem>
+                    <MenuItem icon={<TargetIcon />} onClick={() => {
+                      setSelectedStaff(staff);
+                      onTimeTrackingModalOpen();
+                    }}>
+                      Time Tracking
+                    </MenuItem>
+                    <MenuItem icon={<ViewIcon />} onClick={() => {
+                      setSelectedStaff(staff);
+                      onLeaveModalOpen();
+                    }}>
+                      Leave Management
+                    </MenuItem>
+                    <MenuDivider />
+                    <MenuItem icon={<DeleteIcon />} color="red.500" onClick={() => handleDeleteClick(staff)}>
+                      Delete
+                    </MenuItem>
+                  </>
+                )}
+              </MenuList>
+            </Menu>
+          </Flex>
+        </CardHeader>
+        <CardBody>
+          <VStack spacing={3} align="stretch">
             <HStack justify="space-between">
-              <Text fontSize="sm" color="gray.500">Lead Ratio</Text>
+              <Text fontSize="sm" color="gray.500">Status</Text>
+              <Badge colorScheme={staff.isActive ? 'green' : 'red'}>
+                {staff.isActive ? 'Active' : 'Inactive'}
+              </Badge>
+            </HStack>
+            
+            <HStack justify="space-between">
+              <Text fontSize="sm" color="gray.500">Permissions</Text>
               <Text fontSize="sm" fontWeight="medium">
-                {staff.distributionRatio || 1}x
+                {staff.permissions?.length || 0}
               </Text>
             </HStack>
-          )}
-          
-          <HStack justify="space-between">
-            <Text fontSize="sm" color="gray.500">Last Active</Text>
-            <Text fontSize="sm">
-              {staff.lastActive ? new Date(staff.lastActive).toLocaleDateString() : 'Never'}
-            </Text>
-          </HStack>
-        </VStack>
-      </CardBody>
-    </Card>
-  );
+            
+            {isCoach && (
+              <HStack justify="space-between">
+                <Text fontSize="sm" color="gray.500">Lead Ratio</Text>
+                <Text fontSize="sm" fontWeight="medium">
+                  {staff.distributionRatio || 1}x
+                </Text>
+              </HStack>
+            )}
+            
+            <HStack justify="space-between">
+              <Text fontSize="sm" color="gray.500">Last Active</Text>
+              <Text fontSize="sm">
+                {staff.lastActive ? new Date(staff.lastActive).toLocaleDateString() : 'Never'}
+              </Text>
+            </HStack>
+          </VStack>
+        </CardBody>
+      </Card>
+    );
+  };
 
   const renderTeamLeaderboard = () => {
     if (!teamPerformance) return <Skeleton height="200px" />;
     
     return (
-      <Card bg="white" borderRadius="xl" boxShadow="md" border="1px" borderColor="gray.200">
-        <CardHeader>
-          <Heading size="md" color="gray.800">
-            🏆 Team Performance Leaderboard
+      <Card bg="white" borderRadius="7px" boxShadow="sm" border="1px" borderColor="gray.200">
+        <CardHeader pb={3}>
+          <Heading size="sm" color="gray.800" fontWeight="semibold">
+            Team Performance Leaderboard
           </Heading>
         </CardHeader>
         <CardBody>
@@ -1009,15 +1825,14 @@ const StaffManagement = () => {
     if (!isCoach) return null;
     
     return (
-      <Card bg="white" borderRadius="xl" boxShadow="md" border="1px" borderColor="gray.200">
-        <CardHeader>
+      <Card bg="white" borderRadius="7px" boxShadow="sm" border="1px" borderColor="gray.200">
+        <CardHeader pb={3}>
           <Flex justify="space-between" align="center">
-            <Heading size="md" color="gray.800">
-              📊 Lead Distribution
+            <Heading size="sm" color="gray.800" fontWeight="semibold">
+              Lead Distribution
             </Heading>
-            <Button size="sm" onClick={onDistributionModalOpen}>
-              <EditIcon mr={2} />
-              Manage
+            <Button size="xs" variant="ghost" onClick={onDistributionModalOpen}>
+              <EditIcon />
             </Button>
           </Flex>
         </CardHeader>
@@ -1068,147 +1883,345 @@ const StaffManagement = () => {
     return <ProfessionalLoader />;
   }
 
+  const bgColor = useColorModeValue('gray.50', 'gray.900');
+  const cardBg = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const textColor = useColorModeValue('gray.800', 'white');
+
   return (
-    <Box bg="gray.50" minH="100vh" pt="20px">
-      <Box w="100%" py={4} px={4}>
-        {/* Header */}
-        <Card bg="white" borderRadius="xl" boxShadow="lg" border="1px" borderColor="gray.200" mb={6}>
-          <CardHeader py={4}>
-            <Flex justify="space-between" align="center" direction={{ base: 'column', md: 'row' }} gap={4}>
-              <VStack align={{ base: 'center', md: 'start' }} spacing={2}>
-                <Heading size="xl" color="gray.800">
-                   Staff Management
-                </Heading>
-                <Text color="gray.500" fontSize="lg">
-                  {isCoach ? 'Manage your team members and their permissions' : 'View your team and performance'}
-                </Text>
-              </VStack>
-              
-              {isCoach && (
-                <Button
-                  colorScheme="blue"
-                  size="lg"
-                  leftIcon={<AddIcon />}
-                  onClick={onStaffModalOpen}
-                  borderRadius="xl"
-                  px={8}
-                >
-                  Add Staff Member
-                </Button>
-              )}
-            </Flex>
-          </CardHeader>
-        </Card>
+    <Container maxW="1600px" bg={bgColor} minH="100vh" pt={6} pb={10}>
+      {/* Header */}
+      <Flex justify="space-between" align="center" mb={8} direction={{ base: 'column', md: 'row' }} gap={4}>
+        <VStack align="start" spacing={1}>
+          <Heading size="lg" color={textColor}>Staff Management</Heading>
+          <Text color="gray.500" fontSize="md">
+            {isCoach ? 'Manage your team members and their permissions' : 'View your team and performance'}
+          </Text>
+        </VStack>
+        
+        {isCoach && (
+          <Button
+            colorScheme="blue"
+            size="md"
+            leftIcon={<AddIcon />}
+            onClick={onStaffModalOpen}
+            borderRadius="7px"
+            boxShadow="lg"
+            _hover={{ transform: 'translateY(-2px)', shadow: 'xl' }}
+            transition="all 0.2s"
+          >
+            Add Staff
+          </Button>
+        )}
+      </Flex>
 
-        {/* Stats Overview */}
-        <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={6} mb={8}>
-          <StatsCard
-            title="Total Staff"
-            value={staffData.length}
-            icon={<UsersIcon />}
-            color="blue"
-            isLoading={loading}
-          />
-          
-          <StatsCard
-            title="Team Performance"
-            value={`${teamPerformance?.teamAverage?.conversionRate || 0}%`}
-            icon={<TrendingUpIcon />}
-            color="green"
-            isLoading={loading}
-          />
-          
-          <StatsCard
-            title="Top Performer"
-            value={teamPerformance?.topPerformer?.performanceScore || 0}
-            icon={<AwardIcon />}
-            color="orange"
-            isLoading={loading}
-          />
-          
-          <StatsCard
-            title="Your Rank"
-            value={teamPerformance?.myRank ? `#${teamPerformance.myRank}` : 'Coach'}
-            icon={<TargetIcon />}
-            color="purple"
-            isLoading={loading}
-          />
-        </SimpleGrid>
+      {/* Stats Overview */}
+      <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={6} mb={8}>
+        <StatsCard
+          title="Total Staff"
+          value={staffData.length}
+          icon={<UsersIcon />}
+          color="blue"
+          isLoading={loading}
+        />
+        <StatsCard
+          title="Active Staff"
+          value={staffData.filter(s => s.isActive).length}
+          icon={<UsersIcon />}
+          color="green"
+          isLoading={loading}
+        />
+        <StatsCard
+          title="Team Performance"
+          value={`${teamPerformance?.teamAverage?.conversionRate || 0}%`}
+          icon={<TrendingUpIcon />}
+          color="purple"
+          isLoading={loading}
+        />
+        <StatsCard
+          title="Top Performer"
+          value={teamPerformance?.topPerformer?.performanceScore || 0}
+          icon={<AwardIcon />}
+          color="orange"
+          isLoading={loading}
+        />
+      </SimpleGrid>
 
-        {/* Main Content */}
-        <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap={8}>
-          {/* Staff List */}
-          <Box>
-            {/* Filters */}
-            <Card bg="white" borderRadius="xl" boxShadow="md" border="1px" borderColor="gray.200" mb={6}>
-              <CardBody>
-                <Flex gap={4} align="center">
-                  <InputGroup flex={1}>
-                    <InputLeftElement>
-                      <SearchIcon color="gray.400" />
+      {/* Main Content Area */}
+      <Card
+        bg={cardBg}
+        backdropFilter="blur(20px)"
+        borderRadius="xl"
+        boxShadow="sm"
+        border="1px solid"
+        borderColor={borderColor}
+        overflow="hidden"
+        minH="600px"
+      >
+        <Tabs variant="soft-rounded" colorScheme="blue" px={6} pt={6} onChange={handleTabChange}>
+          <Flex justify="space-between" align="center" wrap="wrap" gap={4} mb={6} borderBottom="1px solid" borderColor="gray.100" pb={4}>
+            <TabList>
+              <Tab borderRadius="lg" fontWeight="600">Overview</Tab>
+              <Tab borderRadius="lg" fontWeight="600">Comparison</Tab>
+            </TabList>
+
+            <HStack spacing={4}>
+                {selectedStaffIds.length > 0 && (
+                  <Menu>
+                    <MenuButton as={Button} size="sm" colorScheme="blue" variant="solid" rightIcon={<ChevronDownIcon />}>
+                      Bulk Actions ({selectedStaffIds.length})
+                    </MenuButton>
+                    <MenuList>
+                      <MenuItem onClick={() => { setBulkAction('activate'); onBulkActionModalOpen(); }}>Activate Selected</MenuItem>
+                      <MenuItem onClick={() => { setBulkAction('deactivate'); onBulkActionModalOpen(); }}>Deactivate Selected</MenuItem>
+                      <MenuItem onClick={() => { setBulkAction('permissions'); onBulkActionModalOpen(); }}>Update Permissions</MenuItem>
+                      <MenuDivider />
+                      <MenuItem color="red.500" onClick={() => { setBulkAction('delete'); onBulkActionModalOpen(); }}>Delete Selected</MenuItem>
+                    </MenuList>
+                  </Menu>
+                )}
+
+                <InputGroup size="sm" w="200px">
+                    <InputLeftElement pointerEvents="none">
+                        <SearchIcon color="gray.400" />
                     </InputLeftElement>
-                    <Input
-                      placeholder="Search staff members..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      borderRadius="xl"
+                    <Input 
+                        placeholder="Search..." 
+                        borderRadius="md"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                  </InputGroup>
-                  
-                  <Select
-                    placeholder="Filter by status"
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    w="200px"
-                    borderRadius="xl"
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </Select>
-                  
-                  <ButtonGroup size="sm">
-                    <IconButton
-                      icon={<GridIcon />}
-                      variant={viewMode === 'grid' ? 'solid' : 'outline'}
-                      onClick={() => setViewMode('grid')}
-                      borderRadius="xl"
-                    />
-                    <IconButton
-                      icon={<ListIcon />}
-                      variant={viewMode === 'list' ? 'solid' : 'outline'}
-                      onClick={() => setViewMode('list')}
-                      borderRadius="xl"
-                    />
-                  </ButtonGroup>
-                </Flex>
-              </CardBody>
-            </Card>
+                </InputGroup>
+                
+                <Select
+                  size="sm"
+                  w="120px"
+                  borderRadius="md"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="">Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </Select>
 
-            {/* Staff Grid/List */}
-            {loading ? (
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-                {[...Array(6)].map((_, i) => (
-                  <Skeleton key={i} height="200px" borderRadius="xl" />
-                ))}
-              </SimpleGrid>
-            ) : (
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-                {filteredStaff.map(renderStaffCard)}
-              </SimpleGrid>
-            )}
-          </Box>
+                <Menu>
+                  <MenuButton as={IconButton} icon={<SettingsIcon />} size="sm" variant="ghost" />
+                  <MenuList>
+                    {isCoach && (
+                      <>
+                        <MenuItem icon={<DownloadIcon />} onClick={onExportModalOpen}>Export Data</MenuItem>
+                        <MenuItem icon={<AddIcon />} as="label" cursor="pointer">
+                          Import Data
+                          <input type="file" accept=".csv,.json" style={{ display: 'none' }} onChange={(e) => {
+                            if (e.target.files[0]) importStaffData(e.target.files[0]);
+                          }} />
+                        </MenuItem>
+                        <MenuDivider />
+                      </>
+                    )}
+                    <MenuItem icon={<ViewIcon />} onClick={onAnalyticsModalOpen}>Analytics</MenuItem>
+                    <MenuItem icon={<ViewIcon />} onClick={onActivityLogModalOpen}>Activity Logs</MenuItem>
+                    <MenuItem icon={<SettingsIcon />} onClick={onReportsModalOpen}>Generate Reports</MenuItem>
+                  </MenuList>
+                </Menu>
 
-          {/* Sidebar */}
-          <VStack spacing={6} align="stretch">
-            {renderTeamLeaderboard()}
-            {renderLeadDistribution()}
-          </VStack>
-        </Grid>
+                <HStack spacing={0} border="1px solid" borderColor="gray.200" borderRadius="md" p={1}>
+                     <IconButton 
+                        icon={<GridIcon />}
+                        size="xs"
+                        variant={viewMode === 'grid' ? 'solid' : 'ghost'}
+                        colorScheme={viewMode === 'grid' ? 'blue' : 'gray'}
+                        onClick={() => setViewMode('grid')}
+                        aria-label="Grid View"
+                     />
+                     <IconButton 
+                        icon={<ListIcon />}
+                        size="xs"
+                        variant={viewMode === 'list' ? 'solid' : 'ghost'}
+                        colorScheme={viewMode === 'list' ? 'blue' : 'gray'}
+                        onClick={() => setViewMode('list')}
+                        aria-label="List View"
+                     />
+                </HStack>
+            </HStack>
+          </Flex>
+
+          <TabPanels>
+            {/* Overview Tab */}
+            <TabPanel p={0}>
+              <Grid templateColumns={{ base: "1fr", xl: "3fr 1fr" }} gap={8} pb={6}>
+                {/* Staff List */}
+                <Box>
+                    {viewMode === 'grid' ? (
+                        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+                            {filteredStaff.map((staff) => renderStaffCard(staff))}
+                        </SimpleGrid>
+                    ) : (
+                        <Card variant="outline">
+                           <CardBody p={0}>
+                             <TableContainer>
+                                <Table variant="simple" size="md">
+                                    <Thead bg="gray.50">
+                                        <Tr>
+                                            <Th>Staff Member</Th>
+                                            <Th>Status</Th>
+                                            <Th>Role</Th>
+                                            <Th>Performance</Th>
+                                            <Th>Leads</Th>
+                                            <Th>Actions</Th>
+                                        </Tr>
+                                    </Thead>
+                                    <Tbody>
+                                        {filteredStaff.map((staff) => (
+                                            <Tr key={staff._id} _hover={{ bg: 'gray.50' }}>
+                                                <Td>
+                                                    <HStack>
+                                                        <Avatar name={staff.name} size="sm" src={staff.avatar} />
+                                                        <VStack align="start" spacing={0}>
+                                                            <Text fontWeight="bold">{staff.name}</Text>
+                                                            <Text fontSize="xs" color="gray.500">{staff.email}</Text>
+                                                        </VStack>
+                                                    </HStack>
+                                                </Td>
+                                                <Td>
+                                                    <Badge colorScheme={staff.isActive ? 'green' : 'red'} borderRadius="full" px={2}>
+                                                        {staff.isActive ? 'Active' : 'Inactive'}
+                                                    </Badge>
+                                                </Td>
+                                                <Td>
+                                                    <Tag size="sm" colorScheme="purple" borderRadius="full">
+                                                        <TagLabel>{staff.role || 'Staff'}</TagLabel>
+                                                    </Tag>
+                                                </Td>
+                                                <Td>
+                                                    <CircularProgress 
+                                                        value={teamPerformance?.teamLeaderboard?.find(m => m.staffId === staff._id)?.performanceScore || 0} 
+                                                        color="blue.400" 
+                                                        size="40px" 
+                                                        thickness="10px"
+                                                    >
+                                                        <CircularProgressLabel fontSize="xs">
+                                                            {teamPerformance?.teamLeaderboard?.find(m => m.staffId === staff._id)?.performanceScore || 0}
+                                                        </CircularProgressLabel>
+                                                    </CircularProgress>
+                                                </Td>
+                                                <Td>
+                                                    <Text fontWeight="bold">
+                                                        {teamPerformance?.teamLeaderboard?.find(m => m.staffId === staff._id)?.leadsAssigned || 0}
+                                                    </Text>
+                                                </Td>
+                                                <Td>
+                                                    <Menu>
+                                                        <MenuButton as={IconButton} icon={<MoreVerticalIcon />} variant="ghost" size="sm" />
+                                                        <MenuList>
+                                                            <MenuItem icon={<ViewIcon />} onClick={() => handleStaffClick(staff)}>View Details</MenuItem>
+                                                            <MenuItem icon={<EditIcon />} onClick={() => handleEditStaff(staff)}>Edit</MenuItem>
+                                                            {isCoach && (
+                                                                <>
+                                                                    <MenuDivider />
+                                                                    <MenuItem icon={<DeleteIcon />} color="red.500" onClick={() => handleDeleteStaff(staff)}>Delete</MenuItem>
+                                                                </>
+                                                            )}
+                                                        </MenuList>
+                                                    </Menu>
+                                                </Td>
+                                            </Tr>
+                                        ))}
+                                    </Tbody>
+                                </Table>
+                             </TableContainer>
+                           </CardBody>
+                        </Card>
+                    )}
+                </Box>
+                
+                {/* Sidebar */}
+                <VStack spacing={6} display={{ base: 'none', xl: 'flex' }}>
+                    {renderTeamLeaderboard()}
+                    {isCoach && renderLeadDistribution()}
+                </VStack>
+              </Grid>
+            </TabPanel>
+
+            {/* Comparison Tab */}
+            <TabPanel p={0}>
+                <VStack spacing={6} align="stretch">
+                    <HStack justify="space-between">
+                         <Text fontWeight="bold" fontSize="lg">Staff Performance Comparison</Text>
+                         {selectedForComparison.length > 0 && (
+                             <Button size="sm" variant="outline" onClick={() => setSelectedForComparison([])}>
+                                Clear Selection
+                             </Button>
+                         )}
+                    </HStack>
+                    
+                    {selectedForComparison.length === 0 ? (
+                        <Center p={10} border="2px dashed" borderColor="gray.200" borderRadius="xl">
+                            <VStack spacing={4}>
+                                <UsersIcon />
+                                <Text color="gray.500">Select staff members from the Overview tab to compare them here.</Text>
+                            </VStack>
+                        </Center>
+                    ) : (
+                        <Card variant="outline">
+                            <CardBody>
+                              <TableContainer>
+                                <Table variant="simple">
+                                  <Thead>
+                                    <Tr>
+                                      <Th>Staff</Th>
+                                      <Th>Status</Th>
+                                      <Th>Permissions</Th>
+                                      <Th>Performance</Th>
+                                      <Th>Leads</Th>
+                                      <Th>Last Active</Th>
+                                    </Tr>
+                                  </Thead>
+                                  <Tbody>
+                                    {selectedForComparison.map(staffId => {
+                                      const staff = staffData.find(s => s._id === staffId);
+                                      if (!staff) return null;
+                                      const performance = teamPerformance?.teamLeaderboard?.find(m => m.staffId === staffId);
+                                      return (
+                                        <Tr key={staffId}>
+                                          <Td>
+                                            <HStack>
+                                              <Avatar name={staff.name} size="sm" />
+                                              <VStack align="start" spacing={0}>
+                                                <Text fontWeight="medium">{staff.name}</Text>
+                                                <Text fontSize="xs" color="gray.500">{staff.email}</Text>
+                                              </VStack>
+                                            </HStack>
+                                          </Td>
+                                          <Td>
+                                            <Badge colorScheme={staff.isActive ? 'green' : 'red'}>
+                                              {staff.isActive ? 'Active' : 'Inactive'}
+                                            </Badge>
+                                          </Td>
+                                          <Td>{staff.permissions?.length || 0}</Td>
+                                          <Td>{performance?.performanceScore || 0}</Td>
+                                          <Td>{performance?.leadsAssigned || 0}</Td>
+                                          <Td>{staff.lastActive ? new Date(staff.lastActive).toLocaleDateString() : 'Never'}</Td>
+                                        </Tr>
+                                      );
+                                    })}
+                                  </Tbody>
+                                </Table>
+                              </TableContainer>
+                            </CardBody>
+                        </Card>
+                    )}
+                </VStack>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
+      </Card>
 
         {/* Staff Details Modal */}
         <Modal isOpen={isDetailsModalOpen} onClose={onDetailsModalClose} size="xl">
           <ModalOverlay />
-          <ModalContent borderRadius="xl">
+          <ModalContent borderRadius="7px">
             <ModalHeader>
               <HStack>
                 <Avatar name={selectedStaff?.name} />
@@ -1222,13 +2235,80 @@ const StaffManagement = () => {
             <ModalBody>
               <Tabs>
                 <TabList>
+                  <Tab>Overview</Tab>
                   <Tab>Tasks</Tab>
                   <Tab>Metrics</Tab>
                   <Tab>Leads</Tab>
                   <Tab>Permissions</Tab>
+                  <Tab>Notes</Tab>
+                  <Tab>Documents</Tab>
+                  <Tab>Schedule</Tab>
+                  <Tab>Attendance</Tab>
+                  <Tab>Time Tracking</Tab>
+                  <Tab>Reviews</Tab>
+                  <Tab>Communication</Tab>
                 </TabList>
                 
                 <TabPanels>
+                  <TabPanel>
+                    <VStack spacing={4} align="stretch">
+                      <SimpleGrid columns={2} spacing={4}>
+                        <Card bg="blue.50" borderRadius="7px">
+                          <CardBody>
+                            <VStack align="start" spacing={1}>
+                              <Text fontSize="sm" color="gray.600">Status</Text>
+                              <Badge colorScheme={selectedStaff?.isActive ? 'green' : 'red'} fontSize="md">
+                                {selectedStaff?.isActive ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </VStack>
+                          </CardBody>
+                        </Card>
+                        <Card bg="purple.50" borderRadius="7px">
+                          <CardBody>
+                            <VStack align="start" spacing={1}>
+                              <Text fontSize="sm" color="gray.600">Permissions</Text>
+                              <Text fontSize="xl" fontWeight="bold">{selectedStaff?.permissions?.length || 0}</Text>
+                            </VStack>
+                          </CardBody>
+                        </Card>
+                        <Card bg="green.50" borderRadius="7px">
+                          <CardBody>
+                            <VStack align="start" spacing={1}>
+                              <Text fontSize="sm" color="gray.600">Last Active</Text>
+                              <Text fontSize="sm">
+                                {selectedStaff?.lastActive ? new Date(selectedStaff.lastActive).toLocaleDateString() : 'Never'}
+                              </Text>
+                            </VStack>
+                          </CardBody>
+                        </Card>
+                        <Card bg="orange.50" borderRadius="7px">
+                          <CardBody>
+                            <VStack align="start" spacing={1}>
+                              <Text fontSize="sm" color="gray.600">Lead Ratio</Text>
+                              <Text fontSize="xl" fontWeight="bold">{selectedStaff?.distributionRatio || 1}x</Text>
+                            </VStack>
+                          </CardBody>
+                        </Card>
+                      </SimpleGrid>
+                      <Divider />
+                      <Text fontWeight="bold">Quick Actions</Text>
+                      <SimpleGrid columns={2} spacing={2}>
+                        <Button size="sm" leftIcon={<EditIcon />} onClick={onNotesModalOpen}>
+                          Add Note
+                        </Button>
+                        <Button size="sm" leftIcon={<FileIcon />} onClick={onDocumentsModalOpen}>
+                          Upload Document
+                        </Button>
+                        <Button size="sm" leftIcon={<CalendarIcon />} onClick={onScheduleModalOpen}>
+                          View Schedule
+                        </Button>
+                        <Button size="sm" leftIcon={<AwardIcon />} onClick={onReviewModalOpen}>
+                          Performance Review
+                        </Button>
+                      </SimpleGrid>
+                    </VStack>
+                  </TabPanel>
+                  
                   <TabPanel>
                     {staffTasks ? (
                       <VStack spacing={4} align="stretch">
@@ -1343,6 +2423,194 @@ const StaffManagement = () => {
                       </Wrap>
                     </VStack>
                   </TabPanel>
+                  
+                  <TabPanel>
+                    <VStack spacing={4} align="stretch">
+                      <FormControl>
+                        <FormLabel>Add Note</FormLabel>
+                        <Textarea 
+                          placeholder="Enter note..."
+                          rows={3}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.ctrlKey && e.target.value.trim()) {
+                              saveStaffNote(selectedStaff?._id, e.target.value);
+                              e.target.value = '';
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <Divider />
+                      <VStack spacing={2} align="stretch" maxH="300px" overflowY="auto">
+                        {staffNotes[selectedStaff?._id]?.map((note, index) => (
+                          <Card key={index} size="sm" bg="gray.50">
+                            <CardBody>
+                              <HStack justify="space-between">
+                                <Text fontSize="sm">{note.note}</Text>
+                                <IconButton
+                                  size="xs"
+                                  icon={<DeleteIcon />}
+                                  onClick={() => deleteStaffNote(selectedStaff?._id, index)}
+                                />
+                              </HStack>
+                              <Text fontSize="xs" color="gray.500" mt={2}>
+                                {new Date(note.timestamp).toLocaleString()}
+                              </Text>
+                            </CardBody>
+                          </Card>
+                        )) || <Text color="gray.500">No notes</Text>}
+                      </VStack>
+                    </VStack>
+                  </TabPanel>
+                  
+                  <TabPanel>
+                    <VStack spacing={4} align="stretch">
+                      <FormControl>
+                        <FormLabel>Upload Document</FormLabel>
+                        <Input
+                          type="file"
+                          onChange={(e) => {
+                            if (e.target.files[0]) uploadStaffDocument(selectedStaff?._id, e.target.files[0]);
+                          }}
+                        />
+                      </FormControl>
+                      <Divider />
+                      <SimpleGrid columns={2} spacing={3}>
+                        {staffDocuments[selectedStaff?._id]?.map((doc, index) => (
+                          <Card key={index} size="sm">
+                            <CardBody>
+                              <VStack align="start" spacing={1}>
+                                <Text fontWeight="medium" fontSize="sm">{doc.name}</Text>
+                                <Text fontSize="xs" color="gray.500">{(doc.size / 1024).toFixed(2)} KB</Text>
+                                <Button size="xs" onClick={() => window.open(doc.url, '_blank')}>
+                                  View
+                                </Button>
+                              </VStack>
+                            </CardBody>
+                          </Card>
+                        )) || <Text color="gray.500">No documents</Text>}
+                      </SimpleGrid>
+                    </VStack>
+                  </TabPanel>
+                  
+                  <TabPanel>
+                    <VStack spacing={4} align="stretch">
+                      <SimpleGrid columns={7} spacing={2}>
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                          <Box key={day} textAlign="center" fontWeight="bold" p={2} bg="gray.100" borderRadius="md">
+                            {day}
+                          </Box>
+                        ))}
+                        {Array.from({ length: 35 }).map((_, index) => (
+                          <Box key={index} p={2} border="1px" borderColor="gray.200" borderRadius="md">
+                            <Text fontSize="xs" textAlign="center">{index + 1}</Text>
+                          </Box>
+                        ))}
+                      </SimpleGrid>
+                    </VStack>
+                  </TabPanel>
+                  
+                  <TabPanel>
+                    <VStack spacing={4} align="stretch">
+                      <HStack spacing={2}>
+                        <Button colorScheme="green" size="sm" onClick={() => markAttendance(selectedStaff?._id, 'present')}>
+                          Present
+                        </Button>
+                        <Button colorScheme="red" size="sm" onClick={() => markAttendance(selectedStaff?._id, 'absent')}>
+                          Absent
+                        </Button>
+                        <Button colorScheme="orange" size="sm" onClick={() => markAttendance(selectedStaff?._id, 'late')}>
+                          Late
+                        </Button>
+                      </HStack>
+                      <Divider />
+                      <VStack spacing={2} align="stretch" maxH="300px" overflowY="auto">
+                        {attendanceData.filter(a => a.staffId === selectedStaff?._id).slice(0, 10).map((record, index) => (
+                          <HStack key={index} justify="space-between" p={2} bg="gray.50" borderRadius="md">
+                            <Text fontSize="sm">{new Date(record.date).toLocaleDateString()}</Text>
+                            <Badge colorScheme={record.status === 'present' ? 'green' : 'red'}>
+                              {record.status}
+                            </Badge>
+                          </HStack>
+                        ))}
+                      </VStack>
+                    </VStack>
+                  </TabPanel>
+                  
+                  <TabPanel>
+                    <VStack spacing={4} align="stretch">
+                      {timeTracking[selectedStaff?._id]?.isTracking ? (
+                        <Card bg="green.50" p={4}>
+                          <VStack spacing={2}>
+                            <CircularProgress isIndeterminate color="green.500" />
+                            <Text fontWeight="bold">Tracking Active</Text>
+                            <Button colorScheme="red" onClick={() => stopTimeTracking(selectedStaff?._id)}>
+                              Stop
+                            </Button>
+                          </VStack>
+                        </Card>
+                      ) : (
+                        <Button colorScheme="green" onClick={() => startTimeTracking(selectedStaff?._id)}>
+                          Start Tracking
+                        </Button>
+                      )}
+                    </VStack>
+                  </TabPanel>
+                  
+                  <TabPanel>
+                    <VStack spacing={4} align="stretch">
+                      <FormControl>
+                        <FormLabel>Performance Rating (1-10)</FormLabel>
+                        <NumberInput min={1} max={10} defaultValue={5}>
+                          <NumberInputField />
+                          <NumberInputStepper>
+                            <NumberIncrementStepper />
+                            <NumberDecrementStepper />
+                          </NumberInputStepper>
+                        </NumberInput>
+                      </FormControl>
+                      <FormControl>
+                        <FormLabel>Comments</FormLabel>
+                        <Textarea rows={4} placeholder="Enter review comments..." />
+                      </FormControl>
+                      <Divider />
+                      <VStack spacing={2} align="stretch">
+                        {performanceReviews[selectedStaff?._id]?.map((review, index) => (
+                          <Card key={index} size="sm" bg="gray.50">
+                            <CardBody>
+                              <Text fontSize="sm">{review.comments}</Text>
+                              <Text fontSize="xs" color="gray.500">
+                                {new Date(review.reviewDate).toLocaleDateString()}
+                              </Text>
+                            </CardBody>
+                          </Card>
+                        ))}
+                      </VStack>
+                    </VStack>
+                  </TabPanel>
+                  
+                  <TabPanel>
+                    <VStack spacing={4} align="stretch">
+                      <Text fontWeight="bold">Communication History</Text>
+                      <VStack spacing={2} align="stretch" maxH="300px" overflowY="auto">
+                        {communicationHistory[selectedStaff?._id]?.map((comm, index) => (
+                          <Card key={index} size="sm" bg="gray.50">
+                            <CardBody>
+                              <VStack align="start" spacing={1}>
+                                <HStack>
+                                  <Badge colorScheme="blue">{comm.type}</Badge>
+                                  <Text fontSize="xs" color="gray.500">
+                                    {new Date(comm.timestamp).toLocaleString()}
+                                  </Text>
+                                </HStack>
+                                <Text fontSize="sm" fontWeight="medium">{comm.subject}</Text>
+                                <Text fontSize="sm">{comm.message}</Text>
+                              </VStack>
+                            </CardBody>
+                          </Card>
+                        )) || <Text color="gray.500">No communication history</Text>}
+                      </VStack>
+                    </VStack>
+                  </TabPanel>
                 </TabPanels>
               </Tabs>
             </ModalBody>
@@ -1353,7 +2621,7 @@ const StaffManagement = () => {
         <Modal isOpen={isStaffModalOpen} onClose={onStaffModalClose} size="6xl">
           <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
           <ModalContent 
-            borderRadius="xl" 
+            borderRadius="7px" 
             maxW="1200px" 
             maxH="90vh" 
             overflow="hidden"
@@ -1370,7 +2638,7 @@ const StaffManagement = () => {
                   <Box 
                     p={3} 
                     bg="blue.50" 
-                    borderRadius="xl"
+                    borderRadius="7px"
                     border="2px solid"
                     borderColor="blue.100"
                   >
@@ -1395,10 +2663,10 @@ const StaffManagement = () => {
                   {/* Left Column - Basic Info & Presets */}
                   <VStack spacing={6} align="stretch">
                     {/* Basic Information Section */}
-                    <Card bg="white" borderRadius="xl" boxShadow="sm" border="1px" borderColor="gray.200">
+                    <Card bg="white" borderRadius="7px" boxShadow="sm" border="1px" borderColor="gray.200">
                       <CardHeader pb={4}>
                         <HStack>
-                          <Box p={2} bg="blue.100" borderRadius="lg">
+                          <Box p={2} bg="blue.100" borderRadius="7px">
                             <EditIcon />
                           </Box>
                           <VStack align="start" spacing={0}>
@@ -1419,7 +2687,7 @@ const StaffManagement = () => {
                               value={newStaff.name}
                               onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
                               placeholder="Enter full name"
-                              borderRadius="lg"
+                              borderRadius="7px"
                               border="1px"
                               borderColor="gray.300"
                               _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px blue.500" }}
@@ -1433,7 +2701,7 @@ const StaffManagement = () => {
                               value={newStaff.email}
                               onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
                               placeholder="Enter email address"
-                              borderRadius="lg"
+                              borderRadius="7px"
                               border="1px"
                               borderColor="gray.300"
                               _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px blue.500" }}
@@ -1447,7 +2715,7 @@ const StaffManagement = () => {
                               value={newStaff.password}
                               onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
                               placeholder="Enter secure password"
-                              borderRadius="lg"
+                              borderRadius="7px"
                               border="1px"
                               borderColor="gray.300"
                               _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px blue.500" }}
@@ -1458,10 +2726,10 @@ const StaffManagement = () => {
                     </Card>
 
                     {/* Permission Presets Section */}
-                    <Card bg="white" borderRadius="xl" boxShadow="sm" border="1px" borderColor="gray.200">
+                    <Card bg="white" borderRadius="7px" boxShadow="sm" border="1px" borderColor="gray.200">
                       <CardHeader pb={4}>
                         <HStack>
-                          <Box p={2} bg="green.100" borderRadius="lg">
+                          <Box p={2} bg="green.100" borderRadius="7px">
                             <SettingsIcon />
                           </Box>
                           <VStack align="start" spacing={0}>
@@ -1486,7 +2754,7 @@ const StaffManagement = () => {
                           </Box>
                           
                           {selectedPreset && (
-                            <Alert status="success" borderRadius="lg" bg="green.50" border="1px" borderColor="green.200">
+                            <Alert status="success" borderRadius="7px" bg="green.50" border="1px" borderColor="green.200">
                               <AlertIcon color="green.500" />
                               <Box>
                                 <Text fontSize="sm" fontWeight="semibold" color="green.800">
@@ -1504,10 +2772,10 @@ const StaffManagement = () => {
                   </VStack>
 
                   {/* Right Column - Custom Permissions */}
-                  <Card bg="white" borderRadius="xl" boxShadow="sm" border="1px" borderColor="gray.200">
+                  <Card bg="white" borderRadius="7px" boxShadow="sm" border="1px" borderColor="gray.200">
                     <CardHeader pb={4}>
                       <HStack>
-                        <Box p={2} bg="purple.100" borderRadius="lg">
+                        <Box p={2} bg="purple.100" borderRadius="7px">
                           <SettingsIcon />
                         </Box>
                         <VStack align="start" spacing={0}>
@@ -1536,7 +2804,7 @@ const StaffManagement = () => {
                                   .flatMap(category => category.permissions.map(p => p.permission));
                                 setSelectedPermissions(allPermissions);
                               }}
-                              borderRadius="lg"
+                              borderRadius="7px"
                             >
                               Select All
                             </Button>
@@ -1545,7 +2813,7 @@ const StaffManagement = () => {
                               variant="outline"
                               colorScheme="red"
                               onClick={() => setSelectedPermissions([])}
-                              borderRadius="lg"
+                              borderRadius="7px"
                             >
                               Clear All
                             </Button>
@@ -1560,7 +2828,7 @@ const StaffManagement = () => {
                             placeholder="Search permissions..."
                             value={permissionSearch}
                             onChange={(e) => setPermissionSearch(e.target.value)}
-                            borderRadius="lg"
+                            borderRadius="7px"
                             border="1px"
                             borderColor="gray.300"
                             _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px blue.500" }}
@@ -1572,7 +2840,7 @@ const StaffManagement = () => {
                           overflowY="auto" 
                           border="1px" 
                           borderColor="gray.300" 
-                          borderRadius="lg" 
+                          borderRadius="7px" 
                           p={4}
                           bg="gray.50"
                         >
@@ -1603,7 +2871,7 @@ const StaffManagement = () => {
                                   if (filteredPermissions.length === 0) return null;
                                   
                                   return (
-                                    <Box key={category} bg="white" p={4} borderRadius="lg" border="1px" borderColor="gray.200" boxShadow="sm">
+                                    <Box key={category} bg="white" p={4} borderRadius="7px" border="1px" borderColor="gray.200" boxShadow="sm">
                                       <HStack mb={3}>
                                         <Box p={1} bg="blue.100" borderRadius="md">
                                           <SettingsIcon />
@@ -1659,7 +2927,7 @@ const StaffManagement = () => {
             >
               <HStack justify="space-between" w="full">
                 <HStack spacing={3}>
-                  <Box p={2} bg="blue.100" borderRadius="lg">
+                  <Box p={2} bg="blue.100" borderRadius="7px">
                     <TargetIcon />
                   </Box>
                   <VStack align="start" spacing={0}>
@@ -1682,7 +2950,7 @@ const StaffManagement = () => {
                       setSelectedPreset('');
                       setPermissionSearch('');
                     }}
-                    borderRadius="lg"
+                    borderRadius="7px"
                     border="1px"
                     borderColor="gray.300"
                     _hover={{ bg: "gray.50" }}
@@ -1692,7 +2960,7 @@ const StaffManagement = () => {
                   <Button 
                     onClick={createStaff} 
                     isLoading={loading} 
-                    borderRadius="lg"
+                    borderRadius="7px"
                     isDisabled={selectedPermissions.length === 0}
                     colorScheme="blue"
                     _disabled={{
@@ -1715,7 +2983,7 @@ const StaffManagement = () => {
         {/* Permission Management Modal */}
         <Modal isOpen={isPermissionModalOpen} onClose={onPermissionModalClose} size="6xl">
           <ModalOverlay />
-          <ModalContent maxH="80vh" overflowY="auto" borderRadius="xl">
+          <ModalContent maxH="80vh" overflowY="auto" borderRadius="7px">
             <ModalHeader>
               <HStack>
                 <Avatar name={selectedStaff?.name} size="sm" />
@@ -1730,7 +2998,7 @@ const StaffManagement = () => {
             <ModalCloseButton />
             <ModalBody>
               <VStack spacing={6} align="stretch">
-                <Alert status="info" borderRadius="lg">
+                <Alert status="info" borderRadius="7px">
                   <AlertIcon />
                   <Box>
                     <Text fontSize="sm" fontWeight="semibold">
@@ -1779,7 +3047,7 @@ const StaffManagement = () => {
                       }
                     }}
                     isLoading={loading}
-                    borderRadius="xl"
+                    borderRadius="7px"
                   >
                     Update Permissions
                   </Button>
@@ -1792,10 +3060,10 @@ const StaffManagement = () => {
         {/* Delete Confirmation Modal */}
         <Modal isOpen={isDeleteModalOpen} onClose={onDeleteModalClose} size="md">
           <ModalOverlay />
-          <ModalContent borderRadius="xl">
+          <ModalContent borderRadius="7px">
             <ModalHeader>
               <HStack>
-                <Box p={2} bg="red.50" borderRadius="lg">
+                <Box p={2} bg="red.50" borderRadius="7px">
                   <DeleteIcon />
                 </Box>
                 <VStack align="start" spacing={0}>
@@ -1806,7 +3074,7 @@ const StaffManagement = () => {
             </ModalHeader>
             <ModalCloseButton />
             <ModalBody>
-              <Alert status="warning" borderRadius="lg" mb={4}>
+              <Alert status="warning" borderRadius="7px" mb={4}>
                 <AlertIcon />
                 <VStack align="start" spacing={1}>
                   <AlertTitle>Are you sure?</AlertTitle>
@@ -1818,7 +3086,7 @@ const StaffManagement = () => {
               </Alert>
               
               {staffToDelete && (
-                <Card bg="gray.50" borderRadius="lg" p={4}>
+                <Card bg="gray.50" borderRadius="7px" p={4}>
                   <HStack>
                     <Avatar name={staffToDelete.name} size="md" />
                     <VStack align="start" spacing={1}>
@@ -1855,7 +3123,7 @@ const StaffManagement = () => {
                     }
                   }}
                   isLoading={loading}
-                  borderRadius="xl"
+                  borderRadius="7px"
                 >
                   Delete Staff Member
                 </Button>
@@ -1867,7 +3135,7 @@ const StaffManagement = () => {
         {/* Lead Distribution Modal */}
         <Modal isOpen={isDistributionModalOpen} onClose={onDistributionModalClose} size="lg">
           <ModalOverlay />
-          <ModalContent borderRadius="xl">
+          <ModalContent borderRadius="7px">
             <ModalHeader>Manage Lead Distribution</ModalHeader>
             <ModalCloseButton />
             <ModalBody>
@@ -1917,15 +3185,1088 @@ const StaffManagement = () => {
                   onDistributionModalClose();
                 }}
                 isLoading={loading}
-                borderRadius="xl"
+                borderRadius="7px"
               >
                 Save Changes
               </Button>
             </ModalFooter>
           </ModalContent>
         </Modal>
-      </Box>
-    </Box>
+
+        {/* Bulk Action Modal */}
+        <Modal isOpen={isBulkActionModalOpen} onClose={onBulkActionModalClose} size="lg">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px">
+            <ModalHeader>
+              {bulkAction === 'delete' && 'Delete Staff Members'}
+              {bulkAction === 'activate' && 'Activate Staff Members'}
+              {bulkAction === 'deactivate' && 'Deactivate Staff Members'}
+              {bulkAction === 'permissions' && 'Update Permissions'}
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              {bulkAction === 'delete' && (
+                <Alert status="warning" borderRadius="7px" mb={4}>
+                  <AlertIcon />
+                  <VStack align="start" spacing={1}>
+                    <AlertTitle>Are you sure?</AlertTitle>
+                    <AlertDescription>
+                      You are about to permanently delete {selectedStaffIds.length} staff members. This action cannot be undone.
+                    </AlertDescription>
+                  </VStack>
+                </Alert>
+              )}
+              {bulkAction === 'permissions' && (
+                <VStack spacing={4} align="stretch">
+                  <Text>Select permissions to assign to {selectedStaffIds.length} staff members:</Text>
+                  <CheckboxGroup value={selectedPermissions} onChange={setSelectedPermissions}>
+                    <SimpleGrid columns={2} spacing={2}>
+                      {Object.values(permissions.categories || {}).flatMap(cat => 
+                        cat.permissions.map(p => (
+                          <Checkbox key={p.permission} value={p.permission}>
+                            {p.name}
+                          </Checkbox>
+                        ))
+                      )}
+                    </SimpleGrid>
+                  </CheckboxGroup>
+                </VStack>
+              )}
+              {!bulkAction.includes('permissions') && (
+                <Text>
+                  This will affect {selectedStaffIds.length} staff member(s). Are you sure you want to continue?
+                </Text>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onBulkActionModalClose}>
+                Cancel
+              </Button>
+              <Button 
+                colorScheme={bulkAction === 'delete' ? 'red' : 'blue'}
+                onClick={async () => {
+                  if (bulkAction === 'delete') {
+                    await bulkDeleteStaff(selectedStaffIds);
+                  } else if (bulkAction === 'activate') {
+                    await bulkUpdateStatus(selectedStaffIds, 'active');
+                  } else if (bulkAction === 'deactivate') {
+                    await bulkUpdateStatus(selectedStaffIds, 'inactive');
+                  } else if (bulkAction === 'permissions') {
+                    await bulkUpdatePermissions(selectedStaffIds, selectedPermissions);
+                  }
+                  onBulkActionModalClose();
+                }}
+                isLoading={loading}
+                borderRadius="7px"
+              >
+                Confirm
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Export Modal */}
+        <Modal isOpen={isExportModalOpen} onClose={onExportModalClose} size="md">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px">
+            <ModalHeader>Export Staff Data</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack spacing={4} align="stretch">
+                <Text>Select export format:</Text>
+                <Select value={exportFormat} onChange={(e) => setExportFormat(e.target.value)}>
+                  <option value="csv">CSV (Excel compatible)</option>
+                  <option value="json">JSON</option>
+                </Select>
+                <Text fontSize="sm" color="gray.500">
+                  Exporting {filteredStaff.length} staff member(s)
+                </Text>
+              </VStack>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onExportModalClose}>
+                Cancel
+              </Button>
+              <Button 
+                colorScheme="blue"
+                onClick={() => {
+                  exportStaffData(exportFormat);
+                  onExportModalClose();
+                }}
+                isLoading={loading}
+                borderRadius="7px"
+              >
+                Export
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Analytics Modal */}
+        <Modal isOpen={isAnalyticsModalOpen} onClose={onAnalyticsModalClose} size="6xl">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px" maxH="90vh" overflowY="auto">
+            <ModalHeader>
+              <Heading size="lg">Staff Analytics Dashboard</Heading>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              {analyticsData ? (
+                <VStack spacing={6} align="stretch">
+                  <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+                    <Card bg="blue.50" borderRadius="7px">
+                      <CardBody>
+                        <Stat>
+                          <StatLabel>Total Staff</StatLabel>
+                          <StatNumber>{staffData.length}</StatNumber>
+                        </Stat>
+                      </CardBody>
+                    </Card>
+                    <Card bg="green.50" borderRadius="7px">
+                      <CardBody>
+                        <Stat>
+                          <StatLabel>Active Staff</StatLabel>
+                          <StatNumber>{staffData.filter(s => s.isActive).length}</StatNumber>
+                        </Stat>
+                      </CardBody>
+                    </Card>
+                    <Card bg="purple.50" borderRadius="7px">
+                      <CardBody>
+                        <Stat>
+                          <StatLabel>Avg Performance</StatLabel>
+                          <StatNumber>{analyticsData.teamAverage?.conversionRate || 0}%</StatNumber>
+                        </Stat>
+                      </CardBody>
+                    </Card>
+                  </SimpleGrid>
+                  
+                  {teamPerformance?.teamLeaderboard && (
+                    <Card>
+                      <CardHeader>
+                        <Heading size="md">Performance Breakdown</Heading>
+                      </CardHeader>
+                      <CardBody>
+                        <VStack spacing={3} align="stretch">
+                          {teamPerformance.teamLeaderboard.map((member, index) => (
+                            <HStack key={member.staffId} justify="space-between" p={3} bg="gray.50" borderRadius="md">
+                              <HStack>
+                                <Text fontWeight="bold">#{index + 1}</Text>
+                                <Text>{member.staffName}</Text>
+                              </HStack>
+                              <HStack spacing={4}>
+                                <Text>Score: {member.performanceScore}</Text>
+                                <Text>Leads: {member.leadsAssigned}</Text>
+                                <Text>Conversion: {member.conversionRate}%</Text>
+                              </HStack>
+                            </HStack>
+                          ))}
+                        </VStack>
+                      </CardBody>
+                    </Card>
+                  )}
+                </VStack>
+              ) : (
+                <Center py={8}>
+                  <CircularProgress isIndeterminate />
+                </Center>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <Button onClick={onAnalyticsModalClose} borderRadius="7px">
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Activity Logs Modal */}
+        <Modal isOpen={isActivityLogModalOpen} onClose={onActivityLogModalClose} size="4xl">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px" maxH="90vh" overflowY="auto">
+            <ModalHeader>
+              <Heading size="lg">
+                {selectedStaff ? `${selectedStaff.name}'s Activity Logs` : 'All Staff Activity Logs'}
+              </Heading>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              {activityLogs.length > 0 ? (
+                <VStack spacing={3} align="stretch">
+                  {activityLogs.map((log, index) => (
+                    <Card key={index} size="sm">
+                      <CardBody>
+                        <HStack justify="space-between">
+                          <VStack align="start" spacing={1}>
+                            <Text fontWeight="medium">{log.action || 'Activity'}</Text>
+                            <Text fontSize="sm" color="gray.500">
+                              {log.description || 'No description'}
+                            </Text>
+                          </VStack>
+                          <VStack align="end" spacing={1}>
+                            <Text fontSize="xs" color="gray.500">
+                              {log.timestamp ? new Date(log.timestamp).toLocaleString() : 'Unknown time'}
+                            </Text>
+                            {log.user && (
+                              <Badge colorScheme="blue">{log.user}</Badge>
+                            )}
+                          </VStack>
+                        </HStack>
+                      </CardBody>
+                    </Card>
+                  ))}
+                </VStack>
+              ) : (
+                <Center py={8}>
+                  <VStack spacing={2}>
+                    <Text color="gray.500">No activity logs found</Text>
+                    <Text fontSize="sm" color="gray.400">
+                      Activity logs will appear here as staff members perform actions
+                    </Text>
+                  </VStack>
+                </Center>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <Button onClick={onActivityLogModalClose} borderRadius="7px">
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Communication Modal */}
+        <Modal isOpen={isCommunicationModalOpen} onClose={onCommunicationModalClose} size="lg">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px">
+            <ModalHeader>Send Communication</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack spacing={4} align="stretch">
+                <FormControl>
+                  <FormLabel>Recipients</FormLabel>
+                  <Text fontSize="sm" color="gray.500">
+                    {selectedStaffIds.length > 0 
+                      ? `${selectedStaffIds.length} staff member(s) selected`
+                      : 'Select staff members first'}
+                  </Text>
+                </FormControl>
+                
+                <FormControl>
+                  <FormLabel>Communication Type</FormLabel>
+                  <Select value={communicationType} onChange={(e) => setCommunicationType(e.target.value)}>
+                    <option value="email">Email</option>
+                    <option value="sms">SMS</option>
+                    <option value="whatsapp">WhatsApp</option>
+                  </Select>
+                </FormControl>
+                
+                {communicationType === 'email' && (
+                  <FormControl>
+                    <FormLabel>Subject</FormLabel>
+                    <Input placeholder="Enter email subject" />
+                  </FormControl>
+                )}
+                
+                <FormControl>
+                  <FormLabel>Message</FormLabel>
+                  <Textarea placeholder="Enter your message..." rows={6} />
+                </FormControl>
+              </VStack>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onCommunicationModalClose}>
+                Cancel
+              </Button>
+              <Button 
+                colorScheme="blue"
+                onClick={() => {
+                  // sendCommunication(selectedStaffIds, communicationType, subject, message);
+                  showToast('Communication feature coming soon', 'info');
+                  onCommunicationModalClose();
+                }}
+                isLoading={loading}
+                borderRadius="7px"
+              >
+                Send
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Notes Modal */}
+        <Modal isOpen={isNotesModalOpen} onClose={onNotesModalClose} size="lg">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px">
+            <ModalHeader>
+              <HStack>
+                <EditIcon />
+                <Text>Notes for {selectedStaff?.name}</Text>
+              </HStack>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack spacing={4} align="stretch">
+                <FormControl>
+                  <FormLabel>Add New Note</FormLabel>
+                  <Textarea 
+                    placeholder="Enter note about this staff member..."
+                    rows={4}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && e.ctrlKey && e.target.value.trim()) {
+                        saveStaffNote(selectedStaff?._id, e.target.value);
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                </FormControl>
+                
+                <Divider />
+                
+                <Box>
+                  <Text fontWeight="bold" mb={3}>Previous Notes</Text>
+                  <VStack spacing={2} align="stretch" maxH="300px" overflowY="auto">
+                    {staffNotes[selectedStaff?._id]?.map((note, index) => (
+                      <Card key={index} size="sm" bg="gray.50">
+                        <CardBody>
+                          <HStack justify="space-between">
+                            <Text fontSize="sm">{note.note}</Text>
+                            <IconButton
+                              size="xs"
+                              icon={<DeleteIcon />}
+                              colorScheme="red"
+                              variant="ghost"
+                              onClick={() => deleteStaffNote(selectedStaff?._id, index)}
+                            />
+                          </HStack>
+                          <Text fontSize="xs" color="gray.500" mt={2}>
+                            {new Date(note.timestamp).toLocaleString()}
+                          </Text>
+                        </CardBody>
+                      </Card>
+                    )) || <Text color="gray.500" fontSize="sm">No notes yet</Text>}
+                  </VStack>
+                </Box>
+              </VStack>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onNotesModalClose}>
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Documents Modal */}
+        <Modal isOpen={isDocumentsModalOpen} onClose={onDocumentsModalClose} size="xl">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px" maxH="90vh" overflowY="auto">
+            <ModalHeader>
+              <HStack>
+                <FileIcon />
+                <Text>Documents - {selectedStaff?.name}</Text>
+              </HStack>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack spacing={4} align="stretch">
+                <FormControl>
+                  <FormLabel>Upload Document</FormLabel>
+                  <Input
+                    type="file"
+                    onChange={(e) => {
+                      if (e.target.files[0]) {
+                        uploadStaffDocument(selectedStaff?._id, e.target.files[0]);
+                      }
+                    }}
+                  />
+                </FormControl>
+                
+                <Divider />
+                
+                <Box>
+                  <Text fontWeight="bold" mb={3}>Uploaded Documents</Text>
+                  <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
+                    {staffDocuments[selectedStaff?._id]?.map((doc, index) => (
+                      <Card key={index} size="sm">
+                        <CardBody>
+                          <HStack justify="space-between">
+                            <VStack align="start" spacing={1}>
+                              <Text fontWeight="medium" fontSize="sm">{doc.name}</Text>
+                              <Text fontSize="xs" color="gray.500">
+                                {(doc.size / 1024).toFixed(2)} KB
+                              </Text>
+                              <Text fontSize="xs" color="gray.500">
+                                {new Date(doc.uploadedAt).toLocaleDateString()}
+                              </Text>
+                            </VStack>
+                            <Button size="xs" onClick={() => window.open(doc.url, '_blank')}>
+                              View
+                            </Button>
+                          </HStack>
+                        </CardBody>
+                      </Card>
+                    )) || <Text color="gray.500" fontSize="sm">No documents uploaded</Text>}
+                  </SimpleGrid>
+                </Box>
+              </VStack>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onDocumentsModalClose}>
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Schedule Modal */}
+        <Modal isOpen={isScheduleModalOpen} onClose={onScheduleModalClose} size="xl">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px">
+            <ModalHeader>
+              <HStack>
+                <CalendarIcon />
+                <Text>Schedule - {selectedStaff?.name}</Text>
+              </HStack>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack spacing={4} align="stretch">
+                <SimpleGrid columns={7} spacing={2}>
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <Box key={day} textAlign="center" fontWeight="bold" p={2} bg="gray.100" borderRadius="md">
+                      {day}
+                    </Box>
+                  ))}
+                  {Array.from({ length: 35 }).map((_, index) => (
+                    <Box
+                      key={index}
+                      p={3}
+                      border="1px"
+                      borderColor="gray.200"
+                      borderRadius="md"
+                      cursor="pointer"
+                      _hover={{ bg: 'blue.50' }}
+                    >
+                      <Text fontSize="xs" textAlign="center">{index + 1}</Text>
+                    </Box>
+                  ))}
+                </SimpleGrid>
+                
+                <Card bg="blue.50" p={4} borderRadius="7px">
+                  <VStack align="start" spacing={2}>
+                    <Text fontWeight="bold">Working Hours</Text>
+                    <HStack>
+                      <Text fontSize="sm">Monday - Friday: 9:00 AM - 6:00 PM</Text>
+                    </HStack>
+                    <Text fontSize="sm">Saturday: 10:00 AM - 2:00 PM</Text>
+                    <Text fontSize="sm">Sunday: Off</Text>
+                  </VStack>
+                </Card>
+              </VStack>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onScheduleModalClose}>
+                Close
+              </Button>
+              <Button colorScheme="blue" onClick={onScheduleModalClose}>
+                Save Schedule
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Attendance Modal */}
+        <Modal isOpen={isAttendanceModalOpen} onClose={onAttendanceModalClose} size="lg">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px">
+            <ModalHeader>
+              <HStack>
+                <CalendarIcon />
+                <Text>Attendance - {selectedStaff?.name}</Text>
+              </HStack>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack spacing={4} align="stretch">
+                <FormControl>
+                  <FormLabel>Mark Attendance for Today</FormLabel>
+                  <HStack spacing={2}>
+                    <Button
+                      colorScheme="green"
+                      onClick={() => markAttendance(selectedStaff?._id, 'present')}
+                      flex={1}
+                    >
+                      Present
+                    </Button>
+                    <Button
+                      colorScheme="red"
+                      onClick={() => markAttendance(selectedStaff?._id, 'absent')}
+                      flex={1}
+                    >
+                      Absent
+                    </Button>
+                    <Button
+                      colorScheme="orange"
+                      onClick={() => markAttendance(selectedStaff?._id, 'late')}
+                      flex={1}
+                    >
+                      Late
+                    </Button>
+                    <Button
+                      colorScheme="yellow"
+                      onClick={() => markAttendance(selectedStaff?._id, 'half-day')}
+                      flex={1}
+                    >
+                      Half Day
+                    </Button>
+                  </HStack>
+                </FormControl>
+                
+                <Divider />
+                
+                <Box>
+                  <Text fontWeight="bold" mb={3}>Recent Attendance</Text>
+                  <VStack spacing={2} align="stretch" maxH="300px" overflowY="auto">
+                    {attendanceData
+                      .filter(a => a.staffId === selectedStaff?._id)
+                      .slice(0, 10)
+                      .map((record, index) => (
+                        <HStack key={index} justify="space-between" p={2} bg="gray.50" borderRadius="md">
+                          <Text fontSize="sm">{new Date(record.date).toLocaleDateString()}</Text>
+                          <Badge colorScheme={
+                            record.status === 'present' ? 'green' :
+                            record.status === 'absent' ? 'red' :
+                            record.status === 'late' ? 'orange' : 'yellow'
+                          }>
+                            {record.status}
+                          </Badge>
+                        </HStack>
+                      ))}
+                    {attendanceData.filter(a => a.staffId === selectedStaff?._id).length === 0 && (
+                      <Text color="gray.500" fontSize="sm">No attendance records</Text>
+                    )}
+                  </VStack>
+                </Box>
+              </VStack>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onAttendanceModalClose}>
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Performance Review Modal */}
+        <Modal isOpen={isReviewModalOpen} onClose={onReviewModalClose} size="xl">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px" maxH="90vh" overflowY="auto">
+            <ModalHeader>
+              <HStack>
+                <AwardIcon />
+                <Text>Performance Review - {selectedStaff?.name}</Text>
+              </HStack>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack spacing={4} align="stretch">
+                <FormControl>
+                  <FormLabel>Review Period</FormLabel>
+                  <Select placeholder="Select period">
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="yearly">Yearly</option>
+                  </Select>
+                </FormControl>
+                
+                <FormControl>
+                  <FormLabel>Performance Rating (1-10)</FormLabel>
+                  <NumberInput min={1} max={10} defaultValue={5}>
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                </FormControl>
+                
+                <FormControl>
+                  <FormLabel>Strengths</FormLabel>
+                  <Textarea placeholder="List strengths..." rows={3} />
+                </FormControl>
+                
+                <FormControl>
+                  <FormLabel>Areas for Improvement</FormLabel>
+                  <Textarea placeholder="List areas for improvement..." rows={3} />
+                </FormControl>
+                
+                <FormControl>
+                  <FormLabel>Comments</FormLabel>
+                  <Textarea placeholder="Additional comments..." rows={4} />
+                </FormControl>
+                
+                <Divider />
+                
+                <Box>
+                  <Text fontWeight="bold" mb={3}>Previous Reviews</Text>
+                  <VStack spacing={3} align="stretch">
+                    {performanceReviews[selectedStaff?._id]?.map((review, index) => (
+                      <Card key={index} size="sm" bg="gray.50">
+                        <CardBody>
+                          <VStack align="start" spacing={2}>
+                            <HStack justify="space-between" w="full">
+                              <Text fontWeight="medium">{review.period || 'Review'}</Text>
+                              <Badge colorScheme="blue">Rating: {review.rating}/10</Badge>
+                            </HStack>
+                            <Text fontSize="sm">{review.comments}</Text>
+                            <Text fontSize="xs" color="gray.500">
+                              {new Date(review.reviewDate).toLocaleDateString()}
+                            </Text>
+                          </VStack>
+                        </CardBody>
+                      </Card>
+                    )) || <Text color="gray.500" fontSize="sm">No reviews yet</Text>}
+                  </VStack>
+                </Box>
+              </VStack>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onReviewModalClose}>
+                Cancel
+              </Button>
+              <Button colorScheme="blue" onClick={onReviewModalClose}>
+                Save Review
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Time Tracking Modal */}
+        <Modal isOpen={isTimeTrackingModalOpen} onClose={onTimeTrackingModalClose} size="lg">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px">
+            <ModalHeader>
+              <HStack>
+                <ClockIcon />
+                <Text>Time Tracking - {selectedStaff?.name}</Text>
+              </HStack>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack spacing={4} align="stretch">
+                {timeTracking[selectedStaff?._id]?.isTracking ? (
+                  <Card bg="green.50" p={6} borderRadius="7px">
+                    <VStack spacing={3}>
+                      <CircularProgress isIndeterminate color="green.500" size="60px" />
+                      <Text fontWeight="bold" fontSize="lg">Time Tracking Active</Text>
+                      <Text fontSize="sm" color="gray.600">
+                        Started at: {new Date(timeTracking[selectedStaff?._id].startTime).toLocaleTimeString()}
+                      </Text>
+                      <Button
+                        colorScheme="red"
+                        onClick={() => stopTimeTracking(selectedStaff?._id)}
+                        size="lg"
+                      >
+                        Stop Tracking
+                      </Button>
+                    </VStack>
+                  </Card>
+                ) : (
+                  <Card bg="blue.50" p={6} borderRadius="7px">
+                    <VStack spacing={3}>
+                      <ClockIcon />
+                      <Text fontWeight="bold">Start Time Tracking</Text>
+                      <Button
+                        colorScheme="green"
+                        onClick={() => startTimeTracking(selectedStaff?._id)}
+                        size="lg"
+                      >
+                        Start Tracking
+                      </Button>
+                    </VStack>
+                  </Card>
+                )}
+                
+                {timeTracking[selectedStaff?._id]?.duration && (
+                  <Card p={4} borderRadius="7px">
+                    <VStack align="start" spacing={2}>
+                      <Text fontWeight="bold">Last Session</Text>
+                      <Text fontSize="sm">
+                        Duration: {Math.floor(timeTracking[selectedStaff?._id].duration / 60000)} minutes
+                      </Text>
+                    </VStack>
+                  </Card>
+                )}
+              </VStack>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onTimeTrackingModalClose}>
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Leave Management Modal */}
+        <Modal isOpen={isLeaveModalOpen} onClose={onLeaveModalClose} size="lg">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px">
+            <ModalHeader>
+              <HStack>
+                <CalendarIcon />
+                <Text>Leave Management - {selectedStaff?.name}</Text>
+              </HStack>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack spacing={4} align="stretch">
+                <FormControl>
+                  <FormLabel>Request Leave</FormLabel>
+                  <VStack spacing={3}>
+                    <Input type="date" placeholder="Start Date" />
+                    <Input type="date" placeholder="End Date" />
+                    <Select placeholder="Leave Type">
+                      <option value="sick">Sick Leave</option>
+                      <option value="vacation">Vacation</option>
+                      <option value="personal">Personal</option>
+                      <option value="other">Other</option>
+                    </Select>
+                    <Textarea placeholder="Reason..." rows={3} />
+                    <Button colorScheme="blue" w="full" onClick={() => {
+                      requestLeave(selectedStaff?._id, {});
+                      onLeaveModalClose();
+                    }}>
+                      Submit Request
+                    </Button>
+                  </VStack>
+                </FormControl>
+                
+                <Divider />
+                
+                <Box>
+                  <Text fontWeight="bold" mb={3}>Leave Requests</Text>
+                  <VStack spacing={2} align="stretch" maxH="300px" overflowY="auto">
+                    {leaveRequests
+                      .filter(l => l.staffId === selectedStaff?._id)
+                      .map((request, index) => (
+                        <Card key={index} size="sm">
+                          <CardBody>
+                            <HStack justify="space-between">
+                              <VStack align="start" spacing={1}>
+                                <Text fontSize="sm" fontWeight="medium">
+                                  {request.startDate} to {request.endDate}
+                                </Text>
+                                <Text fontSize="xs" color="gray.500">{request.type}</Text>
+                              </VStack>
+                              <Badge colorScheme={
+                                request.status === 'approved' ? 'green' :
+                                request.status === 'rejected' ? 'red' : 'yellow'
+                              }>
+                                {request.status}
+                              </Badge>
+                            </HStack>
+                          </CardBody>
+                        </Card>
+                      ))}
+                    {leaveRequests.filter(l => l.staffId === selectedStaff?._id).length === 0 && (
+                      <Text color="gray.500" fontSize="sm">No leave requests</Text>
+                    )}
+                  </VStack>
+                </Box>
+              </VStack>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onLeaveModalClose}>
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Hierarchy Modal */}
+        <Modal isOpen={isHierarchyModalOpen} onClose={onHierarchyModalClose} size="4xl">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px" maxH="90vh" overflowY="auto">
+            <ModalHeader>
+              <Heading size="lg">Staff Hierarchy</Heading>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack spacing={4} align="stretch">
+                <Card bg="blue.50" p={6} borderRadius="7px">
+                  <VStack spacing={2}>
+                    <Avatar size="xl" name={user?.name || 'Coach'} />
+                    <Text fontWeight="bold" fontSize="lg">{user?.name || 'Coach'}</Text>
+                    <Badge colorScheme="purple">Coach</Badge>
+                  </VStack>
+                </Card>
+                
+                <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+                  {staffData.map((staff) => (
+                    <Card key={staff._id} bg="white" borderRadius="7px" p={4}>
+                      <VStack spacing={2}>
+                        <Avatar name={staff.name} />
+                        <Text fontWeight="medium">{staff.name}</Text>
+                        <Badge colorScheme="blue">Staff</Badge>
+                        <Text fontSize="xs" color="gray.500">{staff.email}</Text>
+                      </VStack>
+                    </Card>
+                  ))}
+                </SimpleGrid>
+              </VStack>
+            </ModalBody>
+            <ModalFooter>
+              <Button onClick={onHierarchyModalClose} borderRadius="7px">
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Reports Modal */}
+        <Modal isOpen={isReportsModalOpen} onClose={onReportsModalClose} size="xl">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px" maxH="90vh" overflowY="auto">
+            <ModalHeader>
+              <HStack>
+                <ReportIcon />
+                <Text>Generate Reports</Text>
+              </HStack>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                <Card cursor="pointer" _hover={{ shadow: 'lg' }} onClick={() => generateReport('performance')}>
+                  <CardBody>
+                    <VStack spacing={2}>
+                      <AwardIcon />
+                      <Text fontWeight="bold">Performance Report</Text>
+                      <Text fontSize="sm" color="gray.500">Staff performance metrics</Text>
+                    </VStack>
+                  </CardBody>
+                </Card>
+                
+                <Card cursor="pointer" _hover={{ shadow: 'lg' }} onClick={() => generateReport('attendance')}>
+                  <CardBody>
+                    <VStack spacing={2}>
+                      <CalendarIcon />
+                      <Text fontWeight="bold">Attendance Report</Text>
+                      <Text fontSize="sm" color="gray.500">Attendance records</Text>
+                    </VStack>
+                  </CardBody>
+                </Card>
+                
+                <Card cursor="pointer" _hover={{ shadow: 'lg' }} onClick={() => generateReport('tasks')}>
+                  <CardBody>
+                    <VStack spacing={2}>
+                      <TargetIcon />
+                      <Text fontWeight="bold">Tasks Report</Text>
+                      <Text fontSize="sm" color="gray.500">Task completion stats</Text>
+                    </VStack>
+                  </CardBody>
+                </Card>
+                
+                <Card cursor="pointer" _hover={{ shadow: 'lg' }} onClick={() => generateReport('leads')}>
+                  <CardBody>
+                    <VStack spacing={2}>
+                      <UsersIcon />
+                      <Text fontWeight="bold">Leads Report</Text>
+                      <Text fontSize="sm" color="gray.500">Lead assignment stats</Text>
+                    </VStack>
+                  </CardBody>
+                </Card>
+              </SimpleGrid>
+            </ModalBody>
+            <ModalFooter>
+              <Button onClick={onReportsModalClose} borderRadius="7px">
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Comparison Modal */}
+        <Modal isOpen={isComparisonModalOpen} onClose={onComparisonModalClose} size="6xl">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px" maxH="90vh" overflowY="auto">
+            <ModalHeader>
+              <Heading size="lg">Staff Comparison</Heading>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              {selectedForComparison.length > 0 ? (
+                <TableContainer>
+                  <Table variant="striped" size="md">
+                    <Thead>
+                      <Tr>
+                        <Th>Staff</Th>
+                        <Th>Status</Th>
+                        <Th>Permissions</Th>
+                        <Th>Performance</Th>
+                        <Th>Leads</Th>
+                        <Th>Conversion</Th>
+                        <Th>Last Active</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {selectedForComparison.map(staffId => {
+                        const staff = staffData.find(s => s._id === staffId);
+                        if (!staff) return null;
+                        const performance = teamPerformance?.teamLeaderboard?.find(m => m.staffId === staffId);
+                        return (
+                          <Tr key={staffId}>
+                            <Td>
+                              <HStack>
+                                <Avatar name={staff.name} size="sm" />
+                                <VStack align="start" spacing={0}>
+                                  <Text fontWeight="medium">{staff.name}</Text>
+                                  <Text fontSize="xs" color="gray.500">{staff.email}</Text>
+                                </VStack>
+                              </HStack>
+                            </Td>
+                            <Td>
+                              <Badge colorScheme={staff.isActive ? 'green' : 'red'}>
+                                {staff.isActive ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </Td>
+                            <Td>{staff.permissions?.length || 0}</Td>
+                            <Td>
+                              <Badge colorScheme={
+                                (performance?.performanceScore || 0) >= 80 ? 'green' :
+                                (performance?.performanceScore || 0) >= 50 ? 'orange' : 'red'
+                              }>
+                                {performance?.performanceScore || 0}
+                              </Badge>
+                            </Td>
+                            <Td>{performance?.leadsAssigned || 0}</Td>
+                            <Td>{performance?.conversionRate || 0}%</Td>
+                            <Td>{staff.lastActive ? new Date(staff.lastActive).toLocaleDateString() : 'Never'}</Td>
+                          </Tr>
+                        );
+                      })}
+                    </Tbody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Center py={8}>
+                  <VStack spacing={2}>
+                    <Text color="gray.500">Select staff members to compare</Text>
+                    <Text fontSize="sm" color="gray.400">
+                      Use checkboxes on staff cards to select members for comparison
+                    </Text>
+                  </VStack>
+                </Center>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <Button onClick={onComparisonModalClose} borderRadius="7px">
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Onboarding Modal */}
+        <Modal isOpen={isOnboardingModalOpen} onClose={onOnboardingModalClose} size="xl">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px">
+            <ModalHeader>
+              <HStack>
+                <UsersIcon />
+                <Text>Onboarding - {selectedStaff?.name}</Text>
+              </HStack>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack spacing={4} align="stretch">
+                {['Account Setup', 'Permissions Assigned', 'Training Completed', 'Documentation Reviewed', 'First Task Assigned'].map((step, index) => (
+                  <HStack key={index} justify="space-between" p={3} bg="gray.50" borderRadius="md">
+                    <Text fontWeight="medium">{step}</Text>
+                    <Switch
+                      isChecked={staffOnboarding[selectedStaff?._id]?.[step.toLowerCase().replace(/\s+/g, '_')] || false}
+                      onChange={(e) => updateOnboardingStatus(selectedStaff?._id, step.toLowerCase().replace(/\s+/g, '_'), e.target.checked)}
+                      colorScheme="green"
+                    />
+                  </HStack>
+                ))}
+              </VStack>
+            </ModalBody>
+            <ModalFooter>
+              <Button onClick={onOnboardingModalClose} borderRadius="7px">
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Training Modal */}
+        <Modal isOpen={isTrainingModalOpen} onClose={onTrainingModalClose} size="xl">
+          <ModalOverlay />
+          <ModalContent borderRadius="7px" maxH="90vh" overflowY="auto">
+            <ModalHeader>
+              <HStack>
+                <AwardIcon />
+                <Text>Training - {selectedStaff?.name}</Text>
+              </HStack>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack spacing={4} align="stretch">
+                <FormControl>
+                  <FormLabel>Assign Training</FormLabel>
+                  <VStack spacing={3}>
+                    <Input placeholder="Training Name" />
+                    <Select placeholder="Training Type">
+                      <option value="onboarding">Onboarding</option>
+                      <option value="skill">Skill Development</option>
+                      <option value="compliance">Compliance</option>
+                      <option value="product">Product Knowledge</option>
+                    </Select>
+                    <Input type="date" placeholder="Due Date" />
+                    <Button colorScheme="blue" w="full" onClick={() => {
+                      assignTraining(selectedStaff?._id, {});
+                      onTrainingModalClose();
+                    }}>
+                      Assign Training
+                    </Button>
+                  </VStack>
+                </FormControl>
+                
+                <Divider />
+                
+                <Box>
+                  <Text fontWeight="bold" mb={3}>Assigned Trainings</Text>
+                  <VStack spacing={2} align="stretch">
+                    {trainingData[selectedStaff?._id]?.map((training, index) => (
+                      <Card key={index} size="sm">
+                        <CardBody>
+                          <HStack justify="space-between">
+                            <VStack align="start" spacing={1}>
+                              <Text fontWeight="medium">{training.name}</Text>
+                              <Text fontSize="xs" color="gray.500">{training.type}</Text>
+                            </VStack>
+                            <Badge colorScheme={
+                              training.status === 'completed' ? 'green' :
+                              training.status === 'in-progress' ? 'blue' : 'yellow'
+                            }>
+                              {training.status}
+                            </Badge>
+                          </HStack>
+                        </CardBody>
+                      </Card>
+                    )) || <Text color="gray.500" fontSize="sm">No trainings assigned</Text>}
+                  </VStack>
+                </Box>
+              </VStack>
+            </ModalBody>
+            <ModalFooter>
+              <Button onClick={onTrainingModalClose} borderRadius="7px">
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+      </Container>
   );
 };
 

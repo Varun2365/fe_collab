@@ -73,4 +73,12 @@ router.get('/:staffId/metrics', coachStaffManagementController.getStaffMetrics);
 // Get staff assigned leads
 router.get('/:staffId/leads', coachStaffManagementController.getStaffLeads);
 
+// Get staff activity logs
+router.get('/activity', requirePermission('staff:read'), coachStaffManagementController.getActivityLogs);
+router.get('/:staffId/activity', requirePermission('staff:read'), coachStaffManagementController.getStaffActivityLogs);
+
+// Bulk operations
+router.post('/bulk-delete', requirePermission('staff:delete'), coachStaffManagementController.bulkDeleteStaff);
+router.post('/bulk-export', requirePermission('staff:read'), coachStaffManagementController.bulkExportStaff);
+
 module.exports = router;
