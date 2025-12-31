@@ -47,7 +47,7 @@ const delayUnitOptions = [
   { value: 'days', label: 'Days' },
 ];
 
-const MessageSequenceBuilder = ({ sequences = [], onChange }) => {
+const MessageSequenceBuilder = ({ sequences = [], onChange, templates = [] }) => {
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
@@ -67,6 +67,23 @@ const MessageSequenceBuilder = ({ sequences = [], onChange }) => {
           ? {
               ...step,
               [field]: value,
+            }
+          : step
+      )
+    );
+  };
+
+  const handleSelectTemplate = (id, templateId) => {
+    const tmpl = templates.find(t => (t._id || t.id) === templateId || t.id === templateId);
+    onChange?.(
+      sequences.map((step) =>
+        step.id === id
+          ? {
+              ...step,
+              templateId,
+              // If template has content/subject, apply defaults
+              content: tmpl?.content || step.content,
+              subject: tmpl?.subject || step.subject || '',
             }
           : step
       )
@@ -155,6 +172,21 @@ const MessageSequenceBuilder = ({ sequences = [], onChange }) => {
             </FormControl>
 
             <FormControl>
+              <FormLabel>Template (optional)</FormLabel>
+              <Select
+                value={step.templateId || ''}
+                onChange={(e) => handleSelectTemplate(step.id, e.target.value)}
+                placeholder="Select a template"
+              >
+                {templates
+                  .filter(t => !t.channel || t.channel === step.channel)
+                  .map((t) => (
+                    <option key={t._id || t.id} value={t._id || t.id}>{t.name || t.title || t.templateName}</option>
+                  ))}
+              </Select>
+            </FormControl>
+
+            <FormControl>
               <FormLabel>Delay before sending</FormLabel>
               <HStack>
                 <NumberInput
@@ -192,6 +224,17 @@ const MessageSequenceBuilder = ({ sequences = [], onChange }) => {
                 rows={4}
               />
             </FormControl>
+
+            {step.channel === 'email' && (
+              <FormControl>
+                <FormLabel>Email Subject</FormLabel>
+                <Input
+                  value={step.subject || ''}
+                  onChange={(e) => handleUpdateStep(step.id, 'subject', e.target.value)}
+                  placeholder="Enter email subject or select an email template"
+                />
+              </FormControl>
+            )}
           </VStack>
         </Box>
       ))}

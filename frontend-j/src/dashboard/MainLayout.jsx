@@ -1,18 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Box, Flex, useColorModeValue, useBreakpointValue } from '@chakra-ui/react';
+import { Box, Flex, useColorModeValue, useBreakpointValue, Modal, ModalOverlay, ModalContent, ModalCloseButton, ModalBody } from '@chakra-ui/react';
 import { useSelector } from 'react-redux';
 import Sidebar from './Sidebar';
 import TopNav from './TopNav';
-import { selectAuthStatus } from '../redux/authSlice';
+import { selectAuthStatus, selectToken } from '../redux/authSlice';
+import { getCoachId } from '../utils/authUtils';
+import DailyPriorityFeed from '../components/DailyPriorityFeed';
 
 const MainLayout = () => {
   const bgColor = useColorModeValue('gray.50', 'gray.900');
   const isAuthenticated = useSelector(selectAuthStatus);
+  const token = useSelector(selectToken);
+  const authState = useSelector(state => state.auth);
+  const coachId = getCoachId(authState);
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarWidth, setSidebarWidth] = useState('320px');
   const [isHoverMode, setIsHoverMode] = useState(false);
+
+  // Priority Feed modal state
+  const [isPriorityFeedOpen, setIsPriorityFeedOpen] = useState(false);
+  const onPriorityFeedOpen = () => setIsPriorityFeedOpen(true);
+  const onPriorityFeedClose = () => setIsPriorityFeedOpen(false);
   
   // Check if we're on mobile
   const isMobile = useBreakpointValue({ base: true, md: false });
@@ -34,7 +44,7 @@ const MainLayout = () => {
         if (event.detail.hoverMode !== undefined) {
           setIsHoverMode(event.detail.hoverMode);
         }
-        
+
         // In hover mode, always keep margin at 80px (collapsed width)
         // In normal mode, update margin based on sidebar width
         if (event.detail.hoverMode) {
@@ -48,6 +58,19 @@ const MainLayout = () => {
     window.addEventListener('sidebarToggle', handleSidebarToggle);
     return () => {
       window.removeEventListener('sidebarToggle', handleSidebarToggle);
+    };
+  }, []);
+
+  // Priority Feed modal event listener
+  useEffect(() => {
+    const handleOpenPriorityFeed = () => {
+      onPriorityFeedOpen();
+    };
+
+    window.addEventListener('openPriorityFeed', handleOpenPriorityFeed);
+
+    return () => {
+      window.removeEventListener('openPriorityFeed', handleOpenPriorityFeed);
     };
   }, []);
 
@@ -82,6 +105,29 @@ const MainLayout = () => {
           <Outlet />
         </Box>
       </Box>
+
+      {/* Priority Feed Modal */}
+      <Modal isOpen={isPriorityFeedOpen} onClose={onPriorityFeedClose} size="2xl" isCentered>
+        <ModalOverlay bg="blackAlpha.800" backdropFilter="blur(2px)" />
+        <ModalContent borderRadius="10px" boxShadow="2xl" h="80vh" display="flex" flexDirection="column">
+          <ModalCloseButton />
+          <ModalBody flex={1} py={4} px={6} overflowY="hidden">
+            <DailyPriorityFeed
+              token={token}
+              coachId={coachId}
+              onItemClick={(item) => {
+                // Handle item click - navigate to relevant section
+                if (item.leadId) {
+                  navigate(`/dashboard/leads?leadId=${item.leadId}`);
+                } else if (item.appointmentId) {
+                  navigate(`/dashboard/calendar?appointmentId=${item.appointmentId}`);
+                }
+                onPriorityFeedClose();
+              }}
+            />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };

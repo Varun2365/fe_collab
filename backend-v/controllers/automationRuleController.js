@@ -722,6 +722,34 @@ exports.getEventsAndActions = async (req, res) => {
                 description: 'Schedule a drip sequence for a lead',
                 configFields: ['sequenceId', 'delay']
             },
+            {
+                value: 'send_follow_up_message',
+                label: 'Send Follow-up Message',
+                category: 'Communication Actions',
+                description: 'Send a follow-up message based on previous interaction',
+                configFields: ['message', 'channel', 'delay', 'conditions']
+            },
+            {
+                value: 'send_personalized_message',
+                label: 'Send Personalized Message',
+                category: 'Communication Actions',
+                description: 'Send a message with personalized content based on lead data',
+                configFields: ['template', 'variables', 'channel']
+            },
+            {
+                value: 'send_bulk_message',
+                label: 'Send Bulk Message',
+                category: 'Communication Actions',
+                description: 'Send a message to multiple leads at once',
+                configFields: ['message', 'recipients', 'channel', 'segment']
+            },
+            {
+                value: 'schedule_reminder',
+                label: 'Schedule Reminder',
+                category: 'Communication Actions',
+                description: 'Schedule a reminder message for future delivery',
+                configFields: ['message', 'reminderTime', 'channel']
+            },
 
             // Task & Workflow Actions
             {

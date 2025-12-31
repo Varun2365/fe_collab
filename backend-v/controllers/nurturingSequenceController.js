@@ -6,34 +6,57 @@ const { publishEvent } = require('../services/rabbitmqProducer');
 
 // Create a new nurturing sequence
 exports.createSequence = asyncHandler(async (req, res) => {
-    const { name, description, category, steps, triggerConditions, settings } = req.body;
+    const { name, description, category, steps, triggers, triggerConditions, settings } = req.body;
     const coachId = req.coachId;
 
-    // Validate steps
-    if (!steps || steps.length === 0) {
+    // Validate that we have at least one trigger and one action/step
+    const hasTriggers = (triggers && Array.isArray(triggers) && triggers.length > 0) || 
+                        (triggerConditions && Object.keys(triggerConditions).length > 0);
+    const hasSteps = steps && Array.isArray(steps) && steps.length > 0;
+
+    if (!hasTriggers) {
         return res.status(400).json({
             success: false,
-            message: 'At least one step is required'
+            message: 'At least one trigger is required'
         });
     }
 
-    // Validate step numbers are sequential
-    const stepNumbers = steps.map(step => step.stepNumber).sort((a, b) => a - b);
-    for (let i = 0; i < stepNumbers.length; i++) {
-        if (stepNumbers[i] !== i + 1) {
-            return res.status(400).json({
-                success: false,
-                message: 'Step numbers must be sequential starting from 1'
-            });
+    if (!hasSteps) {
+        return res.status(400).json({
+            success: false,
+            message: 'At least one action/step is required'
+        });
+    }
+
+    // Validate step numbers are sequential (if steps exist)
+    if (hasSteps) {
+        const stepNumbers = steps.map(step => step.stepNumber).sort((a, b) => a - b);
+        for (let i = 0; i < stepNumbers.length; i++) {
+            if (stepNumbers[i] !== i + 1) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Step numbers must be sequential starting from 1'
+                });
+            }
         }
+    }
+
+    // Merge triggers into triggerConditions if provided
+    let finalTriggerConditions = triggerConditions || {};
+    if (triggers && Array.isArray(triggers) && triggers.length > 0) {
+        // Store triggers in triggerConditions for backward compatibility
+        finalTriggerConditions = {
+            ...finalTriggerConditions,
+            triggers: triggers // Store array of triggers
+        };
     }
 
     const sequence = await NurturingSequence.create({
         name,
         description,
         category,
-        steps,
-        triggerConditions,
+        steps: steps || [],
+        triggerConditions: finalTriggerConditions,
         settings,
         coachId
     });
@@ -91,7 +114,73 @@ exports.getSequence = asyncHandler(async (req, res) => {
 exports.updateSequence = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const coachId = req.coachId;
-    const updateData = req.body;
+    const { triggers, triggerConditions, steps, ...updateData } = req.body;
+
+    // Validate that we have at least one trigger and one action/step if updating
+    if (triggers !== undefined || triggerConditions !== undefined || steps !== undefined) {
+        const hasTriggers = (triggers && Array.isArray(triggers) && triggers.length > 0) || 
+                            (triggerConditions && Object.keys(triggerConditions).length > 0) ||
+                            (updateData.triggerConditions && Object.keys(updateData.triggerConditions).length > 0);
+        const hasSteps = (steps && Array.isArray(steps) && steps.length > 0) ||
+                         (updateData.steps && Array.isArray(updateData.steps) && updateData.steps.length > 0);
+
+        // Get existing sequence to check current state
+        const existingSequence = await NurturingSequence.findOne({ _id: id, coachId });
+        if (!existingSequence) {
+            return res.status(404).json({
+                success: false,
+                message: 'Nurturing sequence not found'
+            });
+        }
+
+        // Check final state after update
+        const finalHasTriggers = hasTriggers || 
+                                 (existingSequence.triggerConditions && 
+                                  (existingSequence.triggerConditions.triggers?.length > 0 || 
+                                   Object.keys(existingSequence.triggerConditions).some(k => k !== 'triggers')));
+        const finalHasSteps = hasSteps || (existingSequence.steps && existingSequence.steps.length > 0);
+
+        if (!finalHasTriggers) {
+            return res.status(400).json({
+                success: false,
+                message: 'At least one trigger is required'
+            });
+        }
+
+        if (!finalHasSteps) {
+            return res.status(400).json({
+                success: false,
+                message: 'At least one action/step is required'
+            });
+        }
+
+        // Validate step numbers are sequential (if steps are being updated)
+        if (steps && Array.isArray(steps) && steps.length > 0) {
+            const stepNumbers = steps.map(step => step.stepNumber).sort((a, b) => a - b);
+            for (let i = 0; i < stepNumbers.length; i++) {
+                if (stepNumbers[i] !== i + 1) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Step numbers must be sequential starting from 1'
+                    });
+                }
+            }
+        }
+
+        // Merge triggers into triggerConditions if provided
+        if (triggers && Array.isArray(triggers) && triggers.length > 0) {
+            updateData.triggerConditions = {
+                ...(triggerConditions || existingSequence.triggerConditions || {}),
+                triggers: triggers
+            };
+        } else if (triggerConditions) {
+            updateData.triggerConditions = triggerConditions;
+        }
+
+        if (steps) {
+            updateData.steps = steps;
+        }
+    }
 
     // Remove fields that shouldn't be updated
     delete updateData.coachId;

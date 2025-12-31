@@ -400,6 +400,8 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState(null);
+  // safeSelectedNode prevents ReferenceError if selectedNode becomes unavailable in some scopes
+  const safeSelectedNode = (typeof selectedNode !== 'undefined') ? selectedNode : null;
   const [ruleName, setRuleName] = useState(rule?.name || '');
   const [ruleDescription, setRuleDescription] = useState(rule?.description || '');
   const [isActive, setIsActive] = useState(rule?.isActive !== false);
@@ -413,6 +415,7 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState(0);
   const [pendingClose, setPendingClose] = useState(false);
+  const [shouldOpenMessageCategory, setShouldOpenMessageCategory] = useState(false);
   const [isCreatingTestWorkflow, setIsCreatingTestWorkflow] = useState(false);
   const cancelRef = useRef();
   
@@ -555,6 +558,15 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
       y: event.clientY || (event.touches && event.touches[0]?.clientY) || 0
     }) : { x: 0, y: 0 };
     
+    // If the connection starts from a trigger node, default to Actions tab and expand Messages
+    const sourceNode = nodes.find((n) => n.id === connectingFrom.nodeId);
+    if (sourceNode?.type === 'trigger') {
+      setActiveTab(1); // Actions tab
+      setShouldOpenMessageCategory(true);
+    } else {
+      setShouldOpenMessageCategory(false);
+    }
+
     setPendingConnection({
       source: connectingFrom.nodeId,
       sourceHandle: connectingFrom.handleId,
@@ -562,7 +574,7 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
     });
     setConnectingFrom(null);
     onNodePaletteOpen();
-  }, [connectingFrom, reactFlowInstance, onNodePaletteOpen]);
+  }, [connectingFrom, reactFlowInstance, onNodePaletteOpen, nodes]);
 
   const onConnect = useCallback(
     (params) => {
@@ -630,18 +642,18 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
   const deleteNode = useCallback((nodeId) => {
     setNodes((nds) => nds.filter((node) => node.id !== nodeId));
     setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
-    if (selectedNode?.id === nodeId) {
+    if (safeSelectedNode?.id === nodeId) {
       setSelectedNode(null);
       onNodeConfigClose();
     }
-  }, [setNodes, setEdges, selectedNode, onNodeConfigClose]);
+  }, [setNodes, setEdges, safeSelectedNode, onNodeConfigClose]);
 
   const updateNodeConfig = useCallback((config) => {
-    if (!selectedNode) return;
+    if (!safeSelectedNode) return;
     
     setNodes((nds) =>
       nds.map((node) =>
-        node.id === selectedNode.id
+        node.id === safeSelectedNode.id
           ? {
               ...node,
               data: {
@@ -667,7 +679,7 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
       status: 'success',
       duration: 2000,
     });
-  }, [selectedNode, setNodes, toast]);
+  }, [safeSelectedNode, setNodes, toast]);
 
   const handleClose = () => {
     if (hasUnsavedChanges) {
@@ -1516,6 +1528,43 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
     return filtered;
   }, [nodeCategories.actions, searchQuery]);
 
+  // Determine if we're editing a nurturing/message sequence
+  const isSequenceMode = useMemo(() => {
+    if (!rule) return false;
+    if (rule.meta && rule.meta.type === 'nurturing-sequence') return true;
+    if (rule.nodes && rule.nodes.some(n => n.type === 'sequence' || n.data?.nodeType === 'sequence')) return true;
+    return false;
+  }, [rule]);
+
+  // If sequence mode, restrict triggers/actions/flow control
+  const sequenceTriggerKeywords = ['appointment', 'book', 'lead', 'form', 'payment', 'schedule', 'booking'];
+  const filteredSequenceTriggers = useMemo(() => {
+    if (!isSequenceMode) return filteredTriggers;
+    const filtered = {};
+    Object.keys(nodeCategories.triggers || {}).forEach(category => {
+      const items = (nodeCategories.triggers[category] || []).filter(event => {
+        const label = (typeof event === 'string' ? event : event.label || event.value || '').toLowerCase();
+        return sequenceTriggerKeywords.some(k => label.includes(k));
+      });
+      if (items.length) filtered[category] = items;
+    });
+    return Object.keys(filtered).length ? filtered : filteredTriggers;
+  }, [isSequenceMode, nodeCategories.triggers, filteredTriggers]);
+
+  const filteredSequenceActions = useMemo(() => {
+    if (!isSequenceMode) return filteredActions;
+    const allowedKeywords = ['message', 'email', 'whatsapp', 'sms', 'notification'];
+    const filtered = {};
+    Object.keys(nodeCategories.actions || {}).forEach(category => {
+      const items = (nodeCategories.actions[category] || []).filter(action => {
+        const label = (typeof action === 'string' ? action : action.label || action.value || '').toLowerCase();
+        return allowedKeywords.some(k => label.includes(k));
+      });
+      if (items.length) filtered[category] = items;
+    });
+    return Object.keys(filtered).length ? filtered : filteredActions;
+  }, [isSequenceMode, nodeCategories.actions, filteredActions]);
+
   return (
     <Box 
       w="100%" 
@@ -1611,11 +1660,11 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
               variant="ghost"
               size="sm"
               onClick={() => {
-                if (selectedNode) {
+                if (safeSelectedNode) {
                   onNodeConfigOpen();
                 }
               }}
-              isDisabled={!selectedNode}
+              isDisabled={!safeSelectedNode}
               colorScheme="gray"
             />
             <Divider orientation="vertical" h="24px" />
@@ -1671,6 +1720,7 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
           onNodePaletteClose();
           setSearchQuery('');
           setActiveTab(0);
+          setShouldOpenMessageCategory(false);
         }} 
         size="md"
       >
@@ -1704,14 +1754,14 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
               <TabPanels>
                 {/* Triggers Tab */}
                 <TabPanel px={0} pt={4}>
-                  <VStack spacing={2} align="stretch" maxH="calc(100vh - 300px)" overflowY="auto">
-                    {Object.keys(filteredTriggers).length === 0 ? (
+                    <VStack spacing={2} align="stretch" maxH="calc(100vh - 300px)" overflowY="auto">
+                    {Object.keys(isSequenceMode ? filteredSequenceTriggers : filteredTriggers).length === 0 ? (
                       <Text color="gray.500" textAlign="center" py={8}>
                         No triggers found matching "{searchQuery}"
                       </Text>
                     ) : searchQuery.trim() ? (
                       // When searching, show all results in groups without accordion
-                      Object.keys(filteredTriggers).map((category) => {
+                      Object.keys(isSequenceMode ? filteredSequenceTriggers : filteredTriggers).map((category) => {
                         const simpleCategory = category
                           .replace('Lead & Customer Lifecycle', 'Leads')
                           .replace('Funnel & Conversion', 'Funnels')
@@ -1725,7 +1775,7 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                               {simpleCategory}
                             </Text>
                             <VStack spacing={2} align="stretch">
-                              {filteredTriggers[category].map((event, index) => {
+                                {(isSequenceMode ? filteredSequenceTriggers[category] : filteredTriggers[category]).map((event, index) => {
                         const eventLabel = typeof event === 'string' ? event : event.label || event.value;
                         const eventValue = typeof event === 'string' ? event : event.value || event.label;
                                 const eventDesc = typeof event === 'string' ? '' : event.description || '';
@@ -1780,7 +1830,7 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                     ) : (
                       // When not searching, show accordion
                       <Accordion allowMultiple defaultIndex={[]}>
-                        {Object.keys(filteredTriggers).map((category) => {
+                        {Object.keys(isSequenceMode ? filteredSequenceTriggers : filteredTriggers).map((category) => {
                           const simpleCategory = category
                             .replace('Lead & Customer Lifecycle', 'Leads')
                             .replace('Funnel & Conversion', 'Funnels')
@@ -1808,7 +1858,7 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                               </AccordionButton>
                               <AccordionPanel px={2} pt={2} pb={0}>
                                 <VStack spacing={2} align="stretch">
-                                  {filteredTriggers[category].map((event, index) => {
+                                  {(isSequenceMode ? filteredSequenceTriggers[category] : filteredTriggers[category]).map((event, index) => {
                                     const eventLabel = typeof event === 'string' ? event : event.label || event.value;
                                     const eventValue = typeof event === 'string' ? event : event.value || event.label;
                                     const eventDesc = typeof event === 'string' ? '' : event.description || '';
@@ -1869,13 +1919,13 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                 {/* Actions Tab */}
                 <TabPanel px={0} pt={4}>
                   <VStack spacing={2} align="stretch" maxH="calc(100vh - 300px)" overflowY="auto">
-                    {Object.keys(filteredActions).length === 0 ? (
+                    {Object.keys(isSequenceMode ? filteredSequenceActions : filteredActions).length === 0 ? (
                       <Text color="gray.500" textAlign="center" py={8}>
                         No actions found matching "{searchQuery}"
                       </Text>
                     ) : searchQuery.trim() ? (
                       // When searching, show all results in groups without accordion
-                      Object.keys(filteredActions).map((category) => {
+                      Object.keys(isSequenceMode ? filteredSequenceActions : filteredActions).map((category) => {
                         const simpleCategory = category
                           .replace('Lead Data & Funnel Actions', 'Lead Actions')
                           .replace('Communication Actions', 'Messages')
@@ -1890,7 +1940,7 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                               {simpleCategory}
                             </Text>
                             <VStack spacing={2} align="stretch">
-                              {filteredActions[category].map((action, index) => {
+                              {(isSequenceMode ? filteredSequenceActions[category] : filteredActions[category]).map((action, index) => {
                         const actionLabel = typeof action === 'string' ? action : action.label || action.value;
                         const actionValue = typeof action === 'string' ? action : action.value || action.label;
                                 const actionDesc = typeof action === 'string' ? '' : action.description || '';
@@ -1944,8 +1994,17 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                       })
                     ) : (
                       // When not searching, show accordion
-                      <Accordion allowMultiple defaultIndex={[]}>
-                        {Object.keys(filteredActions).map((category) => {
+                      <Accordion
+                        allowMultiple
+                        defaultIndex={() => {
+                          const categories = Object.keys(isSequenceMode ? filteredSequenceActions : filteredActions);
+                          const messageIndex = categories.findIndex((c) =>
+                            c.toLowerCase().includes('communication')
+                          );
+                          return shouldOpenMessageCategory && messageIndex >= 0 ? [messageIndex] : [];
+                        }}
+                      >
+                        {Object.keys(isSequenceMode ? filteredSequenceActions : filteredActions).map((category) => {
                           const simpleCategory = category
                             .replace('Lead Data & Funnel Actions', 'Lead Actions')
                             .replace('Communication Actions', 'Messages')
@@ -1974,7 +2033,7 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                               </AccordionButton>
                               <AccordionPanel px={2} pt={2} pb={0}>
                                 <VStack spacing={2} align="stretch">
-                                  {filteredActions[category].map((action, index) => {
+                                  {(isSequenceMode ? filteredSequenceActions[category] : filteredActions[category]).map((action, index) => {
                                     const actionLabel = typeof action === 'string' ? action : action.label || action.value;
                                     const actionValue = typeof action === 'string' ? action : action.value || action.label;
                                     const actionDesc = typeof action === 'string' ? '' : action.description || '';
@@ -2036,9 +2095,20 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                 <TabPanel px={0} pt={4}>
                   <VStack spacing={2} align="stretch" maxH="calc(100vh - 300px)" overflowY="auto">
                     {(() => {
-                      const flowControlItems = {
+                      const baseItems = {
                         'Flow Control': [
                           { label: 'Delay', type: 'delay', icon: FiClock, color: 'orange', data: { label: 'Delay', delay: 0 }, description: 'Wait for a specified amount of time before continuing' },
+                        ]
+                      };
+                      // In normal mode include condition and sequence; in sequence mode include only Delay and Message Sequence
+                      const flowControlItems = isSequenceMode ? {
+                        'Flow Control': [
+                          baseItems['Flow Control'][0],
+                          { label: 'Message Sequence', type: 'sequence', icon: FiMessageSquare, color: 'pink', data: { label: 'Message Sequence', sequenceSteps: [] }, description: 'Send a sequence of messages with delays' }
+                        ]
+                      } : {
+                        'Flow Control': [
+                          ...baseItems['Flow Control'],
                           { label: 'Condition', type: 'condition', icon: FiFilter, color: 'purple', data: { label: 'Condition' }, description: 'Branch workflow based on conditions (if/else)' },
                           { label: 'Message Sequence', type: 'sequence', icon: FiMessageSquare, color: 'pink', data: { label: 'Message Sequence', sequenceSteps: [] }, description: 'Send a sequence of messages with delays' },
                         ]
@@ -2284,13 +2354,13 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                   h={2}
                   borderRadius="full"
                   bg={
-                    selectedNode?.type === 'trigger'
+                    safeSelectedNode?.type === 'trigger'
                       ? 'blue.500'
-                      : selectedNode?.type === 'action'
+                      : safeSelectedNode?.type === 'action'
                       ? 'green.500'
-                      : selectedNode?.type === 'delay'
+                      : safeSelectedNode?.type === 'delay'
                       ? 'yellow.500'
-                      : selectedNode?.type === 'condition'
+                      : safeSelectedNode?.type === 'condition'
                       ? 'purple.500'
                       : 'gray.500'
                   }
@@ -2300,17 +2370,17 @@ const GraphAutomationBuilder = ({ rule, onSave, onClose, eventsActions, builderR
                 </Text>
               </HStack>
               <Text fontSize="sm" color="gray.500" fontWeight="400">
-                {selectedNode?.data?.label || selectedNode?.data?.nodeType || 'Node'}
+                {safeSelectedNode?.data?.label || safeSelectedNode?.data?.nodeType || 'Node'}
               </Text>
             </VStack>
           </DrawerHeader>
           <DrawerBody px={6} py={6} overflowY="auto">
-            {selectedNode && (
+            {safeSelectedNode && (
               <NodeConfigurationPanel
-                node={selectedNode}
+                node={safeSelectedNode}
                 onUpdate={updateNodeConfig}
                 onDelete={() => {
-                  deleteNode(selectedNode.id);
+                  deleteNode(safeSelectedNode.id);
                   onNodeConfigClose();
                 }}
                 builderResources={builderResources}
@@ -2738,6 +2808,7 @@ const NodeConfigurationPanel = ({ node, onUpdate, onDelete, builderResources, al
         >
           Save Changes
         </Button>
+              {/* Delete icon removed: use the primary Delete button above which calls onDelete */}
       </HStack>
     </VStack>
   );
@@ -2787,6 +2858,9 @@ const ActionConfigFields = ({ actionType, config, onChange, builderResources, tr
             onClose={() => setActiveVariableField(null)}
             placement="left"
             closeOnBlur={true}
+            trapFocus={false}
+            autoFocus={false}
+            returnFocusOnClose={false}
           >
             <PopoverTrigger>
               <IconButton
