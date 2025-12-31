@@ -7,7 +7,6 @@ import swal from 'sweetalert';
 import {
   Box,
   Button,
-  Container,
   FormControl,
   FormLabel,
   Input,
@@ -32,6 +31,7 @@ import {
   ScaleFade,
   SlideFade,
   IconButton,
+  Image,
 } from '@chakra-ui/react';
 import {
   FaEnvelope,
@@ -45,9 +45,8 @@ import {
   FaUserShield,
 } from 'react-icons/fa';
 import { motion } from 'framer-motion';
+import loginHeroJpg from '../login.jpg';
 
-const MotionBox = motion(Box);
-const MotionCard = motion(Card);
 
 import { API_BASE_URL as BASE_API_URL } from '../config/apiConfig';
 
@@ -460,363 +459,322 @@ const Login = () => {
   };
 
   return (
-    <Box minH="100vh" bgGradient="linear(to-br, blue.900, blue.700)" py={{ base: 10, md: 14 }} px={{ base: 4, md: 8 }}>
-      <Container maxW="7xl" px={0}>
-        <Flex
-          direction={{ base: 'column', lg: 'row' }}
-          align="stretch"
-          justify="space-between"
-          minH={{ lg: '85vh' }}
-          bg="transparent"
-          gap={{ base: 10, lg: 0 }}
-        >
-          <MotionBox
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            flex={{ base: 'none', lg: 1 }}
-            pr={{ lg: 16 }}
-            pb={{ base: 4, lg: 0 }}
-          >
-            <VStack spacing={6} align="flex-start" color="whiteAlpha.900" h="full" justify="center">
-              <ScaleFade initialScale={0.95} in={true}>
-                <Flex
-                  w={{ base: '70px', md: '90px' }}
-                  h={{ base: '70px', md: '90px' }}
-                  borderRadius="full"
-                  bg="whiteAlpha.200"
-                  border="1px solid"
-                  borderColor="whiteAlpha.500"
-                  boxShadow="0 20px 55px rgba(7,13,30,0.4)"
-                  align="center"
-                  justify="center"
-                >
-                  <Icon as={FaBuilding} boxSize={10} color="white" />
-                </Flex>
-              </ScaleFade>
-              <Heading size="2xl" fontWeight="800" letterSpacing="-0.04em" lineHeight="1.1">
-                {showOtpForm ? 'Verify Your Identity' : 'Sign in to FunnelsEye'}
-              </Heading>
-              <Text fontSize="lg" color="whiteAlpha.800" maxW="lg">
-                {showOtpForm
-                  ? `We’ve sent a secure verification code to ${input.email}. Enter it below to continue.`
-                  : 'Professional-first experience for coaches and staff. Use your work credentials to get started.'}
-              </Text>
-              <HStack spacing={4} color="whiteAlpha.900" fontWeight="600">
-                <Icon as={FaUserShield} />
-                <Text>Enterprise-grade security</Text>
-              </HStack>
-            </VStack>
-          </MotionBox>
-
-          <MotionCard
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.45 }}
-            flex={{ base: 'none', lg: 1 }}
-            bg="white"
-            borderRadius="0"
-            border="1px solid"
-            borderColor="blue.100"
-            boxShadow="0 35px 60px rgba(15,23,42,0.35)"
+    <Box minH="100vh" bg="#eef2ff" py={0} px={0}>
+      <Flex
+        direction={{ base: 'column', md: 'row' }}
+        bg="white"
+        borderRadius={0}
+        overflow="hidden"
+        boxShadow="none"
+        border="none"
+        minH="100vh"
+        mx="auto"
+        w="100%"
+      >
+          <Box
+            w={{ base: '100%', md: '50%' }}
+            p={{ base: 8, md: 12 }}
             display="flex"
-            alignItems="stretch"
+            flexDirection="column"
+            justifyContent="center"
+            bgGradient="linear(to-b, #ffffff, #f5f7fb)"
+            position="relative"
+            overflow="hidden"
           >
-            <CardBody p={{ base: 8, md: 12 }}>
-              {showOtpForm ? (
-                // OTP Verification Form
-                <SlideFade in={showOtpForm} offsetY="20px">
-                  <VStack as="form" onSubmit={handleVerifyOTP} spacing={8}>
-                    <Box textAlign="center" w="full">
-                      <Flex
-                        w="60px"
-                        h="60px"
-                        borderRadius="full"
-                        bg="blue.50"
-                        mb={6}
-                        mx="auto"
-                        align="center"
-                        justify="center"
-                      >
-                        <Icon as={FaCheckCircle} boxSize={6} color="blue.600" />
-                      </Flex>
-                      
-                      <Text fontSize="lg" fontWeight="600" color="blue.800" mb={8}>
-                        Enter 6-Digit Verification Code
-                      </Text>
-                      
-                      <HStack spacing={4} justify="center" mb={2}>
-                        <PinInput
-                          otp
-                          size="lg"
-                          value={otp}
-                          onChange={setOtp}
-                          placeholder="0"
+            <Box position="absolute" top="-60px" left="-40px" w="200px" h="200px" bg="purple.100" opacity="0.18" filter="blur(10px)" borderRadius="full" />
+            <Box position="absolute" top="35%" right="-80px" w="240px" h="240px" bg="blue.100" opacity="0.16" filter="blur(12px)" borderRadius="full" />
+            <Box position="absolute" bottom="-80px" left="25%" w="220px" h="220px" bg="teal.50" opacity="0.16" filter="blur(14px)" borderRadius="full" />
+            <VStack spacing={8} align="stretch" w="full" maxW="520px" mx="auto" justify="center" flex="1">
+              <Heading size="lg" fontWeight="800" letterSpacing="-0.04em" color="#0f172a" lineHeight="1.2">
+                {showOtpForm ? 'Verify your identity' : 'Welcome Back to FunnelsEye'}
+              </Heading>
+
+              <Box>
+                {showOtpForm ? (
+                  <SlideFade in={showOtpForm} offsetY="12px">
+                    <VStack as="form" onSubmit={handleVerifyOTP} spacing={8}>
+                      <Box textAlign="center" w="full">
+                        <Flex
+                          w="60px"
+                          h="60px"
+                          borderRadius="full"
+                          bg="purple.50"
+                          mb={6}
+                          mx="auto"
+                          align="center"
+                          justify="center"
                         >
-                          {[...Array(6)].map((_, index) => (
-                            <PinInputField 
-                              key={index}
-                              borderRadius="lg" 
-                              borderColor="blue.100"
-                              border="2px solid"
-                              _hover={{ borderColor: "blue.300" }}
-                              _focus={{
-                                borderColor: "blue.600",
-                                boxShadow: "0 0 0 3px rgba(147, 197, 253, 0.7)"
-                              }}
-                              fontSize="xl"
-                              fontWeight="600"
-                              color="blue.800"
-                              bg="white"
-                              h="60px"
-                              w="60px"
-                            />
-                          ))}
-                        </PinInput>
-                      </HStack>
-                      
-                      <Text fontSize="sm" color="gray.500" mb={8}>
-                        Enter the 6-digit code sent to your email address
-                      </Text>
-                    </Box>
+                          <Icon as={FaCheckCircle} boxSize={6} color="purple.600" />
+                        </Flex>
+                        
+                        <Text fontSize="lg" fontWeight="600" color="#312e81" mb={8}>
+                          Enter 6-Digit Verification Code
+                        </Text>
+                        
+                        <HStack spacing={4} justify="center" mb={2}>
+                          <PinInput
+                            otp
+                            size="lg"
+                            value={otp}
+                            onChange={setOtp}
+                            placeholder="0"
+                          >
+                            {[...Array(6)].map((_, index) => (
+                              <PinInputField 
+                                key={index}
+                                borderRadius="md" 
+                                borderColor="purple.100"
+                                border="2px solid"
+                                _hover={{ borderColor: "purple.300" }}
+                                _focus={{
+                                  borderColor: "purple.600",
+                                  boxShadow: "0 0 0 3px rgba(129, 140, 248, 0.6)"
+                                }}
+                                fontSize="xl"
+                                fontWeight="600"
+                                color="#312e81"
+                                bg="white"
+                                h="60px"
+                                w="60px"
+                              />
+                            ))}
+                          </PinInput>
+                        </HStack>
+                        
+                        <Text fontSize="sm" color="gray.500" mb={8}>
+                          Enter the 6-digit code sent to your email address
+                        </Text>
+                      </Box>
+
+                      <Button
+                        type="submit"
+                        size="lg"
+                        w="full"
+                        bg="#4f46e5"
+                        color="white"
+                        _hover={{
+                          bg: "#4338ca",
+                          transform: "translateY(-1px)",
+                          boxShadow: "0 15px 30px rgba(79, 70, 229, 0.35)"
+                        }}
+                        _active={{ transform: "translateY(0)" }}
+                        isLoading={isLoading}
+                        loadingText="Verifying..."
+                        borderRadius="md"
+                        fontSize="md"
+                        fontWeight="600"
+                        h="50px"
+                        transition="all 0.2s ease"
+                        boxShadow="0 2px 10px rgba(0,0,0,0.1)"
+                      >
+                        Verify & Continue
+                      </Button>
+
+                      <VStack spacing={4}>
+                        <Button
+                          variant="ghost"
+                          colorScheme="purple"
+                          onClick={() => handleRequestOTP(input.email)}
+                          isDisabled={isLoading}
+                          _hover={{ bg: "purple.50" }}
+                          borderRadius="md"
+                          fontWeight="500"
+                        >
+                          Resend Verification Code
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          leftIcon={<FaArrowLeft />}
+                          onClick={() => {
+                            setShowOtpForm(false);
+                            setOtp('');
+                          }}
+                          color="#4338ca"
+                          _hover={{ color: "#312e81", bg: "purple.50" }}
+                          borderRadius="md"
+                          fontWeight="500"
+                        >
+                          Back to Sign In
+                        </Button>
+                      </VStack>
+                    </VStack>
+                  </SlideFade>
+                ) : (
+                  <VStack as="form" onSubmit={handleLogin} spacing={6}>
+                    <FormControl>
+                      <FormLabel 
+                        fontSize="sm" 
+                        fontWeight="400" 
+                        color="#0f172a"
+                        mb={3}
+                        textTransform="uppercase"
+                        letterSpacing="0.05em"
+                      >
+                        Email Address
+                      </FormLabel>
+                      <InputGroup size="lg">
+                        <InputLeftElement h="50px">
+                          <Icon as={FaEnvelope} color="#6b7280" />
+                        </InputLeftElement>
+                        <Input
+                          type="email"
+                          name="email"
+                          value={input.email}
+                          onChange={handleInputChange}
+                          placeholder="Enter your email address"
+                          borderRadius="md"
+                          border="1px solid"
+                          borderColor="gray.200"
+                          _hover={{ borderColor: "#a5b4fc" }}
+                          _focus={{
+                            borderColor: "#4f46e5",
+                            boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.35)"
+                          }}
+                          bg="white"
+                          fontSize="md"
+                          fontWeight="300"
+                          h="50px"
+                          required
+                        />
+                      </InputGroup>
+                    </FormControl>
+
+                    <FormControl>
+                      <Flex justify="space-between" align="center" mb={3}>
+                        <FormLabel 
+                          fontSize="sm" 
+                          fontWeight="400" 
+                          color="#0f172a"
+                          mb={0}
+                          textTransform="uppercase"
+                          letterSpacing="0.05em"
+                        >
+                          Password
+                        </FormLabel>
+                        <Text 
+                          as={Link} 
+                          to="/reset-password"
+                          fontSize="sm" 
+                          color="brand.600" 
+                          fontWeight="500"
+                          _hover={{ color: "brand.700", textDecoration: "underline" }}
+                        >
+                          Forgot Password?
+                        </Text>
+                      </Flex>
+                      <InputGroup size="lg">
+                        <InputLeftElement h="50px">
+                          <Icon as={FaLock} color="#6b7280" />
+                        </InputLeftElement>
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          name="password"
+                          value={input.password}
+                          onChange={handleInputChange}
+                          placeholder="Enter your password"
+                          borderRadius="md"
+                          border="1px solid"
+                          borderColor="gray.200"
+                          _hover={{ borderColor: "#a5b4fc" }}
+                          _focus={{
+                            borderColor: "#4f46e5",
+                            boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.35)"
+                          }}
+                          bg="white"
+                          fontSize="md"
+                          fontWeight="300"
+                          h="50px"
+                          required
+                        />
+                        <InputRightElement h="50px">
+                          <IconButton
+                            variant="ghost"
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            icon={<Icon as={showPassword ? FaEyeSlash : FaEye} />}
+                            onClick={() => setShowPassword(!showPassword)}
+                            color="brand.600"
+                            _hover={{ color: "brand.700", bg: "transparent" }}
+                            size="sm"
+                          />
+                        </InputRightElement>
+                      </InputGroup>
+                    </FormControl>
+
+                    <Flex w="full" justify="space-between" align="center" py={1}>
+                      <Checkbox 
+                        colorScheme="brand" 
+                        size="md"
+                        fontWeight="500"
+                        color="brand.600"
+                      >
+                        Remember me
+                      </Checkbox>
+                    </Flex>
 
                     <Button
                       type="submit"
                       size="lg"
                       w="full"
-                      bg="blue.600"
+                      bg="brand.600"
                       color="white"
                       _hover={{
-                        bg: "blue.500",
+                        bg: "brand.700",
                         transform: "translateY(-1px)",
-                        boxShadow: "0 15px 30px rgba(37, 99, 235, 0.35)"
+                        boxShadow: "0 15px 30px rgba(2, 132, 199, 0.35)"
                       }}
                       _active={{ transform: "translateY(0)" }}
                       isLoading={isLoading}
-                      loadingText="Verifying..."
-                      borderRadius="lg"
+                      borderRadius="md"
                       fontSize="md"
                       fontWeight="600"
                       h="50px"
                       transition="all 0.2s ease"
                       boxShadow="0 2px 10px rgba(0,0,0,0.1)"
                     >
-                      Verify & Continue
+                      {isLoading ? (
+                        <HStack>
+                          <Spinner size="sm" />
+                          <Text>Signing In...</Text>
+                        </HStack>
+                      ) : (
+                        'Log in'
+                      )}
                     </Button>
 
-                    <VStack spacing={4}>
-                      <Button
-                        variant="ghost"
-                        colorScheme="blue"
-                        onClick={() => handleRequestOTP(input.email)}
-                        isDisabled={isLoading}
-                        _hover={{ bg: "blue.50" }}
-                        borderRadius="lg"
-                        fontWeight="500"
-                      >
-                        Resend Verification Code
-                      </Button>
-                      
-                      <Button
-                        variant="ghost"
-                        leftIcon={<FaArrowLeft />}
-                        onClick={() => {
-                          setShowOtpForm(false);
-                          setOtp('');
-                        }}
-                        color="blue.600"
-                        _hover={{ color: "blue.800", bg: "blue.50" }}
-                        borderRadius="lg"
-                        fontWeight="500"
-                      >
-                        Back to Sign In
-                      </Button>
-                    </VStack>
+                    <Box textAlign="center" pt={4}>
+                      <Text color="gray.600" fontWeight="500">
+                        Don't have an account?{' '}
+                        <Text 
+                          as={Link} 
+                          to="/signup"
+                          color="brand.600" 
+                          fontWeight="600"
+                          _hover={{ textDecoration: "underline", color: "brand.700" }}
+                        >
+                          Register here
+                        </Text>
+                      </Text>
+                    </Box>
                   </VStack>
-                </SlideFade>
-              ) : (
-                // Main Login Form
-                <VStack as="form" onSubmit={handleLogin} spacing={6}>
-                  {/* Email Field */}
-                  <FormControl>
-                    <FormLabel 
-                      fontSize="sm" 
-                      fontWeight="600" 
-                      color="blue.800"
-                      mb={3}
-                      textTransform="uppercase"
-                      letterSpacing="0.05em"
-                    >
-                      Email Address
-                    </FormLabel>
-                    <InputGroup size="lg">
-                      <InputLeftElement h="50px">
-                        <Icon as={FaEnvelope} color="blue.400" />
-                      </InputLeftElement>
-                      <Input
-                        type="email"
-                        name="email"
-                        value={input.email}
-                        onChange={handleInputChange}
-                        placeholder="Enter your email address"
-                        borderRadius="lg"
-                        border="2px solid"
-                        borderColor="blue.100"
-                        _hover={{ borderColor: "blue.300" }}
-                        _focus={{
-                          borderColor: "blue.600",
-                          boxShadow: "0 0 0 3px rgba(147, 197, 253, 0.7)"
-                        }}
-                        bg="white"
-                        fontSize="md"
-                        fontWeight="500"
-                        h="50px"
-                        required
-                      />
-                    </InputGroup>
-                  </FormControl>
+                )}
+              </Box>
+            </VStack>
 
-                  {/* Password Field */}
-                  <FormControl>
-                    <Flex justify="space-between" align="center" mb={3}>
-                      <FormLabel 
-                        fontSize="sm" 
-                        fontWeight="600" 
-                        color="blue.800"
-                        mb={0}
-                        textTransform="uppercase"
-                        letterSpacing="0.05em"
-                      >
-                        Password
-                      </FormLabel>
-                      <Text 
-                        as={Link} 
-                        to="/reset-password"
-                        fontSize="sm" 
-                        color="blue.600" 
-                        fontWeight="500"
-                        _hover={{ color: "blue.300", textDecoration: "underline" }}
-                      >
-                        Forgot Password?
-                      </Text>
-                    </Flex>
-                    <InputGroup size="lg">
-                      <InputLeftElement h="50px">
-                        <Icon as={FaLock} color="blue.400" />
-                      </InputLeftElement>
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        name="password"
-                        value={input.password}
-                        onChange={handleInputChange}
-                        placeholder="Enter your password"
-                        borderRadius="lg"
-                        border="2px solid"
-                        borderColor="blue.100"
-                        _hover={{ borderColor: "blue.300" }}
-                        _focus={{
-                          borderColor: "blue.600",
-                          boxShadow: "0 0 0 3px rgba(147, 197, 253, 0.7)"
-                        }}
-                        bg="white"
-                        fontSize="md"
-                        fontWeight="500"
-                        h="50px"
-                        required
-                      />
-                      <InputRightElement h="50px">
-                        <IconButton
-                          variant="ghost"
-                          aria-label={showPassword ? "Hide password" : "Show password"}
-                          icon={<Icon as={showPassword ? FaEyeSlash : FaEye} />}
-                          onClick={() => setShowPassword(!showPassword)}
-                          color="blue.500"
-                          _hover={{ color: "blue.700", bg: "transparent" }}
-                          size="sm"
-                        />
-                      </InputRightElement>
-                    </InputGroup>
-                  </FormControl>
+          </Box>
 
-                  {/* Remember Me */}
-                  <Flex w="full" justify="flex-start" align="center" py={2}>
-                    <Checkbox 
-                      colorScheme="blue" 
-                      size="md"
-                      fontWeight="500"
-                      color="blue.700"
-                    >
-                      Keep me signed in
-                    </Checkbox>
-                  </Flex>
+          <Box
+            w={{ base: '100%', md: '50%' }}
+            minH={{ base: '260px', md: 'auto' }}
+            bgImage={`url(${loginHeroJpg})`}
+            bgSize="cover"
+            bgPos="center"
+            position="relative"
+          >
+          </Box>
+      </Flex>
 
-                  {/* Login Button */}
-                  <Button
-                    type="submit"
-                    size="lg"
-                    w="full"
-                    bg="blue.600"
-                    color="white"
-                    _hover={{
-                      bg: "blue.500",
-                      transform: "translateY(-1px)",
-                      boxShadow: "0 15px 30px rgba(37, 99, 235, 0.35)"
-                    }}
-                    _active={{ transform: "translateY(0)" }}
-                    isLoading={isLoading}
-                    borderRadius="lg"
-                    fontSize="md"
-                    fontWeight="600"
-                    h="50px"
-                    transition="all 0.2s ease"
-                    boxShadow="0 2px 10px rgba(0,0,0,0.1)"
-                  >
-                    {isLoading ? (
-                      <HStack>
-                        <Spinner size="sm" />
-                        <Text>Signing In...</Text>
-                      </HStack>
-                    ) : (
-                      'Sign In Securely'
-                    )}
-                  </Button>
 
-                  {/* Sign Up Link */}
-                  <Box textAlign="center" pt={6}>
-                    <Text color="gray.600" fontWeight="500">
-                      Don't have an account?{' '}
-                      <Text 
-                        as={Link} 
-                        to="/signup"
-                        color="blue.600" 
-                        fontWeight="600"
-                        _hover={{ textDecoration: "underline" }}
-                      >
-                        Create Account
-                      </Text>
-                    </Text>
-                  </Box>
-                </VStack>
-              )}
-            </CardBody>
-          </MotionCard>
-        </Flex>
-        {/* Footer */}
-        <Box textAlign="center" mt={10}>
-          <Text fontSize="xs" color="gray.200" lineHeight="relaxed">
-            By continuing, you agree to our{' '}
-            <Text as={Link} to="/terms" color="white" fontWeight="500" _hover={{ textDecoration: "underline" }}>
-              Terms of Service
-            </Text>
-            {' '}and{' '}
-            <Text as={Link} to="/privacy" color="white" fontWeight="500" _hover={{ textDecoration: "underline" }}>
-              Privacy Policy
-            </Text>
-          </Text>
-        </Box>
-      </Container>
-
-      {/* Custom SweetAlert Styles */}
       <style jsx global>{`
         .swal-button--confirm {
           background-color: #1a202c !important;
