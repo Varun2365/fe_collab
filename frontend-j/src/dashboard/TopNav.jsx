@@ -1533,27 +1533,20 @@ const TopNav = () => {
           {/* Priority Feed Button */}
 
           <Tooltip label="Daily Priority Feed">
-
             <Button
-
-              variant="ghost"
-
-              size="md"
-
+              variant="outline"
+              size="sm"
               leftIcon={<FiBell />}
-
-              onClick={() => window.dispatchEvent(new CustomEvent('openPriorityFeed'))}
-
+              colorScheme="blue"
               fontSize="sm"
-
-              _hover={{ bg: 'rgba(102, 126, 234, 0.1)' }}
-
+              fontWeight="600"
+              borderRadius="md"
+              onClick={() => window.dispatchEvent(new CustomEvent('openPriorityFeed'))}
+              _hover={{ bg: 'blue.50', borderColor: 'blue.300' }}
+              _active={{ bg: 'blue.100', borderColor: 'blue.400' }}
             >
-
               Show Priority Feed
-
             </Button>
-
           </Tooltip>
 
           {/* Notifications Dropdown */}

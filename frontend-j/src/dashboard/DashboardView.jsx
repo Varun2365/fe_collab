@@ -22,10 +22,16 @@ import {
   Spinner,
   Badge,
   Icon,
+  Input,
+  Select,
+  Menu,
+  MenuButton,
+  MenuList,
   IconButton,
   useToast,
   useColorModeValue,
   useColorMode,
+  Progress,
   Card,
   CardBody,
   CardHeader,
@@ -33,6 +39,7 @@ import {
   HStack,
   Flex,
   SimpleGrid,
+  Tag,
   Skeleton,
   Heading,
   Modal,
@@ -55,8 +62,9 @@ import {
 import { 
   FaRupeeSign, FaClock, FaRegMoneyBillAlt, 
   FaPercentage, FaTrophy, FaExclamationTriangle, 
-  FaDownload, FaSyncAlt, FaArrowUp, FaSpinner, FaBell, FaBolt, FaCalendar, FaUser, FaTasks, FaEye, FaChartLine
+  FaDownload, FaSyncAlt, FaArrowUp, FaSpinner, FaBell, FaBolt, FaCalendar, FaUser, FaTasks, FaEye, FaChartLine, FaCheckCircle
 } from 'react-icons/fa';
+import { ChevronDownIcon } from '@chakra-ui/icons';
 import { 
   IoStatsChart, IoReceiptOutline, IoWalletOutline, IoBarChart, 
   IoPeopleOutline 
@@ -72,7 +80,23 @@ import { API_BASE_URL } from '../config/apiConfig';
 
 // Import API service
 import { dashboardAPI, handleAPIError } from '../services/api';
-import DailyPriorityFeed from '../components/DailyPriorityFeed';
+
+const hexToRgba = (hex, alpha = 1) => {
+  if (!hex) return `rgba(99, 102, 241, ${alpha})`;
+  const normalized = hex.replace('#', '');
+  const bigint = parseInt(normalized, 16);
+  if (Number.isNaN(bigint)) return `rgba(99, 102, 241, ${alpha})`;
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const buildColorScale = (baseColor, count = 4) => {
+  const alphas = [0.9, 0.7, 0.5, 0.35, 0.2, 0.1];
+  const base = baseColor || '#0284c7';
+  return Array.from({ length: count }, (_, i) => hexToRgba(base, alphas[i % alphas.length]));
+};
 
 // Professional Loading Skeleton Component with Smooth Animations
 const ProfessionalLoader = () => {
@@ -406,6 +430,15 @@ const Dashboard = () => {
   const mutedTextColor = useColorModeValue('gray.600', 'gray.400');
   const hoverBg = useColorModeValue('gray.50', 'gray.600');
   const shadowColor = useColorModeValue('sm', 'dark-lg');
+
+  const formatDateDDMMYYYY = (date) => {
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) return '--';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
   
   // Coach ID extract
   const coachId = getCoachId(authState);
@@ -441,12 +474,28 @@ const Dashboard = () => {
   // Modal state for funnel distribution
   const { isOpen: isFunnelModalOpen, onOpen: onFunnelModalOpen, onClose: onFunnelModalClose } = useDisclosure();
   
-  // Modal state for priority feed
-  const { isOpen: isPriorityFeedOpen, onOpen: onPriorityFeedOpen, onClose: onPriorityFeedClose } = useDisclosure();
   
   // Timeline filter state
   const [trendsTimeFilter, setTrendsTimeFilter] = useState('1W');
   const [leadsTimeFilter, setLeadsTimeFilter] = useState('1M');
+  const [trendLineColor, setTrendLineColor] = useState(() => localStorage.getItem('trendLineColor') || '#0284c7');
+  const chartColor = trendLineColor || '#0284c7';
+  const trendColorOptions = ['#0284c7','#8b5cf6','#22c55e','#f97316','#ef4444','#f59e0b','#ec4899','#94a3b8'];
+  const tasksData = dashboardData.tasks || {};
+  const totalTasks = tasksData.totalTasks || 0;
+  const completedTasks = tasksData.completedTasks ?? tasksData.statusDistribution?.Completed ?? tasksData.statusDistribution?.COMPLETED ?? 0;
+  const overdueTasks = tasksData.overdueTasks || 0;
+  const upcomingTasks = tasksData.upcomingTasks || 0;
+  const inProgressTasks = tasksData.statusDistribution?.['In Progress'] ?? tasksData.statusDistribution?.IN_PROGRESS ?? tasksData.statusDistribution?.Active ?? 0;
+  const dueToday = tasksData.dueToday || 0;
+  const completionRate = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const openTasks = Math.max(totalTasks - completedTasks, 0);
+
+  useEffect(() => {
+    if (trendLineColor) {
+      localStorage.setItem('trendLineColor', trendLineColor);
+    }
+  }, [trendLineColor]);
   
   // Funnels state for mapping funnelId to funnel name
   const [funnels, setFunnels] = useState([]);
@@ -874,18 +923,6 @@ const Dashboard = () => {
     };
   }, []);
 
-  // Priority Feed modal event listener
-  useEffect(() => {
-    const handleOpenPriorityFeed = () => {
-      onPriorityFeedOpen();
-    };
-
-    window.addEventListener('openPriorityFeed', handleOpenPriorityFeed);
-
-    return () => {
-      window.removeEventListener('openPriorityFeed', handleOpenPriorityFeed);
-    };
-  }, [onPriorityFeedOpen]);
 
   // Funnels data is now included in the unified dashboard endpoint
   // Update funnels state when dashboard data is loaded
@@ -950,10 +987,11 @@ const Dashboard = () => {
   // Chart data generators with API data
   const generateOpportunitiesData = () => {
     const leads = dashboardData.leads;
+    const basePalette = buildColorScale(chartColor, 6);
     if (!leads) return {
       datasets: [{
         data: [0, 0],
-        backgroundColor: ['#6366f1', '#ec4899'],
+        backgroundColor: basePalette.slice(0, 2),
         borderWidth: 0
       }]
     };
@@ -962,14 +1000,15 @@ const Dashboard = () => {
     const statusData = leads.statusDistribution || {};
     const labels = Object.keys(statusData);
     const data = Object.values(statusData);
+    const palette = buildColorScale(chartColor, Math.max(data.length, 4));
 
     return {
       labels: labels.length > 0 ? labels : [],
       datasets: [{
         data: data.length > 0 ? data : [],
-        backgroundColor: ['#6366f1', '#ec4899', '#10b981', '#f59e0b'],
+        backgroundColor: palette.slice(0, data.length || 4),
         borderWidth: 0,
-        hoverBackgroundColor: ['#4f46e5', '#db2777', '#059669', '#d97706'],
+        hoverBackgroundColor: palette.slice(0, data.length || 4).map(() => hexToRgba(chartColor, 0.95)),
         hoverBorderWidth: 4,
         hoverBorderColor: colorMode === 'dark' ? '#374151' : '#1e293b'
       }]
@@ -1458,7 +1497,7 @@ const Dashboard = () => {
           <Box display="flex" alignItems="center" gap={2}>
             <Icon as={FaClock} color={secondaryTextColor} />
             <Text fontSize="sm" color={secondaryTextColor}>
-              {new Date(Date.now() - 30*24*60*60*1000).toLocaleDateString()} - {new Date().toLocaleDateString()}
+              {formatDateDDMMYYYY(Date.now() - 30*24*60*60*1000)} - {formatDateDDMMYYYY(Date.now())}
             </Text>
           </Box>
           {(user?.selfCoachId || JSON.parse(localStorage.getItem('user') || '{}')?.selfCoachId) && (
@@ -1984,6 +2023,7 @@ const Dashboard = () => {
             <Text fontSize="lg" fontWeight="semibold" color={textColor}>
               Performance Trends
             </Text>
+            <HStack spacing={3} align="center">
             <Box display="flex" gap={2}>
               <Button 
                 size="sm" 
@@ -2002,6 +2042,48 @@ const Dashboard = () => {
                 1M
               </Button>
             </Box>
+              <Menu placement="bottom-end" isLazy>
+                <MenuButton
+                  as={Button}
+                  size="sm"
+                  variant="outline"
+                  rightIcon={<ChevronDownIcon />}
+                  px={3}
+                  py={2}
+                  bg={useColorModeValue('white', 'gray.700')}
+                  borderColor={borderColor}
+                >
+                  <Box
+                    w="16px"
+                    h="16px"
+                    borderRadius="full"
+                    bg={chartColor}
+                    border="1px solid"
+                    borderColor={useColorModeValue('gray.300', 'gray.500')}
+                  />
+                </MenuButton>
+                <MenuList p={3} minW="200px">
+                  <SimpleGrid columns={4} spacing={2}>
+                    {trendColorOptions.map((color) => (
+                      <Box
+                        key={color}
+                        w="36px"
+                        h="36px"
+                        borderRadius="full"
+                        bg={color}
+                        border="2px solid"
+                        borderColor={trendLineColor === color ? useColorModeValue('gray.700', 'whiteAlpha.800') : 'transparent'}
+                        boxShadow="sm"
+                        cursor="pointer"
+                        transition="transform 0.15s ease, box-shadow 0.15s ease"
+                        _hover={{ transform: 'translateY(-2px)', boxShadow: 'md' }}
+                        onClick={() => setTrendLineColor(color)}
+                      />
+                    ))}
+                  </SimpleGrid>
+                </MenuList>
+              </Menu>
+            </HStack>
           </Box>
           
           {dashboardData.performance?.trends ? (
@@ -2022,21 +2104,29 @@ const Dashboard = () => {
                     {
                       label: 'Leads',
                       data: getFilteredTrendsData().leads.map(val => val || 0),
-                      borderColor: '#6366f1',
-                      backgroundColor: 'rgba(99, 102, 241, 0.15)',
-                      borderWidth: 3,
+                      borderColor: chartColor,
+                      backgroundColor: (context) => {
+                        const { chart } = context;
+                        const { ctx, chartArea } = chart || {};
+                        if (!chartArea) return hexToRgba(chartColor, 0.2);
+                        const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                        gradient.addColorStop(0, hexToRgba(chartColor, 0.25));
+                        gradient.addColorStop(1, hexToRgba(chartColor, 0));
+                        return gradient;
+                      },
+                      borderWidth: 2,
                       tension: 0.4,
                       fill: true,
-                      pointBackgroundColor: '#6366f1',
+                      pointBackgroundColor: chartColor,
                       pointBorderColor: colorMode === 'dark' ? '#374151' : '#ffffff',
-                      pointBorderWidth: 3,
-                      pointRadius: 6,
-                      pointHoverRadius: 10,
-                      pointHoverBackgroundColor: '#4f46e5',
+                      pointBorderWidth: 2,
+                      pointRadius: 5,
+                      pointHoverRadius: 9,
+                      pointHoverBackgroundColor: chartColor,
                       pointHoverBorderColor: colorMode === 'dark' ? '#374151' : '#ffffff',
-                      pointHoverBorderWidth: 4,
+                      pointHoverBorderWidth: 3,
                       cubicInterpolationMode: 'monotone',
-                      fillColor: 'rgba(99, 102, 241, 0.1)',
+                      fillColor: hexToRgba(chartColor, 0.1),
                       fillOpacity: 0.3
                     }
                   ]
@@ -2052,7 +2142,7 @@ const Dashboard = () => {
                       backgroundColor: colorMode === 'dark' ? 'rgba(31, 41, 55, 0.98)' : 'rgba(15, 23, 42, 0.98)',
                       titleColor: colorMode === 'dark' ? '#f9fafb' : '#f8fafc',
                       bodyColor: colorMode === 'dark' ? '#d1d5db' : '#e2e8f0',
-                      borderColor: '#6366f1',
+                      borderColor: chartColor,
                       borderWidth: 2,
                       cornerRadius: 16,
                       displayColors: false,
@@ -2142,7 +2232,8 @@ const Dashboard = () => {
                         padding: 12
                       },
                       border: {
-                        display: false
+                        display: true,
+                        color: colorMode === 'dark' ? '#4b5563' : '#d1d5db'
                       }
                     }
                   },
@@ -2152,11 +2243,11 @@ const Dashboard = () => {
                   },
                   elements: {
                     point: {
-                      hoverRadius: 10,
-                      hoverBorderWidth: 4
+                      hoverRadius: 9,
+                      hoverBorderWidth: 3
                     },
                     line: {
-                      borderWidth: 3
+                      borderWidth: 2
                     }
                   },
                   layout: {
@@ -2226,25 +2317,17 @@ const Dashboard = () => {
               data={(() => {
                 const filteredData = Object.entries(getFilteredLeadsData().statusDistribution)
                   .filter(([name]) => name && name !== 'Unknown' && name !== null);
-                const colors = [
-                  '#6366f1', '#ec4899', '#10b981', '#f59e0b', 
-                  '#3b82f6', '#8b5cf6', '#06b6d4', '#f97316',
-                  '#84cc16', '#ef4444'
-                ];
-                const hoverColors = [
-                  '#4f46e5', '#db2777', '#059669', '#d97706',
-                  '#2563eb', '#7c3aed', '#0891b2', '#ea580c',
-                  '#65a30d', '#dc2626'
-                ];
+                const palette = buildColorScale(chartColor, Math.max(filteredData.length, 8));
+                const hoverPalette = palette.map(() => hexToRgba(chartColor, 0.95));
                 
                 return {
                   labels: filteredData.map(([name]) => name),
                   datasets: [{
                     data: filteredData.map(([, val]) => val || 0),
-                    backgroundColor: filteredData.map((_, index) => colors[index % colors.length]),
+                    backgroundColor: filteredData.map((_, index) => palette[index % palette.length]),
                     borderWidth: 3,
                     borderColor: colorMode === 'dark' ? '#1f2937' : '#ffffff',
-                    hoverBackgroundColor: filteredData.map((_, index) => hoverColors[index % hoverColors.length]),
+                    hoverBackgroundColor: filteredData.map((_, index) => hoverPalette[index % hoverPalette.length]),
                     hoverBorderWidth: 5,
                     hoverBorderColor: colorMode === 'dark' ? '#374151' : '#f3f4f6'
                   }]
@@ -2257,12 +2340,7 @@ const Dashboard = () => {
             const filteredData = Object.entries(getFilteredLeadsData().statusDistribution)
               .filter(([name]) => name && name !== 'Unknown' && name !== null)
               .sort(([, a], [, b]) => (b || 0) - (a || 0));
-            
-            const colors = [
-              '#6366f1', '#ec4899', '#10b981', '#f59e0b', 
-              '#3b82f6', '#8b5cf6', '#06b6d4', '#f97316',
-              '#84cc16', '#ef4444'
-            ];
+            const palette = buildColorScale(chartColor, Math.max(filteredData.length, 8));
             
             // Show at least 2 funnels, show more if available (up to 3-4), then "..." if there are more
             const minShow = 2;
@@ -2283,7 +2361,7 @@ const Dashboard = () => {
                       <Box 
                         w={3} 
                         h={3} 
-                        bg={colors[index % colors.length]} 
+                        bg={palette[index % palette.length]} 
                         borderRadius="full"
                         flexShrink={0}
                       />
@@ -2327,8 +2405,8 @@ const Dashboard = () => {
 
         {/* Funnel Distribution Modal */}
         <Modal isOpen={isFunnelModalOpen} onClose={onFunnelModalClose} size="xl" isCentered>
-          <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px)" />
-          <ModalContent bg={cardBgColor} borderRadius="xl" maxH="90vh" overflow="hidden">
+          <ModalOverlay bg="blackAlpha.800" backdropFilter="blur(2px)" />
+          <ModalContent bg={cardBgColor} borderRadius="10px" maxH="90vh" overflow="hidden" maxW="800px" w="auto">
             <ModalHeader 
               display="flex" 
               alignItems="center" 
@@ -2509,70 +2587,119 @@ const Dashboard = () => {
         borderColor={borderColor}
         transition="all 0.3s ease"
       >
-        <Box display="flex" alignItems="center" gap={3} mb={4}>
+        <Box display="flex" alignItems="center" justifyContent="space-between" mb={4} gap={3}>
+          <HStack spacing={3}>
           <Icon as={FaClock} boxSize={6} color="purple.500" />
+            <VStack align="start" spacing={0}>
           <Text fontSize="lg" fontWeight="semibold" color={textColor}>
             Tasks Overview
           </Text>
-          <Badge colorScheme="purple" variant="subtle">{dashboardData.tasks?.totalTasks || 0} total</Badge>
-        </Box>
-        
-        <Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={4}>
-          {/* Task Status Distribution */}
-          <Box>
-            <Text fontSize="sm" fontWeight="semibold" color={textColor} mb={3}>Status Distribution</Text>
-            {Object.entries(dashboardData.tasks?.statusDistribution || {}).map(([status, count]) => (
-              <Box key={status} display="flex" alignItems="center" gap={2} mb={2}>
-                <Box w={3} h={3} bg="purple.500" borderRadius="full" />
-                <Text fontSize="sm" color={secondaryTextColor}>{status}</Text>
-                <Text fontSize="sm" fontWeight="semibold" ml="auto" color={textColor}>{count}</Text>
+              <Text fontSize="sm" color={secondaryTextColor}>
+                Quick health of your task pipeline
+              </Text>
+            </VStack>
+          </HStack>
+          <HStack spacing={3}>
+              <HStack spacing={2}>
+              <Text fontSize="sm" color={secondaryTextColor}>Completion</Text>
+              <Box minW="120px">
+                <Progress value={completionRate} size="sm" h="6px" colorScheme="green" borderRadius="full" />
               </Box>
+              <Text fontSize="sm" fontWeight="semibold" color={textColor}>{completionRate}%</Text>
+            </HStack>
+          </HStack>
+              </Box>
+
+        <Box
+          display="flex"
+          flexWrap="wrap"
+          gap={3}
+          mb={6}
+          sx={{ '& > *': { flexShrink: 0 } }}
+        >
+          {[
+            { label: 'Total', value: totalTasks, colorScheme: 'purple', icon: FaTasks },
+            { label: 'In Progress', value: inProgressTasks, colorScheme: 'blue', icon: FaSpinner },
+            { label: 'Due Today', value: dueToday, colorScheme: 'teal', icon: FaClock },
+            { label: 'Overdue', value: overdueTasks, colorScheme: 'red', icon: FaExclamationTriangle },
+            { label: 'Completed', value: completedTasks, colorScheme: 'green', icon: FaCheckCircle },
+          ].map((item) => (
+            <Tag
+              key={item.label}
+              size="lg"
+              borderRadius="6px"
+              variant="subtle"
+              colorScheme={item.colorScheme}
+              px={3}
+              py={2}
+            >
+              <HStack spacing={2}>
+                <Icon as={item.icon} />
+                <Text fontWeight="700" textTransform="uppercase" fontSize="xs">
+                  {item.label}
+                </Text>
+                <Text fontWeight="800" fontSize="md">
+                  {item.value}
+                </Text>
+              </HStack>
+            </Tag>
             ))}
           </Box>
 
-          {/* Task Stage Distribution */}
-          <Box>
-            <Text fontSize="sm" fontWeight="semibold" color={textColor} mb={3}>Stage Distribution</Text>
-            {Object.entries(dashboardData.tasks?.stageDistribution || {}).map(([stage, count]) => (
-              <Box key={stage} display="flex" alignItems="center" gap={2} mb={2}>
-                <Box w={3} h={3} bg="blue.500" borderRadius="full" />
-                <Text fontSize="sm" color={secondaryTextColor}>{stage}</Text>
-                <Text fontSize="sm" fontWeight="semibold" ml="auto" color={textColor}>{count}</Text>
+        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+          <Box p={4} borderRadius="lg" border="1px" borderColor={borderColor} bg={useColorModeValue('white', 'gray.800')}>
+            <Text fontSize="sm" fontWeight="semibold" color={textColor} mb={3}>Status mix</Text>
+            {Object.entries(tasksData.statusDistribution || {}).map(([status, count]) => {
+              const total = Object.values(tasksData.statusDistribution || {}).reduce((a, b) => a + b, 0) || 1;
+              const percent = Math.round((count / total) * 100);
+              return (
+                <Box key={status} mb={3}>
+                  <HStack justify="space-between" mb={1}>
+                    <Text fontSize="sm" color={secondaryTextColor}>{status}</Text>
+                    <Text fontSize="sm" fontWeight="semibold" color={textColor}>{count} ({percent}%)</Text>
+                  </HStack>
+                  <Progress value={percent} size="sm" h="6px" colorScheme="purple" borderRadius="full" />
               </Box>
-            ))}
+              );
+            })}
           </Box>
 
-          {/* Task Priority Distribution */}
-          <Box>
-            <Text fontSize="sm" fontWeight="semibold" color={textColor} mb={3}>Priority Distribution</Text>
-            {Object.entries(dashboardData.tasks?.priorityDistribution || {}).map(([priority, count]) => (
-              <Box key={priority} display="flex" alignItems="center" gap={2} mb={2}>
-                <Box w={3} h={3} bg={priority === 'HIGH' ? 'red.500' : priority === 'MEDIUM' ? 'orange.500' : 'green.500'} borderRadius="full" />
+          <Box p={4} borderRadius="lg" border="1px" borderColor={borderColor} bg={useColorModeValue('white', 'gray.800')}>
+            <Text fontSize="sm" fontWeight="semibold" color={textColor} mb={3}>Priority mix</Text>
+            {Object.entries(tasksData.priorityDistribution || {}).map(([priority, count]) => {
+              const total = Object.values(tasksData.priorityDistribution || {}).reduce((a, b) => a + b, 0) || 1;
+              const percent = Math.round((count / total) * 100);
+              const scheme = priority === 'HIGH' ? 'red' : priority === 'MEDIUM' ? 'orange' : 'green';
+              return (
+                <Box key={priority} mb={3}>
+                  <HStack justify="space-between" mb={1}>
                 <Text fontSize="sm" color={secondaryTextColor}>{priority}</Text>
-                <Text fontSize="sm" fontWeight="semibold" ml="auto" color={textColor}>{count}</Text>
+                    <Text fontSize="sm" fontWeight="semibold" color={textColor}>{count} ({percent}%)</Text>
+                  </HStack>
+                  <Progress value={percent} size="sm" h="6px" colorScheme={scheme} borderRadius="full" />
               </Box>
-            ))}
+              );
+            })}
           </Box>
 
-          {/* Task Metrics */}
-          <Box>
-            <Text fontSize="sm" fontWeight="semibold" color={textColor} mb={3}>Task Metrics</Text>
-            <Box display="flex" flexDirection="column" gap={2}>
-              <Box display="flex" justifyContent="space-between">
-                <Text fontSize="sm" color={secondaryTextColor}>Overdue:</Text>
-                <Badge colorScheme="red" variant="subtle">{dashboardData.tasks?.overdueTasks || 0}</Badge>
+          <Box p={4} borderRadius="lg" border="1px" borderColor={borderColor} bg={useColorModeValue('white', 'gray.800')}>
+            <Text fontSize="sm" fontWeight="semibold" color={textColor} mb={3}>Upcoming vs Overdue</Text>
+            <VStack align="stretch" spacing={3}>
+              <HStack justify="space-between">
+                <Text fontSize="sm" color={secondaryTextColor}>Due soon</Text>
+                <Badge colorScheme="blue" variant="subtle">{upcomingTasks}</Badge>
+              </HStack>
+              <HStack justify="space-between">
+                <Text fontSize="sm" color={secondaryTextColor}>Overdue</Text>
+                <Badge colorScheme="red" variant="subtle">{overdueTasks}</Badge>
+              </HStack>
+              <HStack justify="space-between">
+                <Text fontSize="sm" color={secondaryTextColor}>Open</Text>
+                <Badge colorScheme="orange" variant="subtle">{openTasks}</Badge>
+              </HStack>
+            </VStack>
               </Box>
-              <Box display="flex" justifyContent="space-between">
-                <Text fontSize="sm" color={secondaryTextColor}>Upcoming:</Text>
-                <Badge colorScheme="blue" variant="subtle">{dashboardData.tasks?.upcomingTasks || 0}</Badge>
-              </Box>
-              <Box display="flex" justifyContent="space-between">
-                <Text fontSize="sm" color={secondaryTextColor}>Completed:</Text>
-                <Badge colorScheme="green" variant="subtle">{dashboardData.tasks?.completedTasks || 0}</Badge>
-              </Box>
-            </Box>
-          </Box>
-        </Box>
+        </SimpleGrid>
       </Box>
       )}
 
@@ -3136,28 +3263,6 @@ const Dashboard = () => {
       </Box>
       )}
 
-      {/* Priority Feed Modal */}
-      <Modal isOpen={isPriorityFeedOpen} onClose={onPriorityFeedClose} size="2xl" isCentered>
-        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
-        <ModalContent borderRadius="xl" boxShadow="2xl" h="80vh" display="flex" flexDirection="column">
-          <ModalCloseButton />
-          <ModalBody flex={1} py={4} px={6} overflowY="hidden">
-            <DailyPriorityFeed
-              token={token}
-              coachId={coachId}
-              onItemClick={(item) => {
-                // Handle item click - navigate to relevant section
-                if (item.leadId) {
-                  navigate(`/dashboard/leads?leadId=${item.leadId}`);
-                } else if (item.appointmentId) {
-                  navigate(`/dashboard/calendar?appointmentId=${item.appointmentId}`);
-                }
-                onPriorityFeedClose();
-              }}
-            />
-          </ModalBody>
-        </ModalContent>
-      </Modal>
     </Box>
   );
 };
