@@ -948,6 +948,122 @@ class CoachStaffManagementController {
             }
         });
     });
+
+    /**
+     * Get activity logs for all staff or specific staff
+     * @route GET /api/coach/staff/activity or /api/coach/staff/:staffId/activity
+     * @access Private (Coach/Staff with staff:read permission)
+     */
+    getActivityLogs = asyncHandler(async (req, res) => {
+        const coachId = req.coachId;
+        const { staffId } = req.params;
+        
+        // Get activity logs from ActivityLog model if exists, otherwise return empty
+        try {
+            const ActivityLog = require('../schema/ActivityLog');
+            const query = { coachId };
+            if (staffId) {
+                query.userId = staffId;
+            }
+            
+            const logs = await ActivityLog.find(query)
+                .sort({ timestamp: -1 })
+                .limit(100)
+                .populate('userId', 'name email')
+                .lean();
+            
+            res.json({
+                success: true,
+                data: logs || []
+            });
+        } catch (error) {
+            // If ActivityLog model doesn't exist, return empty array
+            res.json({
+                success: true,
+                data: []
+            });
+        }
+    });
+
+    getStaffActivityLogs = asyncHandler(async (req, res) => {
+        return this.getActivityLogs(req, res);
+    });
+
+    /**
+     * Bulk delete staff members
+     * @route POST /api/coach/staff/bulk-delete
+     * @access Private (Coach with staff:delete permission)
+     */
+    bulkDeleteStaff = asyncHandler(async (req, res) => {
+        const coachId = req.coachId;
+        const { staffIds } = req.body;
+        
+        if (!Array.isArray(staffIds) || staffIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide an array of staff IDs to delete'
+            });
+        }
+        
+        const result = await Staff.deleteMany({
+            _id: { $in: staffIds },
+            coachId
+        });
+        
+        res.json({
+            success: true,
+            message: `Successfully deleted ${result.deletedCount} staff member(s)`,
+            data: {
+                deletedCount: result.deletedCount
+            }
+        });
+    });
+
+    /**
+     * Bulk export staff data
+     * @route POST /api/coach/staff/bulk-export
+     * @access Private (Coach/Staff with staff:read permission)
+     */
+    bulkExportStaff = asyncHandler(async (req, res) => {
+        const coachId = req.coachId;
+        const { staffIds, format = 'json' } = req.body;
+        
+        let query = { coachId };
+        if (staffIds && Array.isArray(staffIds) && staffIds.length > 0) {
+            query._id = { $in: staffIds };
+        }
+        
+        const staffMembers = await Staff.find(query).select('-password').lean();
+        
+        if (format === 'csv') {
+            // Convert to CSV format
+            const csvRows = [];
+            if (staffMembers.length > 0) {
+                const headers = Object.keys(staffMembers[0]);
+                csvRows.push(headers.join(','));
+                
+                staffMembers.forEach(staff => {
+                    const values = headers.map(header => {
+                        const value = staff[header];
+                        if (Array.isArray(value)) {
+                            return `"${value.join(';')}"`;
+                        }
+                        return `"${value || ''}"`;
+                    });
+                    csvRows.push(values.join(','));
+                });
+            }
+            
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', `attachment; filename=staff_export_${Date.now()}.csv`);
+            res.send(csvRows.join('\n'));
+        } else {
+            res.json({
+                success: true,
+                data: staffMembers
+            });
+        }
+    });
 }
 
 module.exports = new CoachStaffManagementController();

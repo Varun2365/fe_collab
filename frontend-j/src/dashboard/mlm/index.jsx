@@ -136,7 +136,7 @@ const BeautifulSkeleton = () => {
       <Box maxW="full" mx="auto">
         <VStack spacing={8} align="stretch" w="full">
           {/* Header Skeleton */}
-          <Card bg="white" borderRadius="xl" boxShadow="lg" border="1px" borderColor="gray.200">
+          <Card bg="white" borderRadius="7px" boxShadow="lg" border="1px" borderColor="gray.200">
             <CardHeader py={6}>
               <VStack spacing={6} align="stretch">
                 <Flex justify="space-between" align="center" direction={{ base: 'column', md: 'row' }} gap={4}>
@@ -156,7 +156,7 @@ const BeautifulSkeleton = () => {
                     <Card key={i} variant="outline">
                       <CardBody>
                         <VStack spacing={3}>
-                          <Skeleton height="60px" width="60px" borderRadius="lg" />
+                          <Skeleton height="60px" width="60px" borderRadius="7px" />
                           <SkeletonText noOfLines={2} spacing="4" />
                           <Skeleton height="30px" width="80px" />
                         </VStack>
@@ -169,7 +169,7 @@ const BeautifulSkeleton = () => {
           </Card>
 
           {/* Table Skeleton */}
-          <Card bg="white" borderRadius="xl" boxShadow="lg" border="1px" borderColor="gray.200">
+          <Card bg="white" borderRadius="7px" boxShadow="lg" border="1px" borderColor="gray.200">
             <CardBody>
               <VStack spacing={4} align="stretch">
                 {[...Array(5)].map((_, i) => (
@@ -296,7 +296,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
       {/* Enhanced Coach Node with Professional Design */}
       <Card
         className="coach-card"
-        borderRadius="2xl"
+        borderRadius="7px"
         boxShadow={level === 0 
           ? `0 15px 35px -10px var(--chakra-colors-${colorScheme.shadowColor}), 0 20px 25px -10px var(--chakra-colors-gray-400)` 
           : `0 8px 25px -5px var(--chakra-colors-${colorScheme.shadowColor}), 0 10px 10px -5px var(--chakra-colors-gray-300)`
@@ -360,7 +360,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
         >
           <VStack spacing={0}>
             <Text fontSize="xs" fontWeight="bold" color="white">
-              {level === 0 ? '👑' : `L${level}`}
+              {level === 0 ? 'H' : `L${level}`}
             </Text>
             {level === 0 && (
               <Text fontSize="8px" fontWeight="bold" color="white" opacity={0.9}>
@@ -384,6 +384,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
                     boxShadow="0 8px 16px -4px rgba(0,0,0,0.3)"
                     border="4px solid white"
                     position="relative"
+                    borderRadius="full"
                     _after={{
                       content: '""',
                       position: 'absolute',
@@ -404,7 +405,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
                     w="20px"
                     h="20px"
                     bg={coach.isActive ? 'green.400' : 'red.400'}
-                    borderRadius="full"
+                    borderRadius="7px"
                     border="3px solid white"
                     boxShadow="0 2px 4px rgba(0,0,0,0.2)"
                   />
@@ -421,20 +422,20 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
                     <Badge
                       colorScheme={coach.isActive ? 'green' : 'red'}
                       size="sm"
-                      borderRadius="full"
+                      borderRadius="7px"
                       px={3}
                       py={1}
                       fontSize="xs"
                       fontWeight="bold"
                     >
-                      {coach.isActive ? '✅ Active' : '❌ Inactive'}
+                      {coach.isActive ? 'Active' : 'Inactive'}
                     </Badge>
                     {level === 0 && (
                       <Badge
                         bg="linear-gradient(45deg, #FFD700, #FFA500)"
                         color="white"
                         size="sm"
-                        borderRadius="full"
+                        borderRadius="7px"
                         px={3}
                         py={1}
                         fontSize="xs"
@@ -442,7 +443,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
                         boxShadow="0 4px 8px rgba(255, 215, 0, 0.3)"
                         animation="shimmer 2s infinite"
                       >
-                        👑 HEAD COACH
+                        HEAD COACH
                       </Badge>
                     )}
                   </HStack>
@@ -455,7 +456,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
               w="full" 
               p={4} 
               bgGradient={`linear(135deg, ${colorScheme.bgCard}, white)`}
-              borderRadius="xl"
+              borderRadius="7px"
               border="1px solid"
               borderColor={`${colorScheme.bg}20`}
               boxShadow="inset 0 1px 3px rgba(0,0,0,0.1)"
@@ -466,7 +467,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
                     w="12px"
                     h="12px"
                     bg={colorScheme.bg}
-                    borderRadius="full"
+                    borderRadius="7px"
                     boxShadow="0 2px 4px rgba(0,0,0,0.2)"
                   />
                   <Text fontSize="xs" color="gray.500" fontWeight="bold" textTransform="uppercase">Level</Text>
@@ -480,7 +481,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
                     w="12px"
                     h="12px"
                     bg="green.400"
-                    borderRadius="full"
+                    borderRadius="7px"
                     boxShadow="0 2px 4px rgba(0,0,0,0.2)"
                   />
                   <Text fontSize="xs" color="gray.500" fontWeight="bold" textTransform="uppercase">Team Size</Text>
@@ -494,7 +495,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
                     w="12px"
                     h="12px"
                     bg="purple.400"
-                    borderRadius="full"
+                    borderRadius="7px"
                     boxShadow="0 2px 4px rgba(0,0,0,0.2)"
                   />
                   <Text fontSize="xs" color="gray.500" fontWeight="bold" textTransform="uppercase">Direct</Text>
@@ -508,7 +509,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
                     w="12px"
                     h="12px"
                     bg="orange.400"
-                    borderRadius="full"
+                    borderRadius="7px"
                     boxShadow="0 2px 4px rgba(0,0,0,0.2)"
                   />
                   <Text fontSize="xs" color="gray.500" fontWeight="bold" textTransform="uppercase">Rank</Text>
@@ -526,7 +527,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
                 justify="space-between" 
                 p={4} 
                 bg="white" 
-                borderRadius="xl" 
+                borderRadius="7px" 
                 border="2px solid" 
                 borderColor="gray.100"
                 boxShadow="0 4px 12px rgba(0,0,0,0.05)"
@@ -564,7 +565,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
                   <Badge 
                     colorScheme={coach.performance.isActive ? 'green' : 'orange'} 
                     variant="solid"
-                    borderRadius="full"
+                    borderRadius="7px"
                     px={3}
                     py={1}
                     fontSize="xs"
@@ -579,46 +580,37 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
               </HStack>
             )}
 
-            {/* Enhanced Action Buttons */}
-            <HStack spacing={3} w="full">
-              <Button
-                size="md"
-                variant="outline"
-                colorScheme="blue"
-                leftIcon={<ViewIcon />}
-                onClick={() => onViewCoach(coach)}
-                flex="1"
-                borderRadius="xl"
-                borderWidth="2px"
-                _hover={{ 
-                  bg: 'blue.50', 
-                  borderColor: 'blue.400',
-                  transform: 'translateY(-1px)',
-                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
-                }}
-                transition="all 0.3s"
-              >
-                👁️ View
-              </Button>
-              <Button
-                size="md"
-                variant="outline"
-                colorScheme="orange"
-                leftIcon={<EditIcon />}
-                onClick={() => onEditCoach(coach)}
-                flex="1"
-                borderRadius="xl"
-                borderWidth="2px"
-                _hover={{ 
-                  bg: 'orange.50', 
-                  borderColor: 'orange.400',
-                  transform: 'translateY(-1px)',
-                  boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)'
-                }}
-                transition="all 0.3s"
-              >
-                ✏️ Edit
-              </Button>
+            {/* Consolidated Action Menu */}
+            <HStack spacing={2} w="full" justify="space-between">
+              <Menu>
+                <MenuButton
+                  as={Button}
+                  size="md"
+                  variant="outline"
+                  colorScheme="blue"
+                  rightIcon={<ChevronDownIcon />}
+                  flex="1"
+                  borderRadius="7px"
+                  borderWidth="2px"
+                  _hover={{ 
+                    bg: 'blue.50', 
+                    borderColor: 'blue.400',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                  }}
+                  transition="all 0.3s"
+                >
+                  Actions
+                </MenuButton>
+                <MenuList borderRadius="7px">
+                  <MenuItem icon={<ViewIcon />} onClick={() => onViewCoach(coach)}>
+                    View Details
+                  </MenuItem>
+                  <MenuItem icon={<EditIcon />} onClick={() => onEditCoach(coach)}>
+                    Edit Coach
+                  </MenuItem>
+                </MenuList>
+              </Menu>
               {/* Only show expand button for non-root levels */}
               {level > 0 && canExpand && (
                 <IconButton
@@ -627,7 +619,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
                   colorScheme={colorScheme.bg.split('.')[0]}
                   icon={isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
                   onClick={() => setIsExpanded(!isExpanded)}
-                  borderRadius="xl"
+                  borderRadius="7px"
                   borderWidth="2px"
                   _hover={{ 
                     bg: colorScheme.bgCard,
@@ -647,7 +639,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
                 textAlign="center" 
                 p={3} 
                 bgGradient={`linear(135deg, ${colorScheme.bgCard}, white)`}
-                borderRadius="lg"
+                borderRadius="7px"
                 border="1px solid"
                 borderColor={`${colorScheme.bg}30`}
               >
@@ -656,7 +648,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
                     w="8px"
                     h="8px"
                     bg={isExpanded ? 'green.400' : 'gray.400'}
-                    borderRadius="full"
+                    borderRadius="7px"
                     animation={isExpanded ? "pulse 2s infinite" : "none"}
                   />
                   <Text fontSize="sm" color="gray.600" fontWeight="medium">
@@ -676,7 +668,7 @@ const HierarchyNode = ({ coach, level = 0, onViewCoach, onEditCoach, maxLevels =
           textAlign="center" 
           p={3} 
           bgGradient={`linear(135deg, ${colorScheme.bgCard}, white)`}
-          borderRadius="lg"
+          borderRadius="7px"
           border="1px solid"
           borderColor={`${colorScheme.bg}30`}
           mt={4}
@@ -721,257 +713,61 @@ const HierarchyOverview = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [treeDepth, setTreeDepth] = useState(3); // Control tree depth
 
-  // Sample data for demonstration when no real data is available
-  const sampleHierarchyData = {
-    name: 'Varun Kumar',
-    email: 'varun.kumar@mlmnetwork.com',
-    _id: 'sample-root-001',
-    isActive: true,
-    currentLevel: 0,
-    teamRankName: 'Head Coach',
-    downline: [
-      {
-        _id: 'sample-l1-001',
-        name: 'Priya Sharma',
-        email: 'priya.sharma@mlmnetwork.com',
-        isActive: true,
-        currentLevel: 1,
-        teamRankName: 'Senior Coach',
-        performance: {
-          performanceScore: 85,
-          activityStreak: 12,
-          isActive: true
-        },
-        downline: [
-          {
-            _id: 'sample-l2-001',
-            name: 'Rahul Verma',
-            email: 'rahul.verma@mlmnetwork.com',
-            isActive: true,
-            currentLevel: 2,
-            teamRankName: 'Coach',
-            performance: {
-              performanceScore: 72,
-              activityStreak: 8,
-              isActive: true
-            },
-            downline: [
-              {
-                _id: 'sample-l3-001',
-                name: 'Anjali Patel',
-                email: 'anjali.patel@mlmnetwork.com',
-                isActive: true,
-                currentLevel: 3,
-                teamRankName: 'Associate',
-                performance: {
-                  performanceScore: 65,
-                  activityStreak: 5,
-                  isActive: true
-                },
-                downline: []
-              },
-              {
-                _id: 'sample-l3-002',
-                name: 'Vikram Singh',
-                email: 'vikram.singh@mlmnetwork.com',
-                isActive: false,
-                currentLevel: 3,
-                teamRankName: 'Associate',
-                performance: {
-                  performanceScore: 45,
-                  activityStreak: 2,
-                  isActive: false
-                },
-                downline: []
-              }
-            ]
-          },
-          {
-            _id: 'sample-l2-002',
-            name: 'Meera Kapoor',
-            email: 'meera.kapoor@mlmnetwork.com',
-            isActive: true,
-            currentLevel: 2,
-            teamRankName: 'Coach',
-            performance: {
-              performanceScore: 78,
-              activityStreak: 15,
-              isActive: true
-            },
-            downline: [
-              {
-                _id: 'sample-l3-003',
-                name: 'Arjun Reddy',
-                email: 'arjun.reddy@mlmnetwork.com',
-                isActive: true,
-                currentLevel: 3,
-                teamRankName: 'Associate',
-                performance: {
-                  performanceScore: 68,
-                  activityStreak: 7,
-                  isActive: true
-                },
-                downline: []
-              }
-            ]
-          }
-        ]
-      },
-      {
-        _id: 'sample-l1-002',
-        name: 'Amit Patel',
-        email: 'amit.patel@mlmnetwork.com',
-        isActive: true,
-        currentLevel: 1,
-        teamRankName: 'Senior Coach',
-        performance: {
-          performanceScore: 92,
-          activityStreak: 25,
-          isActive: true
-        },
-        downline: [
-          {
-            _id: 'sample-l2-003',
-            name: 'Neha Gupta',
-            email: 'neha.gupta@mlmnetwork.com',
-            isActive: true,
-            currentLevel: 2,
-            teamRankName: 'Coach',
-            performance: {
-              performanceScore: 81,
-              activityStreak: 18,
-              isActive: true
-            },
-            downline: []
-          },
-          {
-            _id: 'sample-l2-004',
-            name: 'Suresh Kumar',
-            email: 'suresh.kumar@mlmnetwork.com',
-            isActive: false,
-            currentLevel: 2,
-            teamRankName: 'Coach',
-            performance: {
-              performanceScore: 58,
-              activityStreak: 3,
-              isActive: false
-            },
-            downline: []
-          }
-        ]
-      },
-      {
-        _id: 'sample-l1-003',
-        name: 'Kavita Singh',
-        email: 'kavita.singh@mlmnetwork.com',
-        isActive: true,
-        currentLevel: 1,
-        teamRankName: 'Senior Coach',
-        performance: {
-          performanceScore: 88,
-          activityStreak: 20,
-          isActive: true
-        },
-        downline: [
-          {
-            _id: 'sample-l2-005',
-            name: 'Rajesh Malhotra',
-            email: 'rajesh.malhotra@mlmnetwork.com',
-            isActive: true,
-            currentLevel: 2,
-            teamRankName: 'Coach',
-            performance: {
-              performanceScore: 75,
-              activityStreak: 11,
-              isActive: true
-            },
-            downline: []
-          }
-        ]
-      },
-      {
-        _id: 'sample-l1-004',
-        name: 'Deepak Sharma',
-        email: 'deepak.sharma@mlmnetwork.com',
-        isActive: false,
-        currentLevel: 1,
-        teamRankName: 'Senior Coach',
-        performance: {
-          performanceScore: 62,
-          activityStreak: 4,
-          isActive: false
-        },
-        downline: []
-      }
-    ]
-  };
-
-  // Process hierarchy data to build proper tree structure
+  // Process hierarchy data to build proper tree structure from real backend data
   const processedHierarchy = useMemo(() => {
-    // If no real data, use sample data
+    // If no real data, return null (will show empty state)
     if (!hierarchyData) {
-      return sampleHierarchyData;
+      return null;
     }
     
-    // Handle the new data structure with downlineHierarchy
+    // Handle the nested tree structure from backend hierarchy API
+    if (hierarchyData.downline && Array.isArray(hierarchyData.downline)) {
+      // Backend returns nested structure directly
+      return {
+        ...hierarchyData,
+        downline: hierarchyData.downline,
+        downlineHierarchy: hierarchyData.downlineHierarchy || hierarchyData.downline
+      };
+    }
+    
+    // Handle flat structure with downlineHierarchy
     if (hierarchyData.downlineHierarchy && Array.isArray(hierarchyData.downlineHierarchy)) {
-      // Create the root node (you) with your downline as children
+      // Build tree from flat structure using sponsorId relationships
+      const buildTree = (parentId, members, level = 0) => {
+        return members
+          .filter(m => {
+            // For root level, get direct children
+            if (level === 0) {
+              // Check if member's sponsorId matches parent or if it's level 1
+              return (m.sponsorId && m.sponsorId.toString() === parentId.toString()) || 
+                     (m.level === 1 || !m.level);
+            }
+            // For deeper levels, filter by level
+            return m.level === level + 1;
+          })
+          .map(member => ({
+            ...member,
+            downline: buildTree(member._id, members, level + 1),
+            downlineHierarchy: buildTree(member._id, members, level + 1)
+          }));
+      };
+      
       const rootNode = {
-        name: hierarchyData.name || 'Network Leader',
-        email: hierarchyData.email || '',
-        _id: hierarchyData._id || 'root',
-        isActive: true,
-        currentLevel: 0,
-        teamRankName: 'Head Coach',
-        downline: hierarchyData.downlineHierarchy.map(member => ({
-          ...member,
-          // Convert the flat structure to tree structure
-          downline: [], // For now, we'll show only direct level
-          // Add performance data if available
-          performance: member.performance || {
-            currentLevel: member.currentLevel || 'Beginner',
-            performanceScore: member.performanceScore || 0,
-            isActive: member.isActive || false,
-            activityStreak: member.activityStreak || 0
-          }
-        }))
+        ...hierarchyData,
+        downline: buildTree(hierarchyData._id, hierarchyData.downlineHierarchy, 0),
+        downlineHierarchy: hierarchyData.downlineHierarchy
       };
       
       return rootNode;
     }
     
-    // Fallback to old structure if needed
-    if (hierarchyData.coach || hierarchyData.name) {
-      return hierarchyData.coach || hierarchyData;
+    // Return hierarchy data as-is if it has the expected structure
+    if (hierarchyData.name || hierarchyData._id) {
+      return hierarchyData;
     }
     
-    // If it's an array, find the root coach (head coach)
-    if (Array.isArray(hierarchyData)) {
-      // Find head coach (the one without sponsorId or with sponsorId === userId)
-      const headCoach = hierarchyData.find(coach => 
-        !coach.sponsorId || coach.sponsorId === coach._id
-      ) || hierarchyData[0];
-      
-      if (headCoach) {
-        // Build tree structure recursively
-        const buildTree = (parentId) => {
-          return hierarchyData
-            .filter(coach => coach.sponsorId === parentId && coach._id !== parentId)
-            .map(coach => ({
-              ...coach,
-              downline: buildTree(coach._id)
-            }));
-        };
-        
-        return {
-          ...headCoach,
-          downline: buildTree(headCoach._id)
-        };
-      }
-    }
-    
-    // If all else fails, return sample data
-    return sampleHierarchyData;
+    // Return null if no valid data
+    return null;
   }, [hierarchyData]);
 
   // Calculate hierarchy stats - always calculate this to avoid hooks error
@@ -1016,7 +812,7 @@ const HierarchyOverview = ({
   return (
     <VStack spacing={8} align="stretch">
       {/* Enhanced Hierarchy Controls */}
-      <Card bg="white" border="1px" borderColor="gray.200" borderRadius="xl" boxShadow="md">
+      <Card bg="white" border="1px" borderColor="gray.200" borderRadius="7px" boxShadow="md">
         <CardBody p={6}>
           <VStack spacing={4}>
             <HStack justify="space-between" w="full" wrap="wrap" spacing={4}>
@@ -1072,7 +868,7 @@ const HierarchyOverview = ({
                   </InputLeftElement>
                   <Input
                     size="md"
-                    placeholder="🔍 Search coaches..."
+                    placeholder="Search coaches..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     bg="white"
@@ -1090,18 +886,18 @@ const HierarchyOverview = ({
       {/* Show loading state */}
       {loading && (
         <VStack spacing={6}>
-          <Skeleton height="150px" borderRadius="lg" />
+          <Skeleton height="150px" borderRadius="7px" />
           <HStack spacing={4} overflowX="auto">
-            <Skeleton height="300px" width="350px" borderRadius="lg" />
-            <Skeleton height="300px" width="350px" borderRadius="lg" />
-            <Skeleton height="300px" width="350px" borderRadius="lg" />
+            <Skeleton height="300px" width="350px" borderRadius="7px" />
+            <Skeleton height="300px" width="350px" borderRadius="7px" />
+            <Skeleton height="300px" width="350px" borderRadius="7px" />
           </HStack>
         </VStack>
       )}
 
       {/* Show no data state */}
       {!loading && !processedHierarchy && (
-        <Card bg="linear-gradient(135deg, rgba(219, 234, 254, 0.5), rgba(233, 213, 255, 0.5))" borderRadius="xl" border="2px dashed" borderColor="blue.300">
+        <Card bg="linear-gradient(135deg, rgba(219, 234, 254, 0.5), rgba(233, 213, 255, 0.5))" borderRadius="7px" border="2px dashed" borderColor="blue.300">
           <CardBody py={16}>
             <Center>
               <VStack spacing={6}>
@@ -1172,7 +968,7 @@ const HierarchyOverview = ({
             />
             <StatsCard
               title="Direct Reports"
-              value={processedHierarchy.downline ? processedHierarchy.downline.length : 0}
+              value={processedHierarchy?.downline ? processedHierarchy.downline.length : 0}
               icon={<Box as={FiUser} size="24px" />}
               color="purple"
               description="Level 1"
@@ -1195,7 +991,7 @@ const HierarchyOverview = ({
 
           {/* Main Hierarchy Display */}
           <Card 
-            borderRadius="xl" 
+            borderRadius="7px" 
             boxShadow="xl" 
             overflow="hidden" 
             border="1px" 
@@ -1221,17 +1017,8 @@ const HierarchyOverview = ({
                   </Heading>
                   <VStack align="start" spacing={1}>
                     <Text fontSize="md" color="gray.600">
-                      {processedHierarchy.name}'s Complete MLM Network Structure
+                      {processedHierarchy?.name || 'Your'} Complete MLM Network Structure
                     </Text>
-                    {/* Sample Data Notice */}
-                    {!hierarchyData && (
-                      <HStack spacing={2} align="center">
-                        <Box w="2px" h="4" bg="orange.400" borderRadius="full" />
-                        <Text fontSize="sm" color="orange.600" fontWeight="medium">
-                          📱 Demo Mode - Using Sample Data
-                        </Text>
-                      </HStack>
-                    )}
                   </VStack>
                 </HStack>
                 <Badge colorScheme="blue" variant="solid" px={4} py={2} borderRadius="full" fontSize="sm">
@@ -1244,7 +1031,7 @@ const HierarchyOverview = ({
               {viewMode === 'tree' ? (
                 <VStack spacing={6} align="stretch">
                   {/* Tree Controls with Smart Sliders */}
-                  <Card bg="gray.50" border="1px" borderColor="gray.200" borderRadius="lg">
+                  <Card bg="gray.50" border="1px" borderColor="gray.200" borderRadius="7px">
                     <CardBody p={4}>
                       <VStack spacing={4} align="stretch">
                         <HStack justify="space-between" align="center" wrap="wrap" spacing={4}>
@@ -1255,24 +1042,13 @@ const HierarchyOverview = ({
                             <Badge colorScheme="blue" variant="subtle" borderRadius="full">
                               Professional Layout
                             </Badge>
-                            {/* Sample Data Indicator */}
-                            {!hierarchyData && (
-                              <Badge 
-                                colorScheme="orange" 
-                                variant="solid" 
-                                borderRadius="full"
-                                animation="pulse 2s infinite"
-                              >
-                                📱 Sample Data
-                              </Badge>
-                            )}
                           </HStack>
                         </HStack>
                         
                         {/* Tree Depth Slider - Always visible */}
                         <FormControl w="full">
                           <FormLabel fontSize="sm" mb={2} color="gray.700" fontWeight="bold">
-                            🎯 Tree Depth Control
+                            Tree Depth Control
                           </FormLabel>
                           <HStack spacing={4} align="center">
                             <Text fontSize="xs" color="gray.500" fontWeight="medium">Level 1</Text>
@@ -1306,36 +1082,17 @@ const HierarchyOverview = ({
                         <Box 
                           p={3} 
                           bg="blue.50" 
-                          borderRadius="lg" 
+                          borderRadius="7px" 
                           border="1px solid" 
                           borderColor="blue.200"
                           mb={4}
                         >
                           <VStack spacing={3}>
-                            {/* Sample Data Info */}
-                            {!hierarchyData && (
-                              <Box 
-                                p={3} 
-                                bg="orange.50" 
-                                borderRadius="lg" 
-                                border="1px solid" 
-                                borderColor="orange.200"
-                                w="full"
-                              >
-                                <HStack spacing={3} justify="center">
-                                  <Box fontSize="16px">📱</Box>
-                                  <Text fontSize="sm" color="orange.700" fontWeight="medium" textAlign="center">
-                                    Demo Mode Active - This is sample data to showcase the Team Hierarchy Tree functionality
-                                  </Text>
-                                </HStack>
-                              </Box>
-                            )}
-                            
                             {/* Connection Lines Legend */}
                             <Box 
                               p={3} 
                               bg="purple.50" 
-                              borderRadius="lg" 
+                              borderRadius="7px" 
                               border="1px solid" 
                               borderColor="purple.200"
                               w="full"
@@ -1370,13 +1127,13 @@ const HierarchyOverview = ({
                             <HStack spacing={3} justify="center">
                               <Box w="3px" h="20px" bg="blue.500" borderRadius="full" />
                               <Text fontSize="sm" color="blue.700" fontWeight="medium">
-                                Level 1: {processedHierarchy.downline ? processedHierarchy.downline.length : 0} Direct Members
+                                Level 1: {processedHierarchy?.downline ? processedHierarchy.downline.length : 0} Direct Members
                               </Text>
                               {treeDepth > 1 && (
                                 <>
                                   <Box w="3px" h="20px" bg="purple.500" borderRadius="full" />
                                   <Text fontSize="sm" color="purple.700" fontWeight="medium">
-                                    Level 2: {processedHierarchy.downline ? 
+                                    Level 2: {processedHierarchy?.downline ? 
                                       processedHierarchy.downline.reduce((total, child) => 
                                         total + (child.downline ? child.downline.length : 0), 0
                                       ) : 0
@@ -1388,7 +1145,7 @@ const HierarchyOverview = ({
                                 <>
                                   <Box w="3px" h="20px" bg="green.500" borderRadius="full" />
                                   <Text fontSize="sm" color="green.700" fontWeight="medium">
-                                    Level 3: {processedHierarchy.downline ? 
+                                    Level 3: {processedHierarchy?.downline ? 
                                       processedHierarchy.downline.reduce((total, child) => 
                                         total + (child.downline ? 
                                           child.downline.reduce((subTotal, grandChild) => 
@@ -1406,7 +1163,7 @@ const HierarchyOverview = ({
                         
                         <HStack spacing={4} display={{ base: 'none', md: 'flex' }}>
                           {/* Node Spacing Slider */}
-                          <FormControl w="200px" display={processedHierarchy.downline && processedHierarchy.downline.length > 3 ? 'block' : 'none'}>
+                          <FormControl w="200px" display={processedHierarchy?.downline && processedHierarchy.downline.length > 3 ? 'block' : 'none'}>
                             <FormLabel fontSize="xs" mb={1} color="gray.600">Node Spacing</FormLabel>
                             <HStack spacing={2}>
                               <Text fontSize="xs" color="gray.500">Tight</Text>
@@ -1429,7 +1186,7 @@ const HierarchyOverview = ({
                           </FormControl>
                           
                           {/* Tree Height Slider */}
-                          <FormControl w="200px" display={processedHierarchy.downline && processedHierarchy.downline.length > 2 ? 'block' : 'none'}>
+                          <FormControl w="200px" display={processedHierarchy?.downline && processedHierarchy.downline.length > 2 ? 'block' : 'none'}>
                             <FormLabel fontSize="xs" mb={1} color="gray.600">Tree Height</FormLabel>
                             <HStack spacing={2}>
                               <Text fontSize="xs" color="gray.500">Compact</Text>
@@ -1499,7 +1256,7 @@ const HierarchyOverview = ({
                           w="80px"
                           h="80px"
                           bgGradient="linear(135deg, #3b82f6, #8b5cf6)"
-                          borderRadius="full"
+                          borderRadius="7px"
                           display="flex"
                           alignItems="center"
                           justifyContent="center"
@@ -1545,7 +1302,7 @@ const HierarchyOverview = ({
                                   width="4px"
                                   height="40px"
                                   bgGradient="linear(to-b, blue.500, blue.400)"
-                                  borderRadius="full"
+                                  borderRadius="7px"
                                   transform="translateX(-50%)"
                                   zIndex={1}
                                   className="connection-line-root"
@@ -1558,7 +1315,7 @@ const HierarchyOverview = ({
                                 />
                                 
                                 {/* Horizontal distribution line */}
-                                {processedHierarchy.downline.length > 1 && (
+                                {(processedHierarchy?.downline?.length || 0) > 1 && (
                                   <Box
                                     position="absolute"
                                     top="40px"
@@ -1566,15 +1323,15 @@ const HierarchyOverview = ({
                                     right="25%"
                                     height="4px"
                                     bgGradient="linear(to-r, blue.400, purple.500, blue.400)"
-                                    borderRadius="full"
+                                    borderRadius="7px"
                                     zIndex={1}
                                     className="connection-line-horizontal"
                                   />
                                 )}
                                 
                                 {/* Individual vertical lines to each child */}
-                                {processedHierarchy.downline.map((_, index) => {
-                                  const totalChildren = processedHierarchy.downline.length;
+                                {(processedHierarchy?.downline || []).map((_, index) => {
+                                  const totalChildren = processedHierarchy?.downline?.length || 0;
                                   const childPosition = (index - (totalChildren - 1) / 2) * (100 / Math.max(totalChildren - 1, 1));
                                   return (
                                     <Box
@@ -1585,7 +1342,7 @@ const HierarchyOverview = ({
                                       width="4px"
                                       height="20px"
                                       bgGradient="linear(to-b, purple.500, purple.400)"
-                                      borderRadius="full"
+                                      borderRadius="7px"
                                       transform="translateX(-50%)"
                                       zIndex={1}
                                       className="connection-line-level1"
@@ -1599,12 +1356,12 @@ const HierarchyOverview = ({
                           
                           {/* Level 1 Children in Horizontal Row */}
                           <SimpleGrid 
-                            columns={{ base: 1, md: processedHierarchy.downline.length }} 
+                            columns={{ base: 1, md: processedHierarchy?.downline?.length || 1 }} 
                             spacing={`var(--node-spacing)`}
                             justifyItems="center"
                             w="full"
                           >
-                            {processedHierarchy.downline.map((childCoach, index) => (
+                            {(processedHierarchy?.downline || []).map((childCoach, index) => (
                               <Box key={childCoach._id || index} position="relative">
                                 {/* Connection indicator above each child */}
                                 <Box
@@ -1618,7 +1375,7 @@ const HierarchyOverview = ({
                                     w="12px"
                                     h="12px"
                                     bg="purple.500"
-                                    borderRadius="full"
+                                    borderRadius="7px"
                                     border="2px solid white"
                                     boxShadow="0 0 0 2px purple.500"
                                     className="connection-point-level1"
@@ -1653,17 +1410,17 @@ const HierarchyOverview = ({
                                     top="0"
                                     height="4px"
                                     bgGradient="linear(to-r, purple.400, green.500, purple.400)"
-                                    borderRadius="full"
+                                    borderRadius="7px"
                                     zIndex={1}
                                     className="connection-line-horizontal"
                                     style={{ animationDelay: "1.4s" }}
                                   />
                                   
                                   {/* Individual connection points */}
-                                  {processedHierarchy.downline.map((childCoach, childIndex) => {
+                                  {processedHierarchy?.downline?.map((childCoach, childIndex) => {
                                     if (childCoach.downline && childCoach.downline.length > 0) {
                                       return childCoach.downline.map((_, grandIndex) => {
-                                        const totalGrandChildren = processedHierarchy.downline.reduce((total, child) => 
+                                        const totalGrandChildren = (processedHierarchy?.downline || []).reduce((total, child) => 
                                           total + (child.downline ? child.downline.length : 0), 0
                                         );
                                         const grandChildPosition = (grandIndex + childIndex * 2) * (80 / Math.max(totalGrandChildren - 1, 1));
@@ -1676,7 +1433,7 @@ const HierarchyOverview = ({
                                               width="8px"
                                               height="8px"
                                               bg="green.500"
-                                              borderRadius="full"
+                                              borderRadius="7px"
                                               border="2px solid white"
                                               boxShadow="0 0 0 2px green.500"
                                               zIndex={2}
@@ -1727,7 +1484,7 @@ const HierarchyOverview = ({
                                             width="4px"
                                             height="30px"
                                             bgGradient="linear(to-b, purple.500, green.500)"
-                                            borderRadius="full"
+                                            borderRadius="7px"
                                             transform="translateX(-50%)"
                                             zIndex={1}
                                             className="connection-line-level2"
@@ -1754,7 +1511,7 @@ const HierarchyOverview = ({
                                             w="10px"
                                             h="10px"
                                             bg="green.500"
-                                            borderRadius="full"
+                                            borderRadius="7px"
                                             border="2px solid white"
                                             boxShadow="0 0 0 2px green.500"
                                             className="connection-point-level2"
@@ -1795,19 +1552,19 @@ const HierarchyOverview = ({
                                     top="0"
                                     height="4px"
                                     bgGradient="linear(to-r, green.400, orange.500, green.400)"
-                                    borderRadius="full"
+                                    borderRadius="7px"
                                     zIndex={1}
                                     className="connection-line-horizontal"
                                     style={{ animationDelay: "1.7s" }}
                                   />
                                   
                                   {/* Individual connection points for Level 3 */}
-                                  {processedHierarchy.downline.map((childCoach, childIndex) => {
+                                  {(processedHierarchy?.downline || []).map((childCoach, childIndex) => {
                                     if (childCoach.downline && childCoach.downline.length > 0) {
                                       return childCoach.downline.map((grandChildCoach, grandIndex) => {
                                         if (grandChildCoach.downline && grandChildCoach.downline.length > 0) {
                                           return grandChildCoach.downline.map((_, greatGrandIndex) => {
-                                            const totalGreatGrandChildren = processedHierarchy.downline.reduce((total, child) => 
+                                            const totalGreatGrandChildren = (processedHierarchy?.downline || []).reduce((total, child) => 
                                               total + (child.downline ? 
                                                 child.downline.reduce((subTotal, grandChild) => 
                                                   subTotal + (grandChild.downline ? grandChild.downline.length : 0), 0
@@ -1824,7 +1581,7 @@ const HierarchyOverview = ({
                                                 width="8px"
                                                 height="8px"
                                                 bg="orange.500"
-                                                borderRadius="full"
+                                                borderRadius="7px"
                                                 border="2px solid white"
                                                 boxShadow="0 0 0 2px orange.500"
                                                 zIndex={2}
@@ -1859,7 +1616,7 @@ const HierarchyOverview = ({
                                 minW="max-content"
                                 px={4}
                               >
-                                {processedHierarchy.downline.map((childCoach, childIndex) => (
+                                {(processedHierarchy?.downline || []).map((childCoach, childIndex) => (
                                   childCoach.downline && childCoach.downline.length > 0 ? (
                                     childCoach.downline.map((grandChildCoach, grandIndex) => (
                                       grandChildCoach.downline && grandChildCoach.downline.length > 0 ? (
@@ -1873,7 +1630,7 @@ const HierarchyOverview = ({
                                               width="4px"
                                               height="30px"
                                               bgGradient="linear(to-b, green.500, orange.500)"
-                                              borderRadius="full"
+                                              borderRadius="7px"
                                               transform="translateX(-50%)"
                                               zIndex={1}
                                               className="connection-line-level3"
@@ -1892,7 +1649,7 @@ const HierarchyOverview = ({
                                                 w="8px"
                                                 h="8px"
                                                 bg="orange.500"
-                                                borderRadius="full"
+                                                borderRadius="7px"
                                                 border="2px solid white"
                                                 boxShadow="0 0 0 2px orange.500"
                                                 className="connection-point-level3"
@@ -1938,7 +1695,7 @@ const HierarchyOverview = ({
           </Card>
 
           {/* Enhanced Hierarchy Legend */}
-          <Card bg="linear-gradient(135deg, rgba(219, 234, 254, 0.5), rgba(233, 213, 255, 0.5))" border="1px" borderColor="blue.200" borderRadius="xl" boxShadow="md">
+          <Card bg="linear-gradient(135deg, rgba(219, 234, 254, 0.5), rgba(233, 213, 255, 0.5))" border="1px" borderColor="blue.200" borderRadius="7px" boxShadow="md">
             <CardBody p={6}>
               <VStack spacing={4} align="stretch">
                 <HStack justify="space-between" align="center">
@@ -2103,9 +1860,9 @@ const TableView = ({ hierarchyData, onViewCoach, onEditCoach, searchTerm }) => {
                     <Badge 
                       colorScheme={coach.isActive ? 'green' : 'red'} 
                       size="sm"
-                      borderRadius="full"
+                      borderRadius="7px"
                     >
-                      {coach.isActive ? '✅ Active' : '❌ Inactive'}
+                      {coach.isActive ? 'Active' : 'Inactive'}
                     </Badge>
                     <Text fontSize="xs" color="gray.500">
                       {coach.teamRankName || 'No rank'}
@@ -2184,7 +1941,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isLoadi
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered>
       <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
-      <ModalContent borderRadius="2xl">
+      <ModalContent borderRadius="7px">
         <ModalHeader>{title}</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
@@ -2192,7 +1949,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isLoadi
             bg="orange.50" 
             border="1px" 
             borderColor="orange.200" 
-            borderRadius="lg" 
+            borderRadius="7px" 
             p={4}
           >
             <HStack spacing={3}>
@@ -2321,124 +2078,11 @@ const MLMDashboard = () => {
   const [performanceFilter, setPerformanceFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCoaches, setSelectedCoaches] = useState(new Set());
-  const [showDummyData, setShowDummyData] = useState(false);
   const [treeZoom, setTreeZoom] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [treePosition, setTreePosition] = useState({ x: 0, y: 0 });
 
-  // Sample data for demonstration
-  const sampleHierarchyData = {
-    name: 'Varun Kumar',
-    email: 'varun.kumar@mlmnetwork.com',
-    _id: 'sample-root-001',
-    isActive: true,
-    currentLevel: 0,
-    teamRankName: 'Head Coach',
-    downline: [
-      {
-        _id: 'sample-l1-001',
-        name: 'Priya Sharma',
-        email: 'priya.sharma@mlmnetwork.com',
-        isActive: true,
-        currentLevel: 1,
-        teamRankName: 'Senior Coach',
-        performance: {
-          performanceScore: 85,
-          activityStreak: 12,
-          isActive: true
-        },
-        downline: [
-          {
-            _id: 'sample-l2-001',
-            name: 'Rahul Verma',
-            email: 'rahul.verma@mlmnetwork.com',
-            isActive: true,
-            currentLevel: 2,
-            teamRankName: 'Coach',
-            performance: {
-              performanceScore: 72,
-              activityStreak: 8,
-              isActive: true
-            },
-            downline: []
-          },
-          {
-            _id: 'sample-l2-002',
-            name: 'Meera Kapoor',
-            email: 'meera.kapoor@mlmnetwork.com',
-            isActive: true,
-            currentLevel: 2,
-            teamRankName: 'Coach',
-            performance: {
-              performanceScore: 78,
-              activityStreak: 15,
-              isActive: true
-            },
-            downline: []
-          }
-        ]
-      },
-      {
-        _id: 'sample-l1-002',
-        name: 'Amit Patel',
-        email: 'amit.patel@mlmnetwork.com',
-        isActive: true,
-        currentLevel: 1,
-        teamRankName: 'Senior Coach',
-        performance: {
-          performanceScore: 92,
-          activityStreak: 25,
-          isActive: true
-        },
-        downline: [
-          {
-            _id: 'sample-l2-003',
-            name: 'Neha Gupta',
-            email: 'neha.gupta@mlmnetwork.com',
-            isActive: true,
-            currentLevel: 2,
-            teamRankName: 'Coach',
-            performance: {
-              performanceScore: 81,
-              activityStreak: 18,
-              isActive: true
-            },
-            downline: []
-          }
-        ]
-      },
-      {
-        _id: 'sample-l1-003',
-        name: 'Kavita Singh',
-        email: 'kavita.singh@mlmnetwork.com',
-        isActive: true,
-        currentLevel: 1,
-        teamRankName: 'Senior Coach',
-        performance: {
-          performanceScore: 88,
-          activityStreak: 20,
-          isActive: true
-        },
-        downline: []
-      },
-      {
-        _id: 'sample-l1-004',
-        name: 'Deepak Sharma',
-        email: 'deepak.sharma@mlmnetwork.com',
-        isActive: false,
-        currentLevel: 1,
-        teamRankName: 'Senior Coach',
-        performance: {
-          performanceScore: 62,
-          activityStreak: 4,
-          isActive: false
-        },
-        downline: []
-      }
-    ]
-  };
-  
   // Request deduplication - prevent multiple simultaneous calls
   const fetchingRef = useRef({
     hierarchy: false,
@@ -2464,6 +2108,7 @@ const MLMDashboard = () => {
     email: '',
     password: '',
     sponsorId: '',
+    selfCoachId: '',
     currentLevel: 1,
     bio: '',
     city: '',
@@ -2480,9 +2125,9 @@ const MLMDashboard = () => {
   useEffect(() => {
     setFormData(prev => ({
       ...prev,
-      sponsorId: effectiveAuth.coachId || ''
+      sponsorId: effectiveAuth.coachId || user?.id || ''
     }));
-  }, [effectiveAuth.coachId]);
+  }, [effectiveAuth.coachId, user?.id]);
 
   const [reportConfig, setReportConfig] = useState({
     reportType: 'team_summary',
@@ -2604,76 +2249,32 @@ const MLMDashboard = () => {
     fetchingRef.current.hierarchy = true;
     setLoading(true);
     try {
-      // Use the downline API to get your team structure
-      const response = await fetch(`${BASE_URL}/api/advanced-mlm/downline/${authData.coachId}?includePerformance=true`, {
+      // Use the proper hierarchy API endpoint
+      const response = await fetch(`${BASE_URL}/api/advanced-mlm/hierarchy/${authData.coachId}?levels=${levelsToShow || 5}&includePerformance=true`, {
         headers: getHeaders()
       });
       
       if (response.ok) {
         const data = await response.json();
         
-        // Process the data to match the expected structure
+        // Process the data from hierarchy API
         let processedData;
         if (data.success && data.data) {
-          // If data has success wrapper
-          if (data.data.downlineWithPerformance) {
-            processedData = {
-              name: user?.name || 'Network Leader',
-              email: user?.email || '',
-              _id: user?.id,
-              isActive: true,
-              currentLevel: 0,
-              downlineHierarchy: data.data.downlineWithPerformance || []
-            };
-          } else if (data.data.downline) {
-            processedData = {
-              name: user?.name || 'Network Leader',
-              email: user?.email || '',
-              _id: user?.id,
-              isActive: true,
-              currentLevel: 0,
-              downlineHierarchy: data.data.downline || []
-            };
-          } else {
-            processedData = {
-              name: user?.name || 'Network Leader',
-              email: user?.email || '',
-              _id: user?.id,
-              isActive: true,
-              currentLevel: 0,
-              downlineHierarchy: data.data || []
-            };
-          }
+          // Hierarchy API returns nested structure with root data
+          processedData = data.data;
+        } else if (data.data) {
+          processedData = data.data;
         } else {
-          // If data is direct
-          if (data.downlineWithPerformance) {
-            processedData = {
-              name: user?.name || 'Network Leader',
-              email: user?.email || '',
-              _id: user?.id,
-              isActive: true,
-              currentLevel: 0,
-              downlineHierarchy: data.downlineWithPerformance || []
-            };
-          } else if (data.downline) {
-            processedData = {
-              name: user?.name || 'Network Leader',
-              email: user?.email || '',
-              _id: user?.id,
-              isActive: true,
-              currentLevel: 0,
-              downlineHierarchy: data.downline || []
-            };
-          } else {
-            processedData = {
-              name: user?.name || 'Network Leader',
-              email: user?.email || '',
-              _id: user?.id,
-              isActive: true,
-              currentLevel: 0,
-              downlineHierarchy: data || []
-            };
-          }
+          processedData = data;
+        }
+        
+        // Ensure the data has the expected structure
+        if (!processedData.downline && !processedData.downlineHierarchy) {
+          processedData = {
+            ...processedData,
+            downline: [],
+            downlineHierarchy: []
+          };
         }
         
         setHierarchyData(processedData);
@@ -2688,8 +2289,7 @@ const MLMDashboard = () => {
         
         // Check if it's a 404 with "no data" message (not a real error)
         if (response.status === 404 && (
-          errorData.message?.toLowerCase().includes('no downline found') ||
-          errorData.message?.toLowerCase().includes('no team members found') ||
+          errorData.message?.toLowerCase().includes('no downline') ||
           errorData.message?.toLowerCase().includes('not found')
         )) {
           // Set empty hierarchy data (no downline yet) - this is expected, not an error
@@ -2697,8 +2297,10 @@ const MLMDashboard = () => {
             name: effectiveAuth.user?.name || user?.name || 'Network Leader',
             email: effectiveAuth.user?.email || user?.email || '',
             _id: effectiveAuth.coachId || user?.id,
+            profilePictureUrl: effectiveAuth.user?.profilePictureUrl || user?.profilePictureUrl,
             isActive: true,
             currentLevel: 0,
+            downline: [],
             downlineHierarchy: []
           };
           setHierarchyData(emptyData);
@@ -2714,8 +2316,10 @@ const MLMDashboard = () => {
             name: effectiveAuth.user?.name || user?.name || 'Network Leader',
             email: effectiveAuth.user?.email || user?.email || '',
             _id: effectiveAuth.coachId || user?.id,
+            profilePictureUrl: effectiveAuth.user?.profilePictureUrl || user?.profilePictureUrl,
             isActive: true,
             currentLevel: 0,
+            downline: [],
             downlineHierarchy: []
           };
           setHierarchyData(emptyData);
@@ -2723,14 +2327,17 @@ const MLMDashboard = () => {
       }
     } catch (error) {
       console.error('💥 fetchHierarchy Error:', error);
+      toast('Failed to fetch hierarchy data', 'error');
       
       // Set empty data on network error
       const emptyData = {
         name: effectiveAuth.user?.name || user?.name || 'Network Leader',
         email: effectiveAuth.user?.email || user?.email || '',
         _id: effectiveAuth.coachId || user?.id,
+        profilePictureUrl: effectiveAuth.user?.profilePictureUrl || user?.profilePictureUrl,
         isActive: true,
         currentLevel: 0,
+        downline: [],
         downlineHierarchy: []
       };
       
@@ -2987,26 +2594,54 @@ const MLMDashboard = () => {
     e.preventDefault();
     setLoading(true);
     try {
+      // Validate required fields
+      if (!formData.name || !formData.email || !formData.password || !formData.selfCoachId) {
+        toast('Please fill all required fields: name, email, password, and Coach ID', 'error');
+        setLoading(false);
+        return;
+      }
+
+      // Ensure sponsorId is set correctly
+      const sponsorId = formData.sponsorId || effectiveAuth.coachId || user?.id;
+      if (!sponsorId) {
+        toast('Sponsor ID is missing. Please log in again.', 'error');
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch(`${BASE_URL}/api/advanced-mlm/downline`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
-          ...formData,
-          sponsorId: user?.id
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          sponsorId: sponsorId,
+          selfCoachId: formData.selfCoachId,
+          currentLevel: formData.currentLevel || 1,
+          bio: formData.bio,
+          city: formData.city,
+          country: formData.country,
+          company: formData.company,
+          experienceYears: formData.experienceYears,
+          specializations: formData.specializations,
+          isActive: formData.isActive,
+          teamRankName: formData.teamRankName,
+          presidentTeamRankName: formData.presidentTeamRankName
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        toast('Coach added successfully');
+        toast(data.message || 'Coach added successfully', 'success');
         onAddModalClose();
         resetForm();
         fetchDownline();
         fetchHierarchy(); // Refresh hierarchy when adding new coach
         fetchTeamPerformance();
       } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to add coach');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to add coach');
       }
     } catch (error) {
       console.error('💥 addCoach Error:', error);
@@ -3054,7 +2689,8 @@ const MLMDashboard = () => {
       name: '',
       email: '',
       password: '',
-      sponsorId: user?.id || '',
+      sponsorId: effectiveAuth.coachId || user?.id || '',
+      selfCoachId: '',
       currentLevel: 1,
       bio: '',
       city: '',
@@ -3074,7 +2710,8 @@ const MLMDashboard = () => {
       name: coach.name || '',
       email: coach.email || '',
       password: '',
-      sponsorId: coach.sponsorId || user?.id || '',
+      sponsorId: coach.sponsorId || effectiveAuth.coachId || user?.id || '',
+      selfCoachId: coach.selfCoachId || '',
       currentLevel: coach.currentLevel || 1,
       bio: coach.bio || '',
       city: coach.city || '',
@@ -3225,7 +2862,7 @@ const MLMDashboard = () => {
       <Box maxW="full" mx="auto">
         <VStack spacing={8} align="stretch" w="full">
           {/* Minimalist Header */}
-          <Card bg="white" borderRadius="lg" boxShadow="sm" border="1px" borderColor="gray.100">
+          <Card bg="white" borderRadius="7px" boxShadow="sm" border="1px" borderColor="gray.100">
             <CardBody p={8}>
               <VStack spacing={8} align="stretch">
                 {/* Header Section */}
@@ -3253,20 +2890,6 @@ const MLMDashboard = () => {
                   
                   {/* Right Side - Action Buttons */}
                   <HStack spacing={3} justify={{ base: 'center', lg: 'end' }}>
-                    {/* Toggle for Dummy/Actual Data - Only show in Hierarchy tab */}
-                    {activeTab === 0 && (
-                      <HStack spacing={2} align="center" px={3} py={2} bg="gray.50" borderRadius="7px">
-                        <Text fontSize="xs" color="gray.600" fontWeight="500" whiteSpace="nowrap">
-                          {showDummyData ? 'Demo' : 'Actual'}
-                        </Text>
-                        <Switch
-                          isChecked={showDummyData}
-                          onChange={(e) => setShowDummyData(e.target.checked)}
-                          colorScheme="blue"
-                          size="sm"
-                        />
-                      </HStack>
-                    )}
                     <IconButton
                       icon={<RepeatIcon />}
                       variant="ghost"
@@ -3342,7 +2965,7 @@ const MLMDashboard = () => {
 
           {/* Bulk Actions Toolbar */}
           {selectedCoaches.size > 0 && activeTab === 1 && (
-            <Card bg="blue.50" border="1px solid" borderColor="blue.200" borderRadius="lg" shadow="md">
+            <Card bg="blue.50" border="1px solid" borderColor="blue.200" borderRadius="7px" shadow="md">
               <CardBody py={4}>
                 <HStack justify="space-between" align="center">
                   <HStack spacing={3} align="center">
@@ -3350,7 +2973,7 @@ const MLMDashboard = () => {
                       w="8px"
                       h="8px"
                       bg="blue.500"
-                      borderRadius="full"
+                      borderRadius="7px"
                       animation="pulse 2s infinite"
                     />
                     <Text fontWeight="semibold" color="blue.700" fontSize="md">
@@ -3372,9 +2995,9 @@ const MLMDashboard = () => {
                         bg: 'blue.50'
                       }}
                       transition="all 0.2s"
-                      borderRadius="lg"
+                      borderRadius="7px"
                     >
-                      📥 Export Selected
+                      Export Selected
                     </Button>
                     <Button 
                       leftIcon={<DeleteIcon />} 
@@ -3386,9 +3009,9 @@ const MLMDashboard = () => {
                         bg: 'red.50'
                       }}
                       transition="all 0.2s"
-                      borderRadius="lg"
+                      borderRadius="7px"
                     >
-                      🗑️ Delete Selected
+                      Delete Selected
                     </Button>
                   </ButtonGroup>
                 </HStack>
@@ -3397,7 +3020,7 @@ const MLMDashboard = () => {
           )}
 
           {/* Main Content Tabs */}
-          <Card bg="white" borderRadius="lg" boxShadow="sm" border="1px" borderColor="gray.100">
+          <Card bg="white" borderRadius="7px" boxShadow="sm" border="1px" borderColor="gray.100">
             <Tabs index={activeTab} onChange={setActiveTab} colorScheme="blue">
               <TabList borderBottom="1px" borderColor="gray.200" px={6} pt={4}>
                 <Tab 
@@ -3507,8 +3130,8 @@ const MLMDashboard = () => {
                         ))}
                       </SimpleGrid>
                     ) : (() => {
-                      // Determine which data to use based on toggle
-                      const dataToUse = showDummyData ? sampleHierarchyData : hierarchyData;
+                      // Use real hierarchy data from backend
+                      const dataToUse = hierarchyData;
                       
                       // Get the members list - handle both downlineHierarchy and downline structures
                       const members = dataToUse?.downlineHierarchy || dataToUse?.downline || [];
@@ -3554,11 +3177,6 @@ const MLMDashboard = () => {
                                 <Text fontSize="sm" fontWeight="600" color="gray.700" textTransform="uppercase" letterSpacing="wide">
                                   Team Structure
                                 </Text>
-                                {showDummyData && (
-                                  <Badge colorScheme="orange" variant="subtle" fontSize="xs" borderRadius="full" px={2}>
-                                    Demo Data
-                                  </Badge>
-                                )}
                               </HStack>
                               <Text fontSize="xs" color="gray.500">
                                 {members.length} direct member{members.length !== 1 ? 's' : ''}
@@ -3816,15 +3434,15 @@ const MLMDashboard = () => {
                                       >
                                         <Box position="relative" display="inline-block">
                                           <Image
-                                            src={`https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70) + 1}`}
+                                            src={dataToUse.profilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(dataToUse.name || 'User')}&background=3182ce&color=fff&size=128`}
                                             alt={dataToUse.name || 'You'}
-                                            borderRadius="full"
+                                            borderRadius="7px"
                                             boxSize="80px"
                                             border="4px solid"
                                             borderColor="gray.400"
                                             boxShadow="0 4px 12px rgba(0,0,0,0.15)"
                                             objectFit="cover"
-                                            fallbackSrc="https://via.placeholder.com/80"
+                                            fallbackSrc={`https://ui-avatars.com/api/?name=${encodeURIComponent(dataToUse.name || 'User')}&background=3182ce&color=fff&size=128`}
                                           />
                                           <Box
                                             position="absolute"
@@ -3833,7 +3451,7 @@ const MLMDashboard = () => {
                                             w={4}
                                             h={4}
                                             bg="green.500"
-                                            borderRadius="full"
+                                            borderRadius="7px"
                                             border="2px solid"
                                             borderColor="white"
                                           />
@@ -3916,7 +3534,6 @@ const MLMDashboard = () => {
                                         .map((member, index) => {
                                           const memberDownline = member.downlineHierarchy || member.downline || [];
                                           const hasChildren = memberDownline.length > 0;
-                                          const imageId = (member._id ? member._id.toString().charCodeAt(0) : index) % 70 + 1;
                                           
                                           return (
                                             <Box key={member._id || index} position="relative" textAlign="center" id={`member-${index}`}>
@@ -3986,15 +3603,15 @@ const MLMDashboard = () => {
                                                   >
                                                     <Box position="relative" display="inline-block">
                                                       <Image
-                                                        src={`https://i.pravatar.cc/150?img=${imageId}`}
+                                                        src={member.profilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name || 'User')}&background=3182ce&color=fff&size=128`}
                                                         alt={member.name}
-                                                        borderRadius="full"
+                                                        borderRadius="7px"
                                                         boxSize="64px"
                                                         border="3px solid"
                                                         borderColor={member.isActive !== false ? "green.400" : "gray.400"}
                                                         boxShadow="0 2px 8px rgba(0,0,0,0.1)"
                                                         objectFit="cover"
-                                                        fallbackSrc="https://via.placeholder.com/64"
+                                                        fallbackSrc={`https://ui-avatars.com/api/?name=${encodeURIComponent(member.name || 'User')}&background=3182ce&color=fff&size=128`}
                                                       />
                                                       <Box
                                                         position="absolute"
@@ -4003,7 +3620,7 @@ const MLMDashboard = () => {
                                                         w={3}
                                                         h={3}
                                                         bg={member.isActive !== false ? "green.500" : "gray.400"}
-                                                        borderRadius="full"
+                                                        borderRadius="7px"
                                                         border="2px solid"
                                                         borderColor="white"
                                                       />
@@ -4093,7 +3710,6 @@ const MLMDashboard = () => {
                                                     {memberDownline
                                                       .filter((_, idx) => levelsToShow === 0 || idx < 6)
                                                       .map((child, childIndex) => {
-                                                        const childImageId = (child._id ? child._id.toString().charCodeAt(0) : childIndex) % 70 + 1;
                                                         return (
                                                           <VStack key={child._id || childIndex} spacing={1} position="relative">
                                                             <Tooltip
@@ -4150,15 +3766,15 @@ const MLMDashboard = () => {
                                                               >
                                                                 <Box position="relative" display="inline-block">
                                                                   <Image
-                                                                    src={`https://i.pravatar.cc/150?img=${childImageId}`}
+                                                                    src={child.profilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(child.name || 'User')}&background=3182ce&color=fff&size=128`}
                                                                     alt={child.name}
-                                                                    borderRadius="full"
+                                                                    borderRadius="7px"
                                                                     boxSize="48px"
                                                                     border="2px solid"
                                                                     borderColor={child.isActive !== false ? "green.400" : "gray.400"}
                                                                     boxShadow="0 2px 6px rgba(0,0,0,0.1)"
                                                                     objectFit="cover"
-                                                                    fallbackSrc="https://via.placeholder.com/48"
+                                                                    fallbackSrc={`https://ui-avatars.com/api/?name=${encodeURIComponent(child.name || 'User')}&background=3182ce&color=fff&size=128`}
                                                                   />
                                                                   <Box
                                                                     position="absolute"
@@ -4167,7 +3783,7 @@ const MLMDashboard = () => {
                                                                     w={2.5}
                                                                     h={2.5}
                                                                     bg={child.isActive !== false ? "green.500" : "gray.400"}
-                                                                    borderRadius="full"
+                                                                    borderRadius="7px"
                                                                     border="2px solid"
                                                                     borderColor="white"
                                                                   />
@@ -4217,11 +3833,11 @@ const MLMDashboard = () => {
                             <SearchIcon color="gray.400" />
                           </InputLeftElement>
                           <Input
-                            placeholder="🔍 Search coaches..."
+                            placeholder="Search coaches..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             bg="white"
-                            borderRadius="lg"
+                            borderRadius="7px"
                             border="2px"
                             borderColor="gray.200"
                             _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px #3182ce' }}
@@ -4244,7 +3860,7 @@ const MLMDashboard = () => {
                         </Select>
                         
                         <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={onAddModalOpen}>
-                          ➕ Add Coach
+                          Add Coach
                         </Button>
                       </HStack>
                     </Flex>
@@ -4253,7 +3869,7 @@ const MLMDashboard = () => {
                     {loading ? (
                       <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
                         {Array(6).fill(0).map((_, i) => (
-                          <Card key={i} borderRadius="lg">
+                          <Card key={i} borderRadius="7px">
                             <CardBody>
                               <VStack spacing={4}>
                                 <Skeleton height="60px" width="60px" borderRadius="full" />
@@ -4264,7 +3880,7 @@ const MLMDashboard = () => {
                         ))}
                       </SimpleGrid>
                     ) : filteredDownlineData.length > 0 ? (
-                      <Card borderRadius="xl" overflow="hidden" border="1px" borderColor="gray.200">
+                      <Card borderRadius="7px" overflow="hidden" border="1px" borderColor="gray.200">
                         <TableContainer>
                           <Table variant="simple" size="md">
                             <Thead>
@@ -4311,7 +3927,7 @@ const MLMDashboard = () => {
                                         <Text fontWeight="bold" color="gray.800">{coach.name}</Text>
                                         <HStack spacing={2}>
                                           <Badge colorScheme={coach.isActive ? 'green' : 'red'} size="sm" borderRadius="full">
-                                            {coach.isActive ? '✅ Active' : '❌ Inactive'}
+                                            {coach.isActive ? 'Active' : 'Inactive'}
                                           </Badge>
                                           <Badge colorScheme="blue" size="sm" borderRadius="full">
                                             Level {coach.currentLevel || 1}
@@ -4347,11 +3963,11 @@ const MLMDashboard = () => {
                                       <Badge 
                                         colorScheme={coach.isActive ? 'green' : 'gray'} 
                                         variant="solid"
-                                        borderRadius="full"
+                                        borderRadius="7px"
                                         px={3}
                                         py={1}
                                       >
-                                        {coach.isActive ? '✅ Active' : '❌ Inactive'}
+                                        {coach.isActive ? 'Active' : 'Inactive'}
                                       </Badge>
                                       <Text fontSize="xs" color="gray.500">
                                         {coach.teamRankName || 'No rank'}
@@ -4414,10 +4030,10 @@ const MLMDashboard = () => {
                                         />
                                         <MenuList>
                                           <MenuItem icon={<Box as={FiMail} />}>
-                                            📧 Send Email
+                                            Send Email
                                           </MenuItem>
                                           <MenuItem icon={<ChatIcon />}>
-                                            💬 Send Message
+                                            Send Message
                                           </MenuItem>
                                           <MenuDivider />
                                           <MenuItem 
@@ -4425,7 +4041,7 @@ const MLMDashboard = () => {
                                             color="red.500"
                                             onClick={() => openDeleteModal(coach)}
                                           >
-                                            🗑️ Delete Coach
+                                            Delete Coach
                                           </MenuItem>
                                         </MenuList>
                                       </Menu>
@@ -4438,7 +4054,7 @@ const MLMDashboard = () => {
                         </TableContainer>
                       </Card>
                     ) : (
-                      <Card bg="gray.50" borderRadius="lg" border="2px dashed" borderColor="gray.300">
+                      <Card bg="gray.50" borderRadius="7px" border="2px dashed" borderColor="gray.300">
                         <CardBody py={12}>
                           <Center>
                             <VStack spacing={4}>
@@ -4446,7 +4062,7 @@ const MLMDashboard = () => {
                                 w="80px"
                                 h="80px"
                                 bg="gray.200"
-                                borderRadius="lg"
+                                borderRadius="7px"
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
@@ -4466,7 +4082,7 @@ const MLMDashboard = () => {
                                 </Text>
                               </VStack>
                               <Button colorScheme="blue" onClick={onAddModalOpen} size="sm">
-                                ➕ Add New Coach
+                                Add New Coach
                               </Button>
                             </VStack>
                           </Center>
@@ -4489,8 +4105,8 @@ const MLMDashboard = () => {
                       <HStack spacing={3}>
                         <Select w="200px" value={performanceFilter} onChange={(e) => setPerformanceFilter(e.target.value)}>
                           <option value="all">🌍 All Members</option>
-                          <option value="top">⭐ Top Performers</option>
-                          <option value="active">✅ Active Only</option>
+                          <option value="top">Top Performers</option>
+                          <option value="active">Active Only</option>
                           <option value="inactive">⚠️ Needs Attention</option>
                         </Select>
                         <Button 
@@ -4507,18 +4123,18 @@ const MLMDashboard = () => {
 
                     {loading ? (
                       <VStack spacing={4}>
-                        <Skeleton height="200px" borderRadius="lg" />
+                        <Skeleton height="200px" borderRadius="7px" />
                         <SimpleGrid columns={3} spacing={4} w="100%">
-                          <Skeleton height="150px" borderRadius="lg" />
-                          <Skeleton height="150px" borderRadius="lg" />
-                          <Skeleton height="150px" borderRadius="lg" />
+                          <Skeleton height="150px" borderRadius="7px" />
+                          <Skeleton height="150px" borderRadius="7px" />
+                          <Skeleton height="150px" borderRadius="7px" />
                         </SimpleGrid>
                       </VStack>
                     ) : teamPerformance ? (
                       <VStack spacing={6} align="stretch">
                         {/* Performance Overview Cards */}
                         <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4}>
-                          <Card bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)" color="white" borderRadius="xl" boxShadow="lg">
+                          <Card bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)" color="white" borderRadius="7px" boxShadow="lg">
                             <CardBody textAlign="center" p={6}>
                               <VStack spacing={3}>
                                 <Box p={3} bg="white" borderRadius="full">
@@ -4535,7 +4151,7 @@ const MLMDashboard = () => {
                             </CardBody>
                           </Card>
                           
-                          <Card bg="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" color="white" borderRadius="xl" boxShadow="lg">
+                          <Card bg="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" color="white" borderRadius="7px" boxShadow="lg">
                             <CardBody textAlign="center" p={6}>
                               <VStack spacing={3}>
                                 <Box p={3} bg="white" borderRadius="full">
@@ -4552,7 +4168,7 @@ const MLMDashboard = () => {
                             </CardBody>
                           </Card>
                           
-                          <Card bg="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" color="white" borderRadius="xl" boxShadow="lg">
+                          <Card bg="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" color="white" borderRadius="7px" boxShadow="lg">
                             <CardBody textAlign="center" p={6}>
                               <VStack spacing={3}>
                                 <Box p={3} bg="white" borderRadius="full">
@@ -4569,7 +4185,7 @@ const MLMDashboard = () => {
                             </CardBody>
                           </Card>
                           
-                          <Card bg="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)" color="white" borderRadius="xl" boxShadow="lg">
+                          <Card bg="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)" color="white" borderRadius="7px" boxShadow="lg">
                             <CardBody textAlign="center" p={6}>
                               <VStack spacing={3}>
                                 <Box p={3} bg="white" borderRadius="full">
@@ -4589,7 +4205,7 @@ const MLMDashboard = () => {
 
                         {/* Performance Charts and Analytics */}
                         <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
-                          <Card borderRadius="xl" boxShadow="md">
+                          <Card borderRadius="7px" boxShadow="md">
                             <CardHeader>
                               <Heading size="md" color="gray.800">Performance Distribution</Heading>
                             </CardHeader>
@@ -4610,7 +4226,7 @@ const MLMDashboard = () => {
                                       : 0} 
                                     colorScheme="green" 
                                     size="lg" 
-                                    borderRadius="full"
+                                    borderRadius="7px"
                                   />
                                 </Box>
 
@@ -4629,7 +4245,7 @@ const MLMDashboard = () => {
                                       : 0} 
                                     colorScheme="yellow" 
                                     size="lg" 
-                                    borderRadius="full"
+                                    borderRadius="7px"
                                   />
                                 </Box>
 
@@ -4648,14 +4264,14 @@ const MLMDashboard = () => {
                                       : 0} 
                                     colorScheme="red" 
                                     size="lg" 
-                                    borderRadius="full"
+                                    borderRadius="7px"
                                   />
                                 </Box>
                               </VStack>
                             </CardBody>
                           </Card>
 
-                          <Card borderRadius="xl" boxShadow="md">
+                          <Card borderRadius="7px" boxShadow="md">
                             <CardHeader>
                               <Heading size="md" color="gray.800">Key Metrics</Heading>
                             </CardHeader>
@@ -4676,7 +4292,7 @@ const MLMDashboard = () => {
                                       : 0} 
                                     colorScheme="blue" 
                                     size="lg" 
-                                    borderRadius="full"
+                                    borderRadius="7px"
                                   />
                                 </Box>
 
@@ -4695,11 +4311,11 @@ const MLMDashboard = () => {
                                       : 0} 
                                     colorScheme="purple" 
                                     size="lg" 
-                                    borderRadius="full"
+                                    borderRadius="7px"
                                   />
                                 </Box>
 
-                                <Box textAlign="center" p={4} bg="gray.50" borderRadius="lg">
+                                <Box textAlign="center" p={4} bg="gray.50" borderRadius="7px">
                                   <Text fontSize="xs" color="gray.500" mb={1}>AVERAGE DEAL SIZE</Text>
                                   <Text fontSize="2xl" fontWeight="bold" color="green.600">
                                     ${teamPerformance.totalSales > 0 
@@ -4713,7 +4329,7 @@ const MLMDashboard = () => {
                         </SimpleGrid>
                       </VStack>
                     ) : (
-                      <Card bg="gray.50" borderRadius="lg" border="2px dashed" borderColor="gray.300">
+                      <Card bg="gray.50" borderRadius="7px" border="2px dashed" borderColor="gray.300">
                         <CardBody py={12}>
                           <Center>
                             <VStack spacing={4}>
@@ -4721,7 +4337,7 @@ const MLMDashboard = () => {
                                 w="80px"
                                 h="80px"
                                 bg="gray.200"
-                                borderRadius="lg"
+                                borderRadius="7px"
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
@@ -4788,18 +4404,18 @@ const MLMDashboard = () => {
 
                             {loading ? (
                               <VStack spacing={4}>
-                                <Skeleton height="200px" borderRadius="lg" />
+                                <Skeleton height="200px" borderRadius="7px" />
                                 <SimpleGrid columns={3} spacing={4} w="100%">
-                                  <Skeleton height="150px" borderRadius="lg" />
-                                  <Skeleton height="150px" borderRadius="lg" />
-                                  <Skeleton height="150px" borderRadius="lg" />
+                                  <Skeleton height="150px" borderRadius="7px" />
+                                  <Skeleton height="150px" borderRadius="7px" />
+                                  <Skeleton height="150px" borderRadius="7px" />
                                 </SimpleGrid>
                               </VStack>
                             ) : teamPerformance ? (
                               <VStack spacing={6} align="stretch">
                                 {/* Performance Overview Cards */}
                                 <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4}>
-                                  <Card bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)" color="white" borderRadius="xl" boxShadow="lg">
+                                  <Card bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)" color="white" borderRadius="7px" boxShadow="lg">
                                     <CardBody textAlign="center" p={6}>
                                       <VStack spacing={3}>
                                         <Box p={3} bg="white" borderRadius="full">
@@ -4816,7 +4432,7 @@ const MLMDashboard = () => {
                                     </CardBody>
                                   </Card>
                                   
-                                  <Card bg="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" color="white" borderRadius="xl" boxShadow="lg">
+                                  <Card bg="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" color="white" borderRadius="7px" boxShadow="lg">
                                     <CardBody textAlign="center" p={6}>
                                       <VStack spacing={3}>
                                         <Box p={3} bg="white" borderRadius="full">
@@ -4833,7 +4449,7 @@ const MLMDashboard = () => {
                                     </CardBody>
                                   </Card>
                                   
-                                  <Card bg="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" color="white" borderRadius="xl" boxShadow="lg">
+                                  <Card bg="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" color="white" borderRadius="7px" boxShadow="lg">
                                     <CardBody textAlign="center" p={6}>
                                       <VStack spacing={3}>
                                         <Box p={3} bg="white" borderRadius="full">
@@ -4850,7 +4466,7 @@ const MLMDashboard = () => {
                                     </CardBody>
                                   </Card>
                                   
-                                  <Card bg="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)" color="white" borderRadius="xl" boxShadow="lg">
+                                  <Card bg="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)" color="white" borderRadius="7px" boxShadow="lg">
                                     <CardBody textAlign="center" p={6}>
                                       <VStack spacing={3}>
                                         <Box p={3} bg="white" borderRadius="full">
@@ -4870,7 +4486,7 @@ const MLMDashboard = () => {
 
                                 {/* Performance Charts and Analytics */}
                                 <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
-                                  <Card borderRadius="xl" boxShadow="md">
+                                  <Card borderRadius="7px" boxShadow="md">
                                     <CardHeader>
                                       <Heading size="md" color="gray.800">Performance Distribution</Heading>
                                     </CardHeader>
@@ -4891,7 +4507,7 @@ const MLMDashboard = () => {
                                               : 0} 
                                             colorScheme="green" 
                                             size="lg" 
-                                            borderRadius="full"
+                                            borderRadius="7px"
                                           />
                                         </Box>
 
@@ -4910,7 +4526,7 @@ const MLMDashboard = () => {
                                               : 0} 
                                             colorScheme="yellow" 
                                             size="lg" 
-                                            borderRadius="full"
+                                            borderRadius="7px"
                                           />
                                         </Box>
 
@@ -4929,14 +4545,14 @@ const MLMDashboard = () => {
                                               : 0} 
                                             colorScheme="red" 
                                             size="lg" 
-                                            borderRadius="full"
+                                            borderRadius="7px"
                                           />
                                         </Box>
                                       </VStack>
                                     </CardBody>
                                   </Card>
 
-                                  <Card borderRadius="xl" boxShadow="md">
+                                  <Card borderRadius="7px" boxShadow="md">
                                     <CardHeader>
                                       <Heading size="md" color="gray.800">Key Metrics</Heading>
                                     </CardHeader>
@@ -4957,7 +4573,7 @@ const MLMDashboard = () => {
                                               : 0} 
                                             colorScheme="blue" 
                                             size="lg" 
-                                            borderRadius="full"
+                                            borderRadius="7px"
                                           />
                                         </Box>
 
@@ -4976,11 +4592,11 @@ const MLMDashboard = () => {
                                               : 0} 
                                             colorScheme="purple" 
                                             size="lg" 
-                                            borderRadius="full"
+                                            borderRadius="7px"
                                           />
                                         </Box>
 
-                                        <Box textAlign="center" p={4} bg="gray.50" borderRadius="lg">
+                                        <Box textAlign="center" p={4} bg="gray.50" borderRadius="7px">
                                           <Text fontSize="xs" color="gray.500" mb={1}>AVERAGE DEAL SIZE</Text>
                                           <Text fontSize="2xl" fontWeight="bold" color="green.600">
                                             ${teamPerformance.totalSales > 0 
@@ -4994,7 +4610,7 @@ const MLMDashboard = () => {
                                 </SimpleGrid>
                               </VStack>
                             ) : (
-                              <Card bg="gray.50" borderRadius="lg" border="2px dashed" borderColor="gray.300">
+                              <Card bg="gray.50" borderRadius="7px" border="2px dashed" borderColor="gray.300">
                                 <CardBody py={12}>
                                   <Center>
                                     <VStack spacing={4}>
@@ -5002,7 +4618,7 @@ const MLMDashboard = () => {
                                         w="80px"
                                         h="80px"
                                         bg="gray.200"
-                                        borderRadius="lg"
+                                        borderRadius="7px"
                                         display="flex"
                                         alignItems="center"
                                         justifyContent="center"
@@ -5132,7 +4748,7 @@ const MLMDashboard = () => {
                     {loading ? (
                       <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
                         {Array(6).fill(0).map((_, i) => (
-                          <Card key={i} borderRadius="lg">
+                          <Card key={i} borderRadius="7px">
                             <CardBody>
                               <SkeletonText noOfLines={3} spacing="4" />
                             </CardBody>
@@ -5144,7 +4760,7 @@ const MLMDashboard = () => {
                         {reports.map((report, index) => (
                           <Card 
                             key={report._id || index} 
-                            borderRadius="lg" 
+                            borderRadius="7px" 
                             boxShadow="md"
                             _hover={{ transform: 'translateY(-2px)', shadow: 'lg' }}
                             transition="all 0.2s"
@@ -5159,11 +4775,11 @@ const MLMDashboard = () => {
                                     <Badge 
                                       colorScheme={report.status === 'completed' ? 'green' : report.status === 'processing' ? 'yellow' : 'gray'} 
                                       variant="solid"
-                                      borderRadius="full"
+                                      borderRadius="7px"
                                       px={2}
                                       py={1}
                                     >
-                                      {report.status === 'completed' ? '✅' : report.status === 'processing' ? '⏳' : '⚠️'} {report.status || 'pending'}
+                                      {report.status || 'pending'}
                                     </Badge>
                                   </VStack>
                                   <Box as={FiFileText} color="gray.400" size="24px" />
@@ -5189,7 +4805,7 @@ const MLMDashboard = () => {
                                     colorScheme="blue"
                                     _hover={{ bg: 'blue.50' }}
                                   >
-                                    👁️ View
+                                    View
                                   </Button>
                                   <IconButton 
                                     icon={<DownloadIcon />} 
@@ -5206,7 +4822,7 @@ const MLMDashboard = () => {
                         ))}
                       </SimpleGrid>
                     ) : (
-                      <Card bg="gray.50" borderRadius="lg" border="2px dashed" borderColor="gray.300">
+                      <Card bg="gray.50" borderRadius="7px" border="2px dashed" borderColor="gray.300">
                         <CardBody py={12}>
                           <Center>
                             <VStack spacing={4}>
@@ -5214,7 +4830,7 @@ const MLMDashboard = () => {
                                 w="80px"
                                 h="80px"
                                 bg="gray.200"
-                                borderRadius="lg"
+                                borderRadius="7px"
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
@@ -5294,7 +4910,7 @@ const MLMDashboard = () => {
                     {loading ? (
                       <VStack spacing={4}>
                         {[1, 2, 3].map(i => (
-                          <Skeleton key={i} height="80px" borderRadius="lg" />
+                          <Skeleton key={i} height="80px" borderRadius="7px" />
                         ))}
                       </VStack>
                     ) : commissions.length > 0 ? (
@@ -5343,7 +4959,7 @@ const MLMDashboard = () => {
                         </CardBody>
                       </Card>
                     ) : (
-                      <Card bg="gray.50" borderRadius="lg" border="2px dashed" borderColor="gray.300">
+                      <Card bg="gray.50" borderRadius="7px" border="2px dashed" borderColor="gray.300">
                         <CardBody py={12}>
                           <Center>
                             <VStack spacing={4}>
@@ -5351,13 +4967,13 @@ const MLMDashboard = () => {
                                 w="80px"
                                 h="80px"
                                 bg="gray.200"
-                                borderRadius="lg"
+                                borderRadius="7px"
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
                                 color="gray.500"
                               >
-                                <Text fontSize="3xl">💰</Text>
+                                <Text fontSize="3xl" fontWeight="bold" color="gray.400">$</Text>
                               </Box>
                               <VStack spacing={2}>
                                 <Text fontSize="lg" fontWeight="semibold" color="gray.600">
@@ -5393,13 +5009,13 @@ const MLMDashboard = () => {
                     {loading ? (
                       <VStack spacing={4}>
                         {[1, 2, 3].map(i => (
-                          <Skeleton key={i} height="120px" borderRadius="lg" />
+                          <Skeleton key={i} height="120px" borderRadius="7px" />
                         ))}
                       </VStack>
                     ) : adminRequests.length > 0 ? (
                       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                         {adminRequests.map((request, index) => (
-                          <Card key={request._id || index} borderRadius="lg" border="1px" borderColor="gray.200">
+                          <Card key={request._id || index} borderRadius="7px" border="1px" borderColor="gray.200">
                             <CardBody>
                               <VStack align="start" spacing={3}>
                                 <HStack justify="space-between" w="full">
@@ -5432,7 +5048,7 @@ const MLMDashboard = () => {
                         ))}
                       </SimpleGrid>
                     ) : (
-                      <Card bg="gray.50" borderRadius="lg" border="2px dashed" borderColor="gray.300">
+                      <Card bg="gray.50" borderRadius="7px" border="2px dashed" borderColor="gray.300">
                         <CardBody py={12}>
                           <Center>
                             <VStack spacing={4}>
@@ -5440,7 +5056,7 @@ const MLMDashboard = () => {
                                 w="80px"
                                 h="80px"
                                 bg="gray.200"
-                                borderRadius="lg"
+                                borderRadius="7px"
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
@@ -5472,10 +5088,10 @@ const MLMDashboard = () => {
       {/* Enhanced Add Coach Modal */}
       <Modal isOpen={isAddModalOpen} onClose={onAddModalClose} size="2xl">
         <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
-        <ModalContent borderRadius="2xl" maxH="90vh" overflowY="auto">
+        <ModalContent borderRadius="7px" maxH="90vh" overflowY="auto">
           <ModalHeader>
             <HStack spacing={3}>
-              <Box p={2} bg="blue.100" borderRadius="lg" color="blue.600">
+              <Box p={2} bg="blue.100" borderRadius="7px" color="blue.600">
                 <AddIcon />
               </Box>
               <VStack align="start" spacing={0}>
@@ -5535,6 +5151,23 @@ const MLMDashboard = () => {
                       />
                     </FormControl>
 
+                    <FormControl isRequired>
+                      <FormLabel color="gray.700">Coach ID (Unique)</FormLabel>
+                      <Input
+                        value={formData.selfCoachId}
+                        onChange={(e) => handleInputChange('selfCoachId', e.target.value.toUpperCase())}
+                        placeholder="Enter unique Coach ID (e.g., COACH123)"
+                        bg="white"
+                        borderColor="gray.300"
+                        _hover={{ borderColor: 'gray.400' }}
+                        _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px #3182ce' }}
+                        textTransform="uppercase"
+                      />
+                      <Text fontSize="xs" color="gray.500" mt={1}>
+                        This must be a unique identifier for the coach
+                      </Text>
+                    </FormControl>
+
                     <FormControl>
                       <FormLabel color="gray.700">Level</FormLabel>
                       <NumberInput
@@ -5563,7 +5196,7 @@ const MLMDashboard = () => {
                 {/* Location Information Section */}
                 <Box>
                   <Text fontSize="md" fontWeight="semibold" mb={4} color="gray.700">
-                    📍 Location Information
+                    Location Information
                   </Text>
                   <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                     <FormControl>
@@ -5709,7 +5342,7 @@ const MLMDashboard = () => {
                   color="gray.600"
                   _hover={{ bg: 'gray.100' }}
                 >
-                  ❌ Cancel
+                  Cancel
                 </Button>
                 <Button 
                   type="submit" 
@@ -5733,10 +5366,10 @@ const MLMDashboard = () => {
       {/* Enhanced Generate Report Modal */}
       <Modal isOpen={isReportModalOpen} onClose={onReportModalClose} size="lg">
         <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
-        <ModalContent borderRadius="2xl">
+        <ModalContent borderRadius="7px">
           <ModalHeader>
             <HStack spacing={3}>
-              <Box p={2} bg="blue.100" borderRadius="lg" color="blue.600">
+              <Box p={2} bg="blue.100" borderRadius="7px" color="blue.600">
                 <Box as={FiFileText} />
               </Box>
               <VStack align="start" spacing={0}>
@@ -5811,7 +5444,7 @@ const MLMDashboard = () => {
                   </FormControl>
                 </SimpleGrid>
 
-                <Box p={4} bg="blue.50" borderRadius="lg" border="1px" borderColor="blue.200">
+                <Box p={4} bg="blue.50" borderRadius="7px" border="1px" borderColor="blue.200">
                   <HStack spacing={3}>
                     <Box color="blue.500">●</Box>
                     <VStack align="start" spacing={1}>
@@ -5836,7 +5469,7 @@ const MLMDashboard = () => {
                   color="gray.600"
                   _hover={{ bg: 'gray.100' }}
                 >
-                  ❌ Cancel
+                  Cancel
                 </Button>
                 <Button
                   type="submit"
@@ -5861,7 +5494,7 @@ const MLMDashboard = () => {
       {selectedCoach && (
         <Modal isOpen={isViewModalOpen} onClose={onViewModalClose} size="4xl">
           <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
-          <ModalContent maxH="90vh" overflowY="auto" borderRadius="2xl">
+          <ModalContent maxH="90vh" overflowY="auto" borderRadius="7px">
             <ModalHeader>
               <HStack spacing={4}>
                 <Avatar 
@@ -5892,7 +5525,7 @@ const MLMDashboard = () => {
             <ModalBody>
               <VStack spacing={6} align="stretch">
                 {/* Quick Actions */}
-                <Card bg="gray.50" borderRadius="lg">
+                <Card bg="gray.50" borderRadius="7px">
                   <CardBody>
                     <ButtonGroup spacing={3} size="sm" w="full" justifyContent="center">
                       <Button
@@ -5901,7 +5534,7 @@ const MLMDashboard = () => {
                         variant="outline"
                         _hover={{ bg: 'blue.50' }}
                       >
-                        📧 Send Email
+                        Send Email
                       </Button>
                       <Button
                         leftIcon={<ChatIcon />}
@@ -5921,22 +5554,22 @@ const MLMDashboard = () => {
                         }}
                         _hover={{ bg: 'orange.50' }}
                       >
-                        ✏️ Edit Profile
+                        Edit Profile
                       </Button>
                     </ButtonGroup>
                   </CardBody>
                 </Card>
 
                 {/* Contact Information */}
-                <Card borderRadius="lg" boxShadow="sm">
+                <Card borderRadius="7px" boxShadow="sm">
                   <CardHeader>
-                    <Heading size="md" color="gray.800">📞 Contact Information</Heading>
+                    <Heading size="md" color="gray.800">Contact Information</Heading>
                   </CardHeader>
                   <CardBody>
                     <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                       <VStack align="start" spacing={3}>
                         <HStack spacing={3}>
-                          <Box p={2} bg="blue.100" borderRadius="lg" color="blue.600">
+                          <Box p={2} bg="blue.100" borderRadius="7px" color="blue.600">
                             <EmailIcon />
                           </Box>
                           <VStack align="start" spacing={0}>
@@ -5946,7 +5579,7 @@ const MLMDashboard = () => {
                         </HStack>
                         
                         <HStack spacing={3}>
-                          <Box p={2} bg="green.100" borderRadius="lg" color="green.600">
+                          <Box p={2} bg="green.100" borderRadius="7px" color="green.600">
                             <PhoneIcon />
                           </Box>
                           <VStack align="start" spacing={0}>
@@ -5958,7 +5591,7 @@ const MLMDashboard = () => {
 
                       <VStack align="start" spacing={3}>
                         <HStack spacing={3}>
-                          <Box p={2} bg="purple.100" borderRadius="lg" color="purple.600">
+                          <Box p={2} bg="purple.100" borderRadius="7px" color="purple.600">
                             <Box as={FiGlobe} />
                           </Box>
                           <VStack align="start" spacing={0}>
@@ -5970,7 +5603,7 @@ const MLMDashboard = () => {
                         </HStack>
                         
                         <HStack spacing={3}>
-                          <Box p={2} bg="orange.100" borderRadius="lg" color="orange.600">
+                          <Box p={2} bg="orange.100" borderRadius="7px" color="orange.600">
                             <Box as={FiUser} />
                           </Box>
                           <VStack align="start" spacing={0}>
@@ -5985,7 +5618,7 @@ const MLMDashboard = () => {
 
                 {/* Performance Metrics */}
                 {selectedCoach.performance && (
-                  <Card borderRadius="lg" boxShadow="sm">
+                  <Card borderRadius="7px" boxShadow="sm">
                     <CardHeader>
                       <Heading size="md" color="gray.800">Performance Metrics</Heading>
                     </CardHeader>
@@ -6028,7 +5661,7 @@ const MLMDashboard = () => {
                           <Badge 
                             colorScheme={selectedCoach.performance.isActive ? 'green' : 'red'} 
                             variant="subtle"
-                            borderRadius="full"
+                            borderRadius="7px"
                             px={3}
                             py={1}
                           >
@@ -6041,7 +5674,7 @@ const MLMDashboard = () => {
                 )}
 
                 {/* Professional Details */}
-                <Card borderRadius="lg" boxShadow="sm">
+                <Card borderRadius="7px" boxShadow="sm">
                   <CardHeader>
                     <Heading size="md" color="gray.800">💼 Professional Details</Heading>
                   </CardHeader>
@@ -6082,7 +5715,7 @@ const MLMDashboard = () => {
                           <Badge 
                             colorScheme={selectedCoach.isActive ? 'green' : 'red'} 
                             variant="solid"
-                            borderRadius="full"
+                            borderRadius="7px"
                             px={3}
                             py={1}
                           >
@@ -6096,9 +5729,9 @@ const MLMDashboard = () => {
 
                 {/* Bio Section */}
                 {selectedCoach.bio && (
-                  <Card borderRadius="lg" boxShadow="sm">
+                  <Card borderRadius="7px" boxShadow="sm">
                     <CardHeader>
-                      <Heading size="md" color="gray.800">📝 Bio & Description</Heading>
+                      <Heading size="md" color="gray.800">Bio & Description</Heading>
                     </CardHeader>
                     <CardBody>
                       <Text color="gray.700" lineHeight="1.6" fontSize="sm">
@@ -6110,7 +5743,7 @@ const MLMDashboard = () => {
 
                 {/* Specializations */}
                 {selectedCoach.portfolio && selectedCoach.portfolio.specializations && selectedCoach.portfolio.specializations.length > 0 && (
-                  <Card borderRadius="lg" boxShadow="sm">
+                  <Card borderRadius="7px" boxShadow="sm">
                     <CardHeader>
                       <Heading size="md" color="gray.800">Specializations</Heading>
                     </CardHeader>

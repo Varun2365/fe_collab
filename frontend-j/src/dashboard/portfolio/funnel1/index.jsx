@@ -2581,6 +2581,7 @@ const FunnelEditorIndex = () => {
   const [activeTab, setActiveTab] = useState('Template');
   const [pageUrl, setPageUrl] = useState('');
   const [funnelUrl, setFunnelUrl] = useState('');
+  const [stageUrls, setStageUrls] = useState({});
   const selectFunnelName = (state) => state.funnel.contentData.name;
   const [isLoading, setIsLoading] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -2694,6 +2695,26 @@ const FunnelEditorIndex = () => {
     }
   }, [activeTab, activeStageId, TABS.length]);
 
+  useEffect(() => {
+    const loadStageUrls = async () => {
+      if (!stages || stages.length === 0) {
+        setStageUrls({});
+        return;
+      }
+      const entries = await Promise.all(
+        stages.map(async s => {
+          const url = await getPageUrl(s.id);
+          return [s.id, url || null];
+        })
+      );
+      const map = {};
+      entries.forEach(([id, url]) => {
+        if (url) map[id] = url;
+      });
+      setStageUrls(map);
+    };
+    loadStageUrls();
+  }, [stages, slug]);
   const handleBuildPage = (stageId) => {
     const stage = stages.find(s => s.id === stageId);
     if (!stage) { 
@@ -3985,6 +4006,47 @@ const FunnelEditorIndex = () => {
               </span>
               <button
                 onClick={() => copyToClipboard(funnelUrl)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: '#3182ce'
+                }}
+                title="Copy link"
+              >
+                <FiCopy />
+              </button>
+            </div>
+          )}
+          {pageUrl && (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              padding: isMobile ? '6px 10px' : '8px 12px', 
+              backgroundColor: '#f7fafc', 
+              borderRadius: '6px', 
+              border: '1px solid #e2e8f0',
+              width: isMobile ? '100%' : 'auto',
+              maxWidth: isMobile ? '100%' : '300px',
+              overflow: 'hidden',
+              marginTop: '6px'
+            }}>
+              <span style={{ 
+                fontSize: isMobile ? '11px' : '12px', 
+                color: '#4a5568', 
+                maxWidth: isMobile ? 'calc(100% - 30px)' : '300px', 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis', 
+                whiteSpace: 'nowrap' 
+              }}>
+                {pageUrl}
+              </span>
+              <button
+                onClick={() => copyToClipboard(pageUrl)}
                 style={{
                   background: 'none',
                   border: 'none',

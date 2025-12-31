@@ -7,7 +7,7 @@ const {
     Commission, 
     CommissionSettings,
     Subscription,
-    Payment,
+    RazorpayPayment,
     CoachPerformance,
     Lead,
     Task,
@@ -1263,7 +1263,9 @@ const getDownline = async (req, res) => {
     const { includePerformance = 'false' } = req.query;
 
     try {
-        const downline = await User.find({ sponsorId, role: 'coach' }).select('-password -__v');
+        const downline = await User.find({ sponsorId, role: 'coach' })
+            .select('_id name email profilePictureUrl selfCoachId currentLevel teamRankName presidentTeamRankName phone city country company isActive sponsorId createdAt')
+            .lean();
         
         if (downline.length === 0) {
             return res.status(404).json({ 
@@ -1272,27 +1274,39 @@ const getDownline = async (req, res) => {
             });
         }
 
-        let result = { downline };
+        let result = { downline: downline };
 
         // Include performance data if requested
         if (includePerformance === 'true') {
             const performanceData = await CoachPerformance.find({ 
                 coachId: { $in: downline.map(d => d._id) } 
-            });
+            }).lean();
             
             result.downlineWithPerformance = downline.map(coach => {
-                const performance = performanceData.find(p => p.coachId.toString() === coach._id.toString());
+                const performance = performanceData.find(p => p.coachId && p.coachId.toString() === coach._id.toString());
                 return {
-                    ...coach.toObject(),
-                    performance: performance ? {
-                        currentLevel: performance.performanceRating.level,
-                        performanceScore: performance.performanceRating.score,
-                        isActive: performance.isActive,
-                        lastActivity: performance.lastActivity,
-                        activityStreak: performance.activityStreak
-                    } : null
+                    ...coach,
+                    performance: performance && performance.performanceRating ? {
+                        currentLevel: performance.performanceRating.level || 'Beginner',
+                        performanceScore: performance.performanceRating.score || 0,
+                        isActive: performance.isActive !== false,
+                        lastActivity: performance.lastActivity || new Date(),
+                        activityStreak: performance.activityStreak || 0
+                    } : {
+                        currentLevel: 'Beginner',
+                        performanceScore: 0,
+                        isActive: coach.isActive !== false,
+                        lastActivity: new Date(),
+                        activityStreak: 0
+                    }
                 };
             });
+        } else {
+            // Even without performance, ensure all fields are included
+            result.downlineWithPerformance = downline.map(coach => ({
+                ...coach,
+                performance: null
+            }));
         }
 
         res.status(200).json({
@@ -1344,6 +1358,17 @@ const getDownlineHierarchy = async (req, res) => {
                     _id: 1,
                     name: 1,
                     email: 1,
+                    profilePictureUrl: 1,
+                    selfCoachId: 1,
+                    currentLevel: 1,
+                    teamRankName: 1,
+                    presidentTeamRankName: 1,
+                    phone: 1,
+                    city: 1,
+                    country: 1,
+                    company: 1,
+                    isActive: 1,
+                    lastActiveAt: 1,
                     downlineHierarchy: {
                         $map: {
                             input: "$downlineHierarchy",
@@ -1352,6 +1377,15 @@ const getDownlineHierarchy = async (req, res) => {
                                 _id: "$$downlineMember._id",
                                 name: "$$downlineMember.name",
                                 email: "$$downlineMember.email",
+                                profilePictureUrl: "$$downlineMember.profilePictureUrl",
+                                selfCoachId: "$$downlineMember.selfCoachId",
+                                currentLevel: "$$downlineMember.currentLevel",
+                                teamRankName: "$$downlineMember.teamRankName",
+                                presidentTeamRankName: "$$downlineMember.presidentTeamRankName",
+                                phone: "$$downlineMember.phone",
+                                city: "$$downlineMember.city",
+                                country: "$$downlineMember.country",
+                                company: "$$downlineMember.company",
                                 level: "$$downlineMember.level",
                                 isActive: "$$downlineMember.isActive",
                                 lastActiveAt: "$$downlineMember.lastActiveAt"
@@ -1371,43 +1405,126 @@ const getDownlineHierarchy = async (req, res) => {
 
         let result = hierarchy[0];
 
-        // Include performance data if requested
-        if (includePerformance === 'true') {
-            const downlineIds = result.downlineHierarchy.map(d => d._id);
-            const performanceData = await CoachPerformance.find({ 
-                coachId: { $in: downlineIds } 
-            });
+        // Performance data will be included in buildTree function below
 
-            result.downlineHierarchy = result.downlineHierarchy.map(member => {
-                const performance = performanceData.find(p => p.coachId.toString() === member._id.toString());
-                return {
-                    ...member,
-                    performance: performance ? {
-                        currentLevel: performance.performanceRating.level,
-                        performanceScore: performance.performanceRating.score,
-                        isActive: performance.isActive,
-                        lastActivity: performance.lastActivity,
-                        activityStreak: performance.activityStreak
-                    } : null
-                };
+        // Get all downline members with their sponsorId for building tree
+        const downlineHierarchy = result.downlineHierarchy || [];
+        const allDownlineIds = downlineHierarchy.map(d => d._id);
+        
+        let downlineWithSponsors = [];
+        if (allDownlineIds.length > 0) {
+            downlineWithSponsors = await User.find({
+                _id: { $in: allDownlineIds },
+                role: 'coach'
+            }).select('_id name email profilePictureUrl selfCoachId currentLevel teamRankName presidentTeamRankName phone city country company isActive sponsorId').lean();
+        }
+
+        // Get performance data for all downline members if requested
+        let performanceMap = new Map();
+        if (includePerformance === 'true' && allDownlineIds.length > 0) {
+            const performanceData = await CoachPerformance.find({ 
+                coachId: { $in: allDownlineIds } 
+            }).lean();
+            
+            performanceData.forEach(perf => {
+                if (perf.coachId) {
+                    performanceMap.set(perf.coachId.toString(), {
+                        currentLevel: perf.performanceRating?.level || 'Beginner',
+                        performanceScore: perf.performanceRating?.score || 0,
+                        isActive: perf.isActive !== false,
+                        lastActivity: perf.lastActivity,
+                        activityStreak: perf.activityStreak || 0
+                    });
+                }
             });
         }
 
-        // Transform data structure for visualization component
+        // Create a map for quick lookup with level info
+        const memberMap = new Map();
+        downlineWithSponsors.forEach(member => {
+            const hierarchyInfo = downlineHierarchy.find(d => d._id.toString() === member._id.toString());
+            memberMap.set(member._id.toString(), {
+                ...member,
+                level: hierarchyInfo?.level || 1,
+                performance: performanceMap.get(member._id.toString()) || null
+            });
+        });
+
+        // Build recursive tree structure
+        const buildTree = (parentId) => {
+            const children = [];
+            memberMap.forEach((member) => {
+                if (member.sponsorId && member.sponsorId.toString() === parentId.toString()) {
+                    const childNode = {
+                        ...member,
+                        currentLevel: member.level || member.currentLevel || 1,
+                        downline: buildTree(member._id),
+                        downlineHierarchy: buildTree(member._id)
+                    };
+                    children.push(childNode);
+                }
+            });
+            return children;
+        };
+
+        // Transform data structure for frontend
+        const rootData = {
+            _id: result._id || sponsor._id,
+            name: result.name || sponsor.name,
+            email: result.email || sponsor.email,
+            profilePictureUrl: result.profilePictureUrl || sponsor.profilePictureUrl,
+            selfCoachId: sponsor.selfCoachId,
+            currentLevel: sponsor.currentLevel || 0,
+            teamRankName: sponsor.teamRankName,
+            presidentTeamRankName: sponsor.presidentTeamRankName,
+            phone: sponsor.phone,
+            city: sponsor.city,
+            country: sponsor.country,
+            company: sponsor.company,
+            isActive: sponsor.isActive !== false,
+            downline: buildTree(sponsor._id),
+            downlineHierarchy: buildTree(sponsor._id)
+        };
+
+        // Calculate summary stats
+        const allMembers = [rootData];
+        const collectAllMembers = (node) => {
+            if (node.downline && Array.isArray(node.downline)) {
+                node.downline.forEach(child => {
+                    allMembers.push(child);
+                    collectAllMembers(child);
+                });
+            }
+        };
+        collectAllMembers(rootData);
+
+        // Calculate total revenue
+        let totalRevenue = 0;
+        if (allMembers.length > 1) {
+            const revenueData = await RazorpayPayment.aggregate([
+                {
+                    $match: {
+                        coachId: { $in: allMembers.map(m => m._id) },
+                        status: 'captured'
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: { $ifNull: ['$amount', 0] } }
+                    }
+                }
+            ]).catch(() => [{ total: 0 }]);
+            totalRevenue = revenueData[0]?.total || 0;
+        }
+
         const transformedData = {
-            hierarchy: {
-                _id: result._id,
-                name: result.name,
-                email: result.email,
-                selfCoachId: sponsor.selfCoachId,
-                currentLevel: sponsor.currentLevel,
-                children: result.downlineHierarchy || []
-            },
+            ...rootData,
             summary: {
-                totalCoaches: (result.downlineHierarchy || []).length + 1,
-                maxDepth: Math.max(...(result.downlineHierarchy || []).map(d => d.level || 0), 0),
-                activeCoaches: (result.downlineHierarchy || []).filter(d => d.isActive !== false).length + 1,
-                totalRevenue: 0 // This would need to be calculated from actual data
+                totalCoaches: allMembers.length,
+                maxDepth: downlineHierarchy.length > 0 ? Math.max(...downlineHierarchy.map(d => d.level || 0), 0) : 0,
+                activeCoaches: allMembers.filter(d => d.isActive !== false).length,
+                totalRevenue: totalRevenue
             }
         };
 
@@ -1471,11 +1588,22 @@ const getTeamPerformance = async (req, res) => {
         // Get performance data
         const performanceData = await CoachPerformance.find({ 
             coachId: { $in: downlineIds } 
-        });
+        }).lean();
+
+        // Build match conditions for aggregates
+        const leadsMatch = {
+            coachId: { $in: downlineIds },
+            ...dateFilter
+        };
+
+        const tasksMatch = {
+            assignedTo: { $in: downlineIds },
+            ...dateFilter
+        };
 
         // Get leads data
         const leadsData = await Lead.aggregate([
-            { $match: { coachId: { $in: downlineIds }, ...dateFilter } },
+            { $match: leadsMatch },
             {
                 $group: {
                     _id: '$coachId',
@@ -1492,24 +1620,34 @@ const getTeamPerformance = async (req, res) => {
                     }
                 }
             }
-        ]);
+        ]).catch(err => {
+            console.error('Error aggregating leads data:', err);
+            return [];
+        });
 
-        // Get sales data
-        const salesData = await Payment.aggregate([
-            { $match: { coachId: { $in: downlineIds }, status: 'completed', ...dateFilter } },
+        // Get sales data - Use RazorpayPayment which has coachId field
+        const salesData = await RazorpayPayment.aggregate([
+            { $match: { 
+                coachId: { $in: downlineIds },
+                status: 'captured', // RazorpayPayment uses 'captured' instead of 'completed'
+                ...dateFilter
+            }},
             {
                 $group: {
                     _id: '$coachId',
                     totalSales: { $sum: 1 },
-                    totalRevenue: { $sum: '$amount' },
+                    totalRevenue: { $sum: { $ifNull: ['$amount', 0] } },
                     averageDealSize: { $avg: '$amount' }
                 }
             }
-        ]);
+        ]).catch(err => {
+            console.error('Error aggregating sales data:', err);
+            return [];
+        });
 
         // Get tasks data
         const tasksData = await Task.aggregate([
-            { $match: { assignedTo: { $in: downlineIds }, ...dateFilter } },
+            { $match: tasksMatch },
             {
                 $group: {
                     _id: '$assignedTo',
@@ -1525,7 +1663,10 @@ const getTeamPerformance = async (req, res) => {
                     }
                 }
             }
-        ]);
+        ]).catch(err => {
+            console.error('Error aggregating tasks data:', err);
+            return [];
+        });
 
         // Compile team performance summary
         const teamSummary = {
@@ -1540,46 +1681,51 @@ const getTeamPerformance = async (req, res) => {
         };
 
         downline.forEach(member => {
-            const leads = leadsData.find(l => l._id.toString() === member._id.toString()) || { totalLeads: 0, qualifiedLeads: 0, convertedLeads: 0 };
-            const sales = salesData.find(s => s._id.toString() === member._id.toString()) || { totalSales: 0, totalRevenue: 0, averageDealSize: 0 };
-            const tasks = tasksData.find(t => t._id.toString() === member._id.toString()) || { totalTasks: 0, completedTasks: 0 };
-            const performance = performanceData.find(p => p.coachId.toString() === member._id.toString());
+            const leads = leadsData.find(l => l._id && l._id.toString() === member._id.toString()) || { totalLeads: 0, qualifiedLeads: 0, convertedLeads: 0 };
+            const sales = salesData.find(s => s._id && s._id.toString() === member._id.toString()) || { totalSales: 0, totalRevenue: 0, averageDealSize: 0 };
+            const tasks = tasksData.find(t => t._id && t._id.toString() === member._id.toString()) || { totalTasks: 0, completedTasks: 0 };
+            const performance = performanceData.find(p => p.coachId && p.coachId.toString() === member._id.toString());
 
             const conversionRate = leads.totalLeads > 0 ? (leads.convertedLeads / leads.totalLeads) * 100 : 0;
             const taskCompletionRate = tasks.totalTasks > 0 ? (tasks.completedTasks / tasks.totalTasks) * 100 : 0;
 
             const memberDetail = {
                 coachId: member._id,
-                name: member.name,
-                email: member.email,
+                name: member.name || 'Unknown',
+                email: member.email || 'N/A',
                 leads: {
-                    total: leads.totalLeads,
-                    qualified: leads.qualifiedLeads,
-                    converted: leads.convertedLeads,
-                    conversionRate: conversionRate
+                    total: leads.totalLeads || 0,
+                    qualified: leads.qualifiedLeads || 0,
+                    converted: leads.convertedLeads || 0,
+                    conversionRate: conversionRate || 0
                 },
                 sales: {
-                    total: sales.totalSales,
-                    revenue: sales.totalRevenue,
-                    averageDealSize: sales.averageDealSize
+                    total: sales.totalSales || 0,
+                    revenue: sales.totalRevenue || 0,
+                    averageDealSize: sales.averageDealSize || 0
                 },
                 tasks: {
-                    total: tasks.totalTasks,
-                    completed: tasks.completedTasks,
-                    completionRate: taskCompletionRate
+                    total: tasks.totalTasks || 0,
+                    completed: tasks.completedTasks || 0,
+                    completionRate: taskCompletionRate || 0
                 },
-                performance: performance ? {
-                    level: performance.performanceRating.level,
-                    score: performance.performanceRating.score,
-                    isActive: performance.isActive,
-                    lastActivity: performance.lastActivity
-                } : null
+                performance: performance && performance.performanceRating ? {
+                    level: performance.performanceRating.level || 'Beginner',
+                    score: performance.performanceRating.score || 0,
+                    isActive: performance.isActive !== undefined ? performance.isActive : true,
+                    lastActivity: performance.lastActivity || new Date()
+                } : {
+                    level: 'Beginner',
+                    score: 0,
+                    isActive: true,
+                    lastActivity: new Date()
+                }
             };
 
             teamSummary.memberDetails.push(memberDetail);
-            teamSummary.totalLeads += leads.totalLeads;
-            teamSummary.totalSales += sales.totalSales;
-            teamSummary.totalRevenue += sales.totalRevenue;
+            teamSummary.totalLeads += (leads.totalLeads || 0);
+            teamSummary.totalSales += (sales.totalSales || 0);
+            teamSummary.totalRevenue += (sales.totalRevenue || 0);
         });
 
         // Calculate averages and identify top/under performers
@@ -1606,9 +1752,11 @@ const getTeamPerformance = async (req, res) => {
 
     } catch (err) {
         console.error('Error getting team performance:', err);
+        console.error('Error stack:', err.stack);
         res.status(500).json({
             success: false,
-            message: 'Server error while retrieving team performance'
+            message: 'Server error while retrieving team performance',
+            error: process.env.NODE_ENV === 'development' ? err.message : undefined
         });
     }
 };
