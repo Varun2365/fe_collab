@@ -87,13 +87,8 @@ const NurturingSequenceSchema = new mongoose.Schema({
         default: false
     },
     triggerConditions: {
-        leadScore: {
-            min: { type: Number, min: 0, max: 100 },
-            max: { type: Number, min: 0, max: 100 }
-        },
-        leadSource: [String],
-        leadStatus: [String],
-        leadTemperature: [String]
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
     },
     settings: {
         maxRetries: {

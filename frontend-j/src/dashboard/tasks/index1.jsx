@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { getToken } from '../../utils/authUtils';
@@ -57,36 +57,6 @@ import {
   Flex,
   Avatar,
   Tooltip,
-  Skeleton,
-  SkeletonText,
-  Progress,
-  CircularProgress,
-  Wrap,
-  WrapItem,
-  Stack,
-  ButtonGroup,
-  Switch,
-  ScaleFade,
-  Collapse,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  NumberIncrementStepper,
-  NumberDecrementStepper,
-  Table,
-  TableContainer,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Tag,
-  TagLabel,
-  Checkbox,
-  RadioGroup,
-  Radio,
-  Alert,
-  AlertIcon
 } from '@chakra-ui/react';
 import {
   FiCheckSquare,
@@ -107,264 +77,11 @@ import {
   FiEye,
   FiArrowUp,
   FiArrowDown,
-  FiTarget,
-  FiBarChart2,
-  FiGlobe,
-  FiPlay,
-  FiPause,
-  FiCheckCircle,
-  FiX,
-  FiPhone,
-  FiMessageSquare,
-  FiCheck,
-  FiArrowRight
 } from 'react-icons/fi';
-import {
-  SearchIcon,
-  AddIcon,
-  EditIcon,
-  DeleteIcon,
-  ViewIcon,
-  ChevronDownIcon,
-  ExternalLinkIcon,
-  CopyIcon,
-  WarningIcon
-} from '@chakra-ui/icons';
 // Using a simpler approach without drag-and-drop library for now
 // Can be enhanced with @hello-pangea/dnd later if needed
 
 import { API_BASE_URL } from '../../config/apiConfig';
-
-// Professional Loading Skeleton Component with Smooth Animations
-const ProfessionalLoader = () => {
-  return (
-    <Box maxW="full" py={8} px={6}>
-      <VStack spacing={8} align="stretch">
-        {/* Header Section with Professional Animation */}
-        <Card 
-          bg="white" 
-          borderRadius="xl" 
-          boxShadow="lg" 
-          border="1px" 
-          borderColor="gray.200"
-          overflow="hidden"
-          position="relative"
-        >
-          <Box
-            position="absolute"
-            top="0"
-            left="-100%"
-            width="100%"
-            height="100%"
-            background="linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent)"
-            animation="shimmer 2s infinite"
-            sx={{
-              '@keyframes shimmer': {
-                '0%': { left: '-100%' },
-                '100%': { left: '100%' }
-              }
-            }}
-          />
-          <CardHeader py={6}>
-            <VStack spacing={6} align="stretch">
-              <Flex justify="space-between" align="center" direction={{ base: 'column', md: 'row' }} gap={4}>
-                <VStack align={{ base: 'center', md: 'start' }} spacing={2}>
-                  <Skeleton height="40px" width="400px" borderRadius="lg" />
-                  <Skeleton height="20px" width="600px" borderRadius="md" />
-                </VStack>
-                <HStack spacing={2}>
-                  <Skeleton height="32px" width="100px" borderRadius="7px" />
-                  <Skeleton height="32px" width="80px" borderRadius="7px" />
-                  <Skeleton height="32px" width="120px" borderRadius="7px" />
-                  <Skeleton height="32px" width="120px" borderRadius="7px" />
-                </HStack>
-              </Flex>
-              
-              {/* Professional Stats Cards with Gradient Animation */}
-              <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={4}>
-                {[...Array(4)].map((_, i) => (
-                  <Card 
-                    key={i} 
-                    variant="outline"
-                    borderRadius="xl"
-                    overflow="hidden"
-                    position="relative"
-                    _hover={{ transform: 'translateY(-2px)', transition: 'all 0.3s' }}
-                  >
-                    <Box
-                      position="absolute"
-                      top="0"
-                      left="-100%"
-                      width="100%"
-                      height="100%"
-                      background={`linear-gradient(90deg, transparent, ${
-                        ['rgba(59, 130, 246, 0.1)', 'rgba(34, 197, 94, 0.1)', 'rgba(251, 146, 60, 0.1)', 'rgba(168, 85, 247, 0.1)'][i]
-                      }, transparent)`}
-                      animation="shimmer 2.5s infinite"
-                      sx={{
-                        '@keyframes shimmer': {
-                          '0%': { left: '-100%' },
-                          '100%': { left: '100%' }
-                        }
-                      }}
-                    />
-                    <CardBody p={6}>
-                      <HStack spacing={4} align="center" w="full">
-                        <Skeleton 
-                          height="60px" 
-                          width="60px" 
-                          borderRadius="xl" 
-                          startColor="gray.200"
-                          endColor="gray.300"
-                        />
-                        <VStack align="start" spacing={2} flex={1}>
-                          <Skeleton height="16px" width="120px" borderRadius="md" />
-                          <Skeleton height="32px" width="80px" borderRadius="lg" />
-                        </VStack>
-                        <Skeleton height="24px" width="60px" borderRadius="full" />
-                      </HStack>
-                    </CardBody>
-                  </Card>
-                ))}
-              </SimpleGrid>
-            </VStack>
-          </CardHeader>
-        </Card>
-
-        {/* Loading Progress Indicator */}
-        <Box textAlign="center" py={4}>
-          <VStack spacing={3}>
-            <HStack spacing={2}>
-              <Box
-                w="8px"
-                h="8px"
-                bg="blue.500"
-                borderRadius="full"
-                animation="pulse 1.4s infinite"
-                sx={{
-                  '@keyframes pulse': {
-                    '0%, 80%, 100%': { transform: 'scale(0.8)', opacity: 0.5 },
-                    '40%': { transform: 'scale(1)', opacity: 1 }
-                  }
-                }}
-              />
-              <Box
-                w="8px"
-                h="8px"
-                bg="blue.500"
-                borderRadius="full"
-                animation="pulse 1.4s infinite 0.2s"
-                sx={{
-                  '@keyframes pulse': {
-                    '0%, 80%, 100%': { transform: 'scale(0.8)', opacity: 0.5 },
-                    '40%': { transform: 'scale(1)', opacity: 1 }
-                  }
-                }}
-              />
-              <Box
-                w="8px"
-                h="8px"
-                bg="blue.500"
-                borderRadius="full"
-                animation="pulse 1.4s infinite 0.4s"
-                sx={{
-                  '@keyframes pulse': {
-                    '0%, 80%, 100%': { transform: 'scale(0.8)', opacity: 0.5 },
-                    '40%': { transform: 'scale(1)', opacity: 1 }
-                  }
-                }}
-              />
-            </HStack>
-            <Text color="gray.500" fontSize="sm" fontWeight="medium">
-              Loading your tasks and activities...
-            </Text>
-          </VStack>
-        </Box>
-      </VStack>
-    </Box>
-  );
-};
-
-// Stats Card Component
-const StatsCard = ({ title, value, icon, color = "blue", trend, isLoading = false, onClick }) => {
-  const bgColor = useColorModeValue(`${color}.50`, `${color}.900`);
-  const borderColor = useColorModeValue(`${color}.200`, `${color}.700`);
-  
-  return (
-    <Box
-      bg={bgColor}
-      border="1px"
-      borderColor={borderColor}
-      borderRadius="lg"
-      p={5}
-      minH="120px"
-      display="flex"
-      alignItems="center"
-      transition="all 0.2s"
-      cursor={onClick ? "pointer" : "default"}
-      _hover={{ transform: onClick ? 'translateY(-2px)' : 'none', borderColor: `${color}.300`, boxShadow: onClick ? 'md' : 'none' }}
-      onClick={onClick}
-    >
-      <HStack spacing={3} align="center">
-        <Box
-          p={2}
-          bg={`${color}.100`}
-          borderRadius="md"
-          color={`${color}.600`}
-          fontSize="lg"
-        >
-          {icon}
-        </Box>
-        <VStack align="start" spacing={0} flex={1}>
-          <Text fontSize="xs" fontWeight="600" color={`${color}.600`} textTransform="uppercase" letterSpacing="0.2em">
-            {title}
-          </Text>
-          {isLoading ? (
-            <Skeleton height="22px" width="60px" mt={1} />
-          ) : (
-            <Text fontSize="xl" fontWeight="600" color={`${color}.800`} mt={0.5}>
-              {value}
-            </Text>
-          )}
-        </VStack>
-        {trend !== undefined && trend !== null && (
-          <Badge 
-            colorScheme={trend > 0 ? 'green' : 'red'} 
-            variant="solid" 
-            size="sm"
-            borderRadius="md"
-            px={2}
-            py={0.5}
-          >
-            {trend > 0 ? '+' : ''}{trend}%
-          </Badge>
-        )}
-      </HStack>
-    </Box>
-  );
-};
-
-// --- BEAUTIFUL TOAST NOTIFICATIONS ---
-const useCustomToast = () => {
-  const toast = useToast();
-  
-  return useCallback((message, status = 'success') => {
-    let title = 'Success!';
-    if (status === 'error') title = 'Error!';
-    else if (status === 'warning') title = 'Warning!';
-    else if (status === 'info') title = 'Info!';
-    
-    toast({
-      title,
-      description: message,
-      status,
-      duration: 5000,
-      isClosable: true,
-      position: 'top-right',
-      variant: 'subtle',
-    });
-  }, [toast]);
-};
 
 const TasksAndActivities = () => {
   const navigate = useNavigate();
@@ -372,7 +89,6 @@ const TasksAndActivities = () => {
   const user = authState?.user;
   const token = getToken(authState);
   const toast = useToast();
-  const customToast = useCustomToast();
   
   // Check permissions
   const canAccess = canAccessSection(authState, 'tasks');
@@ -398,8 +114,6 @@ const TasksAndActivities = () => {
   const textColor = useColorModeValue('gray.800', 'white');
   const mutedTextColor = useColorModeValue('gray.600', 'gray.400');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const inputBg = useColorModeValue('gray.100', 'gray.700');
-  const shadowColor = useColorModeValue('md', 'dark-lg');
   
   // State management
   const [loading, setLoading] = useState(true);
@@ -446,10 +160,6 @@ const TasksAndActivities = () => {
   // Task detail modal
   const { isOpen: isTaskDetailOpen, onOpen: onTaskDetailOpen, onClose: onTaskDetailClose } = useDisclosure();
   const [selectedTask, setSelectedTask] = useState(null);
-  
-  // Workflow and assign workflow modals
-  const { isOpen: isWorkflowModalOpen, onOpen: onWorkflowModalOpen, onClose: onWorkflowModalClose } = useDisclosure();
-  const { isOpen: isAssignWorkflowModalOpen, onOpen: onAssignWorkflowModalOpen, onClose: onAssignWorkflowModalClose } = useDisclosure();
   
   // Drag and drop
   const [draggedTask, setDraggedTask] = useState(null);
@@ -525,64 +235,27 @@ const TasksAndActivities = () => {
   };
   
   const loadFunnelsList = async () => {
-    if (!token || !user) {
-      console.warn('Missing token or user for funnel loading');
-      return;
-    }
+    if (!token) return;
     
     try {
-      console.log('Loading funnels for user:', user._id || user.id);
-      const response = await fetchWithTimeout(`${API_BASE_URL}/api/funnels/coach/${user._id || user.id}/funnels`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}/api/funnels/coach/${user?._id || user?.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         }
-      }, 15000); // Increased timeout
+      }, 10000);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Funnels API response:', data);
-        
-        // Handle different response formats
-        let funnels = [];
         if (data.success && data.data) {
-          funnels = Array.isArray(data.data) ? data.data : [data.data];
-        } else if (Array.isArray(data)) {
-          funnels = data;
-        } else if (data.funnels && Array.isArray(data.funnels)) {
-          funnels = data.funnels;
+          setFunnelsList(data.data || []);
+          // Load custom stages from localStorage or use funnel stages
+          loadCustomStages(data.data);
         }
-        
-        console.log('Processed funnels:', funnels.length, funnels);
-        
-        // Ensure each funnel has required properties
-        const processedFunnels = funnels.map(funnel => ({
-          ...funnel,
-          id: funnel._id || funnel.id || `funnel-${Date.now()}`,
-          name: funnel.name || funnel.title || 'Unnamed Funnel',
-          stages: funnel.stages || [],
-          isActive: funnel.isActive ?? funnel.isPublished ?? true
-        }));
-        
-        setFunnelsList(processedFunnels);
-        
-        // Load custom stages from localStorage or use funnel stages
-        if (processedFunnels.length > 0) {
-          loadCustomStages(processedFunnels);
-        }
-        
-        customToast(`Loaded ${processedFunnels.length} funnels successfully`, 'success');
-      } else {
-        const errorText = await response.text();
-        console.error('Funnels API error:', response.status, errorText);
-        customToast(`Failed to load funnels: ${response.status}`, 'error');
       }
     } catch (error) {
       console.error('Error loading funnels list:', error);
-      customToast('Error loading funnels. Please try again.', 'error');
-      // Set empty array to prevent infinite loading
-      setFunnelsList([]);
     }
   };
   
@@ -1028,32 +701,16 @@ const TasksAndActivities = () => {
   
   // Handle funnel selection
   const handleFunnelSelect = (funnelId) => {
-    console.log('Funnel selected:', funnelId);
-    
-    if (funnelId === 'all' || !funnelId) {
-      console.log('Clearing funnel selection');
+    setFilters({ ...filters, funnelId });
+    if (funnelId === 'all') {
       setSelectedFunnel(null);
-      // Reload default stages
-      loadCustomStages(funnelsList, true);
-      return;
-    }
-    
-    const funnel = funnelsList.find(f => (f._id || f.id) === funnelId);
-    console.log('Found funnel:', funnel);
-    
-    if (!funnel) {
-      console.error('Funnel not found:', funnelId, 'Available funnels:', funnelsList.map(f => ({ id: f._id || f.id, name: f.name })));
-      customToast('Funnel not found', 'error');
-      return;
-    }
-    
-    setSelectedFunnel(funnel);
-    if (funnel.stages && funnel.stages.length > 0) {
-      console.log('Loading stages for funnel:', funnel.name, funnel.stages);
-      loadCustomStages([funnel]);
-    } else {
-      console.log('No stages found for funnel, using defaults');
       loadCustomStages([]);
+    } else {
+      const funnel = funnelsList.find(f => (f._id || f.id) === funnelId);
+      setSelectedFunnel(funnel);
+      if (funnel && funnel.stages) {
+        loadCustomStages([funnel]);
+      }
     }
   };
   
@@ -1305,122 +962,125 @@ const TasksAndActivities = () => {
   };
   
   if (loading && activities.length === 0) {
-    return <ProfessionalLoader />;
+    return (
+      <Center minH="100vh">
+        <Spinner size="xl" color="blue.500" />
+      </Center>
+    );
   }
   
   return (
-    <Box bg="gray.50" minH="100vh" py={6} px={6}>
-      <Box maxW="full" mx="auto">
-        <VStack spacing={6} align="stretch" w="full">
-          {/* Merged Top Section with Stats - Matching Calendar Design */}
-          <Card 
-            bg={cardBg} 
-            backdropFilter="blur(20px)" 
-            borderRadius="7px" 
-            border="1px solid" 
-            borderColor={borderColor}
-            boxShadow="sm"
-          >
-            {/* Header with Title and Actions */}
-            <CardHeader py={4} px={6} borderBottom="1px" borderColor="gray.100">
-              <Flex justify="space-between" align="center">
-                <VStack align="start" spacing={1}>
-                  <Heading fontSize="2xl" fontWeight="700" color={textColor} letterSpacing="-0.5px">
-                    Tasks & Activities
-                  </Heading>
-                  <Text color="gray.500" fontSize="sm">
-                    Manage tasks, track activities, and monitor ongoing work
-                  </Text>
-                </VStack>
-                <HStack spacing={2}>
-                  <Button
-                    leftIcon={<FiRefreshCw />}
-                    onClick={loadData}
-                    variant="ghost"
-                    size="sm"
-                    borderRadius="7px"
-                    _hover={{ bg: 'gray.100' }}
-                    color="gray.600"
-                  >
-                    Refresh
-                  </Button>
-                  <Button
-                    leftIcon={<AddIcon />}
-                    onClick={onTaskOpen}
-                    bg="blue.500"
-                    color="white"
-                    size="sm"
-                    _hover={{ bg: 'blue.600' }}
-                    borderRadius="7px"
-                    fontWeight="500"
-                    px={4}
-                  >
-                    New Task
-                  </Button>
-                </HStack>
-              </Flex>
-            </CardHeader>
-            
-            {/* Stats Cards */}
-            <CardBody px={6} py={5} borderBottom="1px" borderColor="gray.100">
-              {loading ? (
-                <SimpleGrid columns={{ base: 2, md: 5 }} spacing={4}>
-                  {[...Array(5)].map((_, i) => (
-                    <Card key={i} variant="outline" borderRadius="xl" p={4}>
-                      <HStack spacing={4} align="center" w="full">
-                        <Skeleton height="60px" width="60px" borderRadius="xl" />
-                        <VStack align="start" spacing={2} flex={1}>
-                          <Skeleton height="16px" width="120px" borderRadius="md" />
-                          <Skeleton height="32px" width="80px" borderRadius="lg" />
-                        </VStack>
-                        <Skeleton height="24px" width="60px" borderRadius="full" />
-                      </HStack>
-                    </Card>
-                  ))}
-                </SimpleGrid>
-              ) : (
-                <SimpleGrid columns={{ base: 2, md: 5 }} spacing={4}>
-                  <StatsCard
-                    title="Tasks (Work To Do)"
-                    value={Object.values(kanbanData).reduce((sum, tasks) => sum + (Array.isArray(tasks) ? tasks.length : 0), 0)}
-                    icon={<Box as={FiCheckSquare} boxSize={5} />}
-                    color="blue"
-                  />
-                  <StatsCard
-                    title="Overdue Tasks"
-                    value={kanbanData.Overdue?.length || 0}
-                    icon={<Box as={FiAlertCircle} boxSize={5} />}
-                    color="red"
-                  />
-                  <StatsCard
-                    title="Activities (Past Events)"
-                    value={stats.total || 0}
-                    icon={<Box as={FiActivity} boxSize={5} />}
-                    color="green"
-                    onClick={() => handleActivityCardClick('recent', activities)}
-                  />
-                  <StatsCard
-                    title="Ongoing (Live Work)"
-                    value={ongoingActivities.tasks?.length || 0}
-                    icon={<Box as={FiPlay} boxSize={5} />}
-                    color="purple"
-                    onClick={() => handleActivityCardClick('ongoing-tasks', ongoingActivities.tasks || [])}
-                  />
-                  <StatsCard
-                    title="Upcoming Events"
-                    value={ongoingActivities.appointments?.length || 0}
-                    icon={<Box as={FiCalendar} boxSize={5} />}
-                    color="orange"
-                    onClick={() => handleActivityCardClick('appointments', ongoingActivities.appointments || [])}
-                  />
-                </SimpleGrid>
-              )}
-            </CardBody>
-          </Card>
+    <Box minH="100vh" bg={bgColor} py={8}>
+      <Container maxW="7xl">
+        <VStack spacing={6} align="stretch">
+          {/* Header */}
+          <HStack justify="space-between" align="center">
+            <Box>
+              <Heading size="xl" color={textColor} mb={2}>
+                Tasks & Activities
+              </Heading>
+              <Text color={mutedTextColor} fontSize="lg">
+                Manage tasks, track activities, and monitor ongoing work
+              </Text>
+            </Box>
+            <HStack spacing={3}>
+              <Button
+                leftIcon={<FiRefreshCw />}
+                onClick={loadData}
+                variant="outline"
+                size="sm"
+                colorScheme="blue"
+              >
+                Refresh
+              </Button>
+              <Button
+                leftIcon={<FiPlus />}
+                onClick={onTaskOpen}
+                colorScheme="blue"
+                size="sm"
+              >
+                New Task
+              </Button>
+            </HStack>
+          </HStack>
           
-          {/* Filters - Matching Calendar Design */}
-          <Card bg={cardBg} boxShadow="sm" border="1px" borderColor={borderColor} borderRadius="7px">
-            <CardBody px={6} py={4}>
+          {/* Stats Cards */}
+          <SimpleGrid columns={{ base: 2, md: 5 }} spacing={4}>
+            <Card bg={cardBg} boxShadow="md">
+              <CardBody>
+                <Stat>
+                  <StatLabel color={mutedTextColor}>Total Tasks</StatLabel>
+                  <StatNumber color={textColor}>
+                    {Object.values(kanbanData).reduce((sum, tasks) => sum + (Array.isArray(tasks) ? tasks.length : 0), 0)}
+                  </StatNumber>
+                  <StatHelpText color="blue.500">
+                    Active: {kanbanData['In Progress']?.length || kanbanData['in-progress']?.length || 0}
+                  </StatHelpText>
+                </Stat>
+              </CardBody>
+            </Card>
+            <Card bg={cardBg} boxShadow="md">
+              <CardBody>
+                <Stat>
+                  <StatLabel color={mutedTextColor}>Overdue</StatLabel>
+                  <StatNumber color="red.500">{kanbanData.Overdue?.length || 0}</StatNumber>
+                  <StatHelpText color="red.500">Requires attention</StatHelpText>
+                </Stat>
+              </CardBody>
+            </Card>
+            <Card 
+              bg={cardBg} 
+              boxShadow="md"
+              cursor="pointer"
+              _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
+              transition="all 0.2s"
+              onClick={() => handleActivityCardClick('recent', activities)}
+            >
+              <CardBody>
+                <Stat>
+                  <StatLabel color={mutedTextColor}>Recent Activities</StatLabel>
+                  <StatNumber color={textColor}>{stats.total || 0}</StatNumber>
+                  <StatHelpText color="green.500">Last {filters.dateRange} days - Click to view</StatHelpText>
+                </Stat>
+              </CardBody>
+            </Card>
+            <Card 
+              bg={cardBg} 
+              boxShadow="md"
+              cursor="pointer"
+              _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
+              transition="all 0.2s"
+              onClick={() => handleActivityCardClick('ongoing-tasks', ongoingActivities.tasks || [])}
+            >
+              <CardBody>
+                <Stat>
+                  <StatLabel color={mutedTextColor}>Ongoing Tasks</StatLabel>
+                  <StatNumber color={textColor}>{ongoingActivities.tasks?.length || 0}</StatNumber>
+                  <StatHelpText color="blue.500">In progress - Click to view</StatHelpText>
+                </Stat>
+              </CardBody>
+            </Card>
+            <Card 
+              bg={cardBg} 
+              boxShadow="md"
+              cursor="pointer"
+              _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
+              transition="all 0.2s"
+              onClick={() => handleActivityCardClick('appointments', ongoingActivities.appointments || [])}
+            >
+              <CardBody>
+                <Stat>
+                  <StatLabel color={mutedTextColor}>Upcoming</StatLabel>
+                  <StatNumber color={textColor}>{ongoingActivities.appointments?.length || 0}</StatNumber>
+                  <StatHelpText color="purple.500">Appointments - Click to view</StatHelpText>
+                </Stat>
+              </CardBody>
+            </Card>
+          </SimpleGrid>
+          
+          {/* Filters */}
+          <Card bg={cardBg} boxShadow="md">
+            <CardBody>
               <SimpleGrid columns={{ base: 1, md: 6 }} spacing={4}>
                 <InputGroup>
                   <InputLeftElement pointerEvents="none">
@@ -1430,20 +1090,12 @@ const TasksAndActivities = () => {
                     placeholder="Search tasks..."
                     value={filters.search}
                     onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                    bg={inputBg}
-                    borderColor={borderColor}
-                    _focus={{ borderColor: 'blue.400', bg: 'white' }}
                   />
                 </InputGroup>
                 <Select
                   value={filters.funnelId}
                   onChange={(e) => handleFunnelSelect(e.target.value)}
                   placeholder="Select Funnel"
-                  bg={inputBg}
-                  borderColor={borderColor}
-                  _focus={{ borderColor: 'blue.400', bg: 'white' }}
-                  transition="all 0.2s"
-                  _hover={{ borderColor: 'blue.300' }}
                 >
                   <option value="all">All Funnels</option>
                   {funnelsList.map(funnel => (
@@ -1452,14 +1104,9 @@ const TasksAndActivities = () => {
                     </option>
                   ))}
                 </Select>
-                <Select 
-                  value={filters.status} 
-                  onChange={(e) => setFilters({ ...filters, status: e.target.value })} 
-                  bg={inputBg} 
-                  borderColor={borderColor} 
-                  _focus={{ borderColor: 'blue.400', bg: 'white' }}
-                  transition="all 0.2s"
-                  _hover={{ borderColor: 'blue.300' }}
+                <Select
+                  value={filters.status}
+                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                 >
                   <option value="all">All Status</option>
                   <option value="Pending">Pending</option>
@@ -1470,11 +1117,6 @@ const TasksAndActivities = () => {
                 <Select
                   value={filters.priority}
                   onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-                  bg={inputBg}
-                  borderColor={borderColor}
-                  _focus={{ borderColor: 'blue.400', bg: 'white' }}
-                  transition="all 0.2s"
-                  _hover={{ borderColor: 'blue.300' }}
                 >
                   <option value="all">All Priorities</option>
                   <option value="URGENT">Urgent</option>
@@ -1485,11 +1127,6 @@ const TasksAndActivities = () => {
                 <Select
                   value={filters.assignedTo}
                   onChange={(e) => setFilters({ ...filters, assignedTo: e.target.value })}
-                  bg={inputBg}
-                  borderColor={borderColor}
-                  _focus={{ borderColor: 'blue.400', bg: 'white' }}
-                  transition="all 0.2s"
-                  _hover={{ borderColor: 'blue.300' }}
                 >
                   <option value="all">All Staff</option>
                   <option value={user?._id || user?.id || 'coach'}>Coach (Me)</option>
@@ -1504,9 +1141,8 @@ const TasksAndActivities = () => {
                     leftIcon={<FiPlus />}
                     onClick={onStageModalOpen}
                     variant="outline"
-                    size="sm"
+                    size="md"
                     colorScheme="blue"
-                    borderRadius="7px"
                   >
                     Add Stage
                   </Button>
@@ -1521,8 +1157,7 @@ const TasksAndActivities = () => {
                       funnelId: 'all'
                     })}
                     variant="outline"
-                    size="sm"
-                    borderRadius="7px"
+                    size="md"
                   >
                     Clear
                   </Button>
@@ -1534,24 +1169,15 @@ const TasksAndActivities = () => {
           {/* Tabs: Kanban Board, Activity Feed, and Staff View */}
           <Tabs defaultIndex={0}>
             <TabList>
-              <Tab> Tasks (Work To Do)</Tab>
-              <Tab> Activities (Past Events)</Tab>
-              <Tab> Ongoing (Live Work)</Tab>
-              <Tab> Staff Tasks</Tab>
+              <Tab>Kanban Board</Tab>
+              <Tab>Activity Feed</Tab>
+              <Tab>Ongoing Activities</Tab>
+              <Tab>Staff Tasks</Tab>
             </TabList>
             
             <TabPanels>
-              {/* Kanban Board Tab - Tasks (Work To Do) */}
+              {/* Kanban Board Tab */}
               <TabPanel px={0}>
-                <Box mb={4} p={4} bg="blue.50" borderRadius="md" border="1px" borderColor="blue.200">
-                  <HStack spacing={3}>
-                    <Box as={FiCheckSquare} color="blue.600" boxSize={5} />
-                    <VStack align="start" spacing={1}>
-                      <Text fontWeight="600" color="blue.800" fontSize="lg">Tasks - Work To Be Done</Text>
-                      <Text color="blue.600" fontSize="sm">Manage and track work that needs to be completed. Drag tasks between stages to update their status.</Text>
-                    </VStack>
-                  </HStack>
-                </Box>
                 <SimpleGrid 
                   columns={{ base: 1, md: customStages.length > 0 ? Math.min(customStages.length, 6) : 4 }} 
                   spacing={4}
@@ -1786,18 +1412,9 @@ const TasksAndActivities = () => {
                 </SimpleGrid>
               </TabPanel>
               
-              {/* Activity Feed Tab - Activities (Past Events) */}
+              {/* Activity Feed Tab */}
               <TabPanel px={0}>
-                <Box mb={4} p={4} bg="green.50" borderRadius="md" border="1px" borderColor="green.200">
-                  <HStack spacing={3}>
-                    <Box as={FiActivity} color="green.600" boxSize={5} />
-                    <VStack align="start" spacing={1}>
-                      <Text fontWeight="600" color="green.800" fontSize="lg">Activities - Past Events</Text>
-                      <Text color="green.600" fontSize="sm">View activities and events that have already happened. Track what was completed and when.</Text>
-                    </VStack>
-                  </HStack>
-                </Box>
-                <Card bg={cardBg} boxShadow="sm" border="1px" borderColor={borderColor} borderRadius="7px">
+                <Card bg={cardBg} boxShadow="md">
                   <CardBody>
                     <VStack spacing={4} align="stretch">
                       {activities.length > 0 ? (
@@ -1856,20 +1473,11 @@ const TasksAndActivities = () => {
                 </Card>
               </TabPanel>
               
-              {/* Ongoing Activities Tab - Live Operational Snapshot */}
+              {/* Ongoing Activities Tab */}
               <TabPanel px={0}>
-                <Box mb={4} p={4} bg="purple.50" borderRadius="md" border="1px" borderColor="purple.200">
-                  <HStack spacing={3}>
-                    <Box as={FiPlay} color="purple.600" boxSize={5} />
-                    <VStack align="start" spacing={1}>
-                      <Text fontWeight="600" color="purple.800" fontSize="lg">Ongoing - Live Operational Snapshot</Text>
-                      <Text color="purple.600" fontSize="sm">Real-time view of currently active work and live operations. See what's happening right now.</Text>
-                    </VStack>
-                  </HStack>
-                </Box>
                 <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
                   {/* Ongoing Tasks */}
-                  <Card bg={cardBg} boxShadow="sm" border="1px" borderColor={borderColor} borderRadius="7px">
+                  <Card bg={cardBg} boxShadow="md">
                     <CardHeader>
                       <Heading size="sm" color={textColor}>Ongoing Tasks</Heading>
                     </CardHeader>
@@ -1903,7 +1511,7 @@ const TasksAndActivities = () => {
                   </Card>
                   
                   {/* Upcoming Appointments */}
-                  <Card bg={cardBg} boxShadow="sm" border="1px" borderColor={borderColor} borderRadius="7px">
+                  <Card bg={cardBg} boxShadow="md">
                     <CardHeader>
                       <Heading size="sm" color={textColor}>Upcoming Appointments</Heading>
                     </CardHeader>
@@ -1937,7 +1545,7 @@ const TasksAndActivities = () => {
                   </Card>
                   
                   {/* Active Staff */}
-                  <Card bg={cardBg} boxShadow="sm" border="1px" borderColor={borderColor} borderRadius="7px">
+                  <Card bg={cardBg} boxShadow="md">
                     <CardHeader>
                       <Heading size="sm" color={textColor}>Active Staff</Heading>
                     </CardHeader>
@@ -1974,16 +1582,7 @@ const TasksAndActivities = () => {
               
               {/* Staff Tasks Tab */}
               <TabPanel px={0}>
-                <Box mb={4} p={4} bg="orange.50" borderRadius="md" border="1px" borderColor="orange.200">
-                  <HStack spacing={3}>
-                    <Box as={FiUsers} color="orange.600" boxSize={5} />
-                    <VStack align="start" spacing={1}>
-                      <Text fontWeight="600" color="orange.800" fontSize="lg">Staff Tasks - Team Work Distribution</Text>
-                      <Text color="orange.600" fontSize="sm">View and manage tasks assigned to team members. Monitor workload and progress across staff.</Text>
-                    </VStack>
-                  </HStack>
-                </Box>
-                <Card bg={cardBg} boxShadow="sm" border="1px" borderColor={borderColor} borderRadius="7px">
+                <Card bg={cardBg} boxShadow="md">
                   <CardHeader>
                     <Heading size="md" color={textColor}>Tasks by Staff Member</Heading>
                   </CardHeader>
@@ -2428,8 +2027,7 @@ const TasksAndActivities = () => {
               <ModalCloseButton />
               <ModalBody>
                 {selectedTask && (
-                  <VStack spacing={6} align="stretch">
-                    {/* Task Title & Description */}
+                  <VStack spacing={4} align="stretch">
                     <Box>
                       <Text fontWeight="bold" fontSize="lg" color={textColor} mb={2}>
                         {selectedTask.name}
@@ -2441,7 +2039,6 @@ const TasksAndActivities = () => {
                       )}
                     </Box>
                     
-                    {/* Task Basic Info */}
                     <SimpleGrid columns={2} spacing={4}>
                       <Box>
                         <Text fontSize="sm" color={mutedTextColor} mb={1}>Priority</Text>
@@ -2496,140 +2093,6 @@ const TasksAndActivities = () => {
                         </Box>
                       )}
                     </SimpleGrid>
-
-                    {/* NEW: Task Origin */}
-                    <Box bg="gray.50" p={4} borderRadius="md" border="1px" borderColor="gray.200">
-                      <Text fontWeight="600" color={textColor} mb={2} fontSize="sm">
-                        📋 Task Origin
-                      </Text>
-                      <HStack spacing={4}>
-                        <Badge colorScheme="blue" variant="outline">
-                          {selectedTask.createdVia || 'Manual'}
-                        </Badge>
-                        <Text fontSize="xs" color={mutedTextColor}>
-                          Created on {selectedTask.createdAt ? formatDate(selectedTask.createdAt) : 'Unknown'}
-                        </Text>
-                      </HStack>
-                      <Text fontSize="xs" color={mutedTextColor} mt={2}>
-                        This task was created {selectedTask.createdVia === 'automation' ? 'automatically' : selectedTask.createdVia === 'system' ? 'by the system' : 'manually'} 
-                        {selectedTask.triggerEvent && ` triggered by: ${selectedTask.triggerEvent}`}
-                      </Text>
-                    </Box>
-
-                    {/* NEW: Task Activity Log (Mini Timeline) */}
-                    <Box>
-                      <Text fontWeight="600" color={textColor} mb={3} fontSize="sm">
-                        📊 Task Activity Log
-                      </Text>
-                      <VStack spacing={2} align="stretch" maxH="200px" overflowY="auto">
-                        {/* Task Created */}
-                        <HStack spacing={3} p={2} bg="blue.50" borderRadius="md">
-                          <Box as={FiPlus} color="blue.600" boxSize={4} />
-                          <VStack align="start" spacing={0} flex={1}>
-                            <Text fontSize="xs" fontWeight="500" color="blue.800">Task Created</Text>
-                            <Text fontSize="xs" color="blue.600">
-                              {selectedTask.createdAt ? `${formatDate(selectedTask.createdAt)} at ${formatTime(selectedTask.createdAt)}` : 'Unknown time'}
-                            </Text>
-                          </VStack>
-                        </HStack>
-                        
-                        {/* Status Changes */}
-                        {selectedTask.statusHistory?.map((history, index) => (
-                          <HStack key={index} spacing={3} p={2} bg="yellow.50" borderRadius="md">
-                            <Box as={FiArrowRight} color="yellow.600" boxSize={4} />
-                            <VStack align="start" spacing={0} flex={1}>
-                              <Text fontSize="xs" fontWeight="500" color="yellow.800">Status Changed</Text>
-                              <Text fontSize="xs" color="yellow.600">
-                                {history.fromStatus} → {history.toStatus}
-                              </Text>
-                              <Text fontSize="xs" color="gray.500">
-                                {history.timestamp ? `${formatDate(history.timestamp)} at ${formatTime(history.timestamp)}` : 'Unknown time'}
-                              </Text>
-                            </VStack>
-                          </HStack>
-                        )) || (
-                          <Text fontSize="xs" color="gray.400" textAlign="center" py={2}>
-                            No status changes recorded
-                          </Text>
-                        )}
-                        
-                        {/* Task Completed (if applicable) */}
-                        {selectedTask.status === 'Completed' && (
-                          <HStack spacing={3} p={2} bg="green.50" borderRadius="md">
-                            <Box as={FiCheckCircle} color="green.600" boxSize={4} />
-                            <VStack align="start" spacing={0} flex={1}>
-                              <Text fontSize="xs" fontWeight="500" color="green.800">Task Completed</Text>
-                              <Text fontSize="xs" color="green.600">
-                                {selectedTask.completedAt ? `${formatDate(selectedTask.completedAt)} at ${formatTime(selectedTask.completedAt)}` : 'Unknown time'}
-                              </Text>
-                            </VStack>
-                          </HStack>
-                        )}
-                      </VStack>
-                    </Box>
-
-                    {/* NEW: Quick Execution Actions */}
-                    <Box>
-                      <Text fontWeight="600" color={textColor} mb={3} fontSize="sm">
-                        ⚡ Quick Actions
-                      </Text>
-                      <Wrap spacing={2}>
-                        {selectedTask.relatedLead?.phone && (
-                          <Button 
-                            size="sm" 
-                            leftIcon={<FiPhone />} 
-                            colorScheme="green" 
-                            variant="outline"
-                            onClick={() => {
-                              customToast(`Calling ${selectedTask.relatedLead.name || selectedTask.relatedLead.phone}...`, 'info');
-                              // Log activity
-                            }}
-                          >
-                            Call Lead
-                          </Button>
-                        )}
-                        {selectedTask.relatedLead?.phone && (
-                          <Button 
-                            size="sm" 
-                            leftIcon={<FiMessageSquare />} 
-                            colorScheme="green" 
-                            variant="outline"
-                            onClick={() => {
-                              customToast(`Opening WhatsApp for ${selectedTask.relatedLead.name || selectedTask.relatedLead.phone}...`, 'info');
-                              // Log activity
-                            }}
-                          >
-                            WhatsApp
-                          </Button>
-                        )}
-                        <Button 
-                          size="sm" 
-                          leftIcon={<FiEdit />} 
-                          colorScheme="blue" 
-                          variant="outline"
-                          onClick={() => {
-                            customToast('Adding note to task...', 'info');
-                            // Log activity
-                          }}
-                        >
-                          Add Note
-                        </Button>
-                        {selectedTask.status !== 'Completed' && (
-                          <Button 
-                            size="sm" 
-                            leftIcon={<FiCheck />} 
-                            colorScheme="green" 
-                            onClick={() => {
-                              customToast('Task marked as completed!', 'success');
-                              // Update task status and log activity
-                              onTaskDetailClose();
-                            }}
-                          >
-                            Complete Task
-                          </Button>
-                        )}
-                      </Wrap>
-                    </Box>
                   </VStack>
                 )}
               </ModalBody>
@@ -2655,34 +2118,97 @@ const TasksAndActivities = () => {
                     <Input
                       value={newStageName}
                       onChange={(e) => setNewStageName(e.target.value)}
-                      placeholder="Enter stage name"
+                      placeholder="e.g., Review, Testing, Approval"
                     />
                   </FormControl>
-                  
                   <FormControl>
                     <FormLabel>Stage Color</FormLabel>
-                    <SimpleGrid columns={5} spacing={2}>
-                      {['blue', 'green', 'yellow', 'red', 'purple', 'orange', 'pink', 'teal', 'cyan', 'gray'].map(color => (
-                        <Box
-                          key={color}
-                          w={8}
-                          h={8}
-                          bg={`${color}.500`}
-                          borderRadius="md"
-                          cursor="pointer"
-                          border={newStageColor === color ? '2px solid' : '2px solid transparent'}
-                          borderColor={newStageColor === color ? `${color}.700` : 'transparent'}
-                          onClick={() => setNewStageColor(color)}
-                          _hover={{ transform: 'scale(1.1)' }}
-                          transition="all 0.2s"
-                        />
-                      ))}
-                    </SimpleGrid>
+                    <Select
+                      value={newStageColor}
+                      onChange={(e) => setNewStageColor(e.target.value)}
+                    >
+                      <option value="blue">Blue</option>
+                      <option value="green">Green</option>
+                      <option value="yellow">Yellow</option>
+                      <option value="orange">Orange</option>
+                      <option value="red">Red</option>
+                      <option value="purple">Purple</option>
+                      <option value="pink">Pink</option>
+                      <option value="teal">Teal</option>
+                    </Select>
                   </FormControl>
+                  
+                  {customStages.length > 0 && (
+                    <Box w="full">
+                      <Text fontSize="sm" fontWeight="semibold" mb={2}>
+                        Current Stages ({customStages.length})
+                      </Text>
+                      <VStack spacing={2} align="stretch">
+                        {customStages.sort((a, b) => a.order - b.order).map((stage, index) => (
+                          <HStack 
+                            key={stage.id} 
+                            justify="space-between" 
+                            p={3} 
+                            bg={`${stage.color}.50`} 
+                            borderRadius="md"
+                            border="1px solid"
+                            borderColor={`${stage.color}.200`}
+                          >
+                            <HStack spacing={3} flex={1}>
+                              <Badge colorScheme={stage.color} px={2} py={1}>
+                                {stage.name}
+                              </Badge>
+                              {stage.isFunnelStage && (
+                                <Badge colorScheme="purple" variant="outline" fontSize="xs">
+                                  From Funnel
+                                </Badge>
+                              )}
+                              <Text fontSize="xs" color={mutedTextColor}>
+                                Order: {stage.order}
+                              </Text>
+                            </HStack>
+                            <HStack spacing={1}>
+                              <IconButton
+                                icon={<FiArrowUp />}
+                                size="xs"
+                                colorScheme="blue"
+                                variant="ghost"
+                                onClick={() => handleReorderStage(stage.id, 'up')}
+                                isDisabled={index === 0}
+                                title="Move up"
+                              />
+                              <IconButton
+                                icon={<FiArrowDown />}
+                                size="xs"
+                                colorScheme="blue"
+                                variant="ghost"
+                                onClick={() => handleReorderStage(stage.id, 'down')}
+                                isDisabled={index === customStages.length - 1}
+                                title="Move down"
+                              />
+                              {!stage.isFunnelStage && (
+                                <IconButton
+                                  icon={<FiTrash2 />}
+                                  size="xs"
+                                  colorScheme="red"
+                                  variant="ghost"
+                                  onClick={() => handleDeleteStage(stage.id)}
+                                  title="Delete stage"
+                                />
+                              )}
+                            </HStack>
+                          </HStack>
+                        ))}
+                      </VStack>
+                      <Text fontSize="xs" color={mutedTextColor} mt={2}>
+                        💡 Tip: Use arrows to reorder stages. Funnel stages cannot be deleted.
+                      </Text>
+                    </Box>
+                  )}
                 </VStack>
               </ModalBody>
               <ModalFooter>
-                <Button variant="outline" mr={3} onClick={onStageModalClose}>
+                <Button variant="ghost" mr={3} onClick={onStageModalClose}>
                   Cancel
                 </Button>
                 <Button colorScheme="blue" onClick={handleAddStage}>
@@ -2691,135 +2217,11 @@ const TasksAndActivities = () => {
               </ModalFooter>
             </ModalContent>
           </Modal>
-
-          {/* New Workflow Modal */}
-          <Modal isOpen={isWorkflowModalOpen} onClose={onWorkflowModalClose} size="lg">
-            <ModalOverlay />
-            <ModalContent>
-              <ModalHeader>Create New Workflow</ModalHeader>
-              <ModalCloseButton />
-              <ModalBody>
-                <VStack spacing={4}>
-                  <FormControl isRequired>
-                    <FormLabel>Workflow Name</FormLabel>
-                    <Input
-                      placeholder="Enter workflow name"
-                      defaultValue=""
-                    />
-                  </FormControl>
-                  
-                  <FormControl>
-                    <FormLabel>Description</FormLabel>
-                    <Textarea
-                      placeholder="Describe the workflow purpose"
-                      rows={3}
-                    />
-                  </FormControl>
-                  
-                  <FormControl>
-                    <FormLabel>Workflow Type</FormLabel>
-                    <Select placeholder="Select workflow type">
-                      <option value="lead">Lead Management</option>
-                      <option value="task">Task Management</option>
-                      <option value="approval">Approval Process</option>
-                      <option value="custom">Custom Workflow</option>
-                    </Select>
-                  </FormControl>
-                  
-                  <FormControl>
-                    <FormLabel>Default Stages</FormLabel>
-                    <SimpleGrid columns={2} spacing={2}>
-                      <Checkbox defaultChecked>Lead Generation</Checkbox>
-                      <Checkbox defaultChecked>Qualification</Checkbox>
-                      <Checkbox defaultChecked>Proposal</Checkbox>
-                      <Checkbox defaultChecked>Negotiation</Checkbox>
-                      <Checkbox defaultChecked>Closing</Checkbox>
-                      <Checkbox>Follow-up</Checkbox>
-                    </SimpleGrid>
-                  </FormControl>
-                </VStack>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="outline" mr={3} onClick={onWorkflowModalClose}>
-                  Cancel
-                </Button>
-                <Button colorScheme="green" onClick={() => {
-                  customToast('Workflow created successfully!', 'success');
-                  onWorkflowModalClose();
-                }}>
-                  Create Workflow
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
-
-          {/* Assign Workflow Modal */}
-          <Modal isOpen={isAssignWorkflowModalOpen} onClose={onAssignWorkflowModalClose} size="lg">
-            <ModalOverlay />
-            <ModalContent>
-              <ModalHeader>Assign Workflow to Funnel</ModalHeader>
-              <ModalCloseButton />
-              <ModalBody>
-                <VStack spacing={4}>
-                  <FormControl isRequired>
-                    <FormLabel>Select Funnel</FormLabel>
-                    <Select placeholder="Choose a funnel">
-                      {funnelsList.map(funnel => (
-                        <option key={funnel._id || funnel.id} value={funnel._id || funnel.id}>
-                          {funnel.name || 'Unnamed Funnel'}
-                        </option>
-                      ))}
-                    </Select>
-                  </FormControl>
-                  
-                  <FormControl isRequired>
-                    <FormLabel>Select Workflow</FormLabel>
-                    <Select placeholder="Choose a workflow">
-                      <option value="workflow-1">Lead Conversion Workflow</option>
-                      <option value="workflow-2">Task Management Workflow</option>
-                      <option value="workflow-3">Customer Onboarding</option>
-                      <option value="workflow-4">Sales Process</option>
-                    </Select>
-                  </FormControl>
-                  
-                  <FormControl>
-                    <FormLabel>Assignment Type</FormLabel>
-                    <RadioGroup defaultValue="replace">
-                      <VStack align="start">
-                        <Radio value="replace">Replace existing stages</Radio>
-                        <Radio value="merge">Merge with existing stages</Radio>
-                        <Radio value="append">Append to existing stages</Radio>
-                      </VStack>
-                    </RadioGroup>
-                  </FormControl>
-                  
-                  <Alert status="info" borderRadius="md">
-                    <AlertIcon />
-                    <Box>
-                      <Text fontWeight="bold">Note:</Text>
-                      <Text fontSize="sm">Assigning a workflow will modify the funnel's stage structure. This action can be undone.</Text>
-                    </Box>
-                  </Alert>
-                </VStack>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="outline" mr={3} onClick={onAssignWorkflowModalClose}>
-                  Cancel
-                </Button>
-                <Button colorScheme="purple" onClick={() => {
-                  customToast('Workflow assigned to funnel successfully!', 'success');
-                  onAssignWorkflowModalClose();
-                }}>
-                  Assign Workflow
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
-
         </VStack>
-      </Box>
+      </Container>
     </Box>
   );
 };
 
 export default TasksAndActivities;
+

@@ -29,7 +29,7 @@ import {
   FiPlay, FiPause, FiBarChart2, FiTrendingUp, FiTarget, FiGlobe, FiWifi,
   FiZap, FiActivity, FiClock, FiBell, FiCode, FiDatabase, FiShield,
   FiAlertTriangle, FiInfo, FiExternalLink, FiSave, FiX, FiXCircle,
-  FiRefreshCw, FiPlus, FiSettings
+  FiRefreshCw, FiPlus, FiSettings, FiSend, FiMessageSquare, FiCheckCircle
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import axios from 'axios';
@@ -37,6 +37,7 @@ import { useSelector } from 'react-redux';
 import { getCoachId, getToken, isAuthenticated, debugAuthState } from '../../utils/authUtils';
 import { API_BASE_URL as BASE_URL } from '../../config/apiConfig';
 import GraphAutomationBuilder from './GraphAutomationBuilder';
+import MessageSequenceBuilder from './MessageSequenceBuilder';
 
 // Graph Builder Drawer Component with dynamic sidebar width
 const GraphBuilderDrawer = ({ isOpen, onClose, graphBuilderRule, handleGraphBuilderSave, eventsActions, builderResources, viewMode = false }) => {
@@ -179,12 +180,12 @@ const ProfessionalLoader = () => {
             <VStack spacing={6} align="stretch">
               <Flex justify="space-between" align="center" direction={{ base: 'column', md: 'row' }} gap={4}>
                 <VStack align={{ base: 'center', md: 'start' }} spacing={2}>
-                  <Skeleton height="40px" width="400px" borderRadius="lg" />
-                  <Skeleton height="20px" width="600px" borderRadius="md" />
+                  <Skeleton height="34px" width="280px" borderRadius="lg" />
+                  <Skeleton height="18px" width="420px" borderRadius="md" />
                 </VStack>
-                <HStack spacing={4}>
-                  <Skeleton height="40px" width="300px" borderRadius="lg" />
-                  <Skeleton height="40px" width="150px" borderRadius="xl" />
+                <HStack spacing={3}>
+                  <Skeleton height="34px" width="34px" borderRadius="md" />
+                  <Skeleton height="34px" width="120px" borderRadius="md" />
                 </HStack>
               </Flex>
               
@@ -267,12 +268,12 @@ const ProfessionalLoader = () => {
           <CardHeader py={6}>
             <Flex justify="space-between" align="center">
               <VStack align="start" spacing={1}>
-                <Skeleton height="32px" width="300px" borderRadius="lg" />
-                <Skeleton height="16px" width="400px" borderRadius="md" />
+                <Skeleton height="26px" width="240px" borderRadius="md" />
+                <Skeleton height="14px" width="320px" borderRadius="sm" />
               </VStack>
-              <HStack spacing={3}>
-                <Skeleton height="40px" width="120px" borderRadius="lg" />
-                <Skeleton height="40px" width="150px" borderRadius="xl" />
+              <HStack spacing={2}>
+                <Skeleton height="32px" width="32px" borderRadius="md" />
+                <Skeleton height="34px" width="110px" borderRadius="md" />
               </HStack>
             </Flex>
           </CardHeader>
@@ -283,7 +284,7 @@ const ProfessionalLoader = () => {
               <Table variant="simple" size="md" w="full">
                 <Thead>
                   <Tr bg="gray.50">
-                    {[...Array(6)].map((_, i) => (
+                    {[...Array(7)].map((_, i) => (
                       <Th key={i} px={{ base: 3, md: 6 }} py={{ base: 3, md: 5 }}>
                         <Skeleton height="16px" width="100px" borderRadius="md" />
                       </Th>
@@ -670,18 +671,7 @@ const ActionConfigForm = ({
         return (
           <VStack spacing={4} align="stretch">
             <FormControl>
-              <FormLabel>
-                Note Content
-                <Tooltip label="Click info icon to see available variables">
-                  <IconButton
-                    icon={<FiInfo />}
-                    size="xs"
-                    variant="ghost"
-                    ml={2}
-                    onClick={() => setShowVariables(!showVariables)}
-                  />
-                </Tooltip>
-              </FormLabel>
+              <FormLabel>Note Content</FormLabel>
               <Textarea
                 id={`action-config-note`}
                 value={localConfig.note || ''}
@@ -864,18 +854,7 @@ const ActionConfigForm = ({
               </Select>
             </FormControl>
             <FormControl isRequired>
-              <FormLabel>
-                Message
-                <Tooltip label="Click info icon to see available variables">
-                  <IconButton
-                    icon={<FiInfo />}
-                    size="xs"
-                    variant="ghost"
-                    ml={2}
-                    onClick={() => setShowVariables(!showVariables)}
-                  />
-                </Tooltip>
-              </FormLabel>
+              <FormLabel>Message</FormLabel>
               <Textarea
                 id={`action-config-message`}
                 value={localConfig.message || ''}
@@ -939,18 +918,7 @@ const ActionConfigForm = ({
               />
             </FormControl>
             <FormControl isRequired>
-              <FormLabel>
-                Body
-                <Tooltip label="Click info icon to see available variables">
-                  <IconButton
-                    icon={<FiInfo />}
-                    size="xs"
-                    variant="ghost"
-                    ml={2}
-                    onClick={() => setShowVariables(!showVariables)}
-                  />
-                </Tooltip>
-              </FormLabel>
+              <FormLabel>Body</FormLabel>
               <Textarea
                 id={`action-config-body`}
                 value={localConfig.body || ''}
@@ -1173,7 +1141,13 @@ const ActionConfigForm = ({
         <HStack justify="space-between">
           <Heading size="sm">Configure Action: {getActionDisplayNameHelper(action.type)}</Heading>
           <HStack spacing={2}>
-            <Popover isOpen={showVariablesModal} onClose={() => setShowVariablesModal(false)}>
+            <Popover
+              isOpen={showVariablesModal}
+              onClose={() => setShowVariablesModal(false)}
+              trapFocus={false}
+              autoFocus={false}
+              returnFocusOnClose={false}
+            >
               <PopoverTrigger>
                 <IconButton
                   icon={<FiInfo />}
@@ -1181,6 +1155,7 @@ const ActionConfigForm = ({
                   variant="ghost"
                   colorScheme="blue"
                   aria-label="Show all variables"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => setShowVariablesModal(true)}
                 />
               </PopoverTrigger>
@@ -1262,6 +1237,24 @@ const AutomationDashboard = () => {
     executedToday: 0
   });
 
+  const [sequenceStats, setSequenceStats] = useState({
+    totalSequences: 0,
+    activeSequences: 0,
+    inactiveSequences: 0,
+    totalSteps: 0
+  });
+
+  const [sequenceSearchTerm, setSequenceSearchTerm] = useState('');
+  const [sequenceStatusFilter, setSequenceStatusFilter] = useState('all');
+
+  const [messagingUsage, setMessagingUsage] = useState({
+    whatsappCredits: 0,
+    emailCredits: 0,
+    smsCredits: 0,
+    totalMessages: 0
+  });
+  const [useDummyUsage, setUseDummyUsage] = useState(true);
+
   // Modal states
   const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
@@ -1299,6 +1292,8 @@ const AutomationDashboard = () => {
     messageTemplates: [],
     automationRules: []
   });
+  const [nurturingSequences, setNurturingSequences] = useState([]);
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -1406,7 +1401,50 @@ const AutomationDashboard = () => {
         setTimeout(() => setLoading(false), 1500);
       }
     };
+    const fetchSequences = async () => {
+      try {
+        const seqResp = await axios.get(`${API_BASE_URL}/nurturing-sequences`, { headers: getAuthHeaders() });
+        const sequences = seqResp.data.data || seqResp.data || [];
+        setNurturingSequences(sequences);
+
+        // Calculate sequence stats
+        setSequenceStats({
+          totalSequences: sequences.length || 0,
+          activeSequences: sequences.filter(seq => seq.isActive).length || 0,
+          inactiveSequences: sequences.filter(seq => !seq.isActive).length || 0,
+          totalSteps: sequences.reduce((total, seq) => total + (seq.steps?.length || 0), 0) || 0
+        });
+      } catch (err) {
+        console.warn('Could not fetch nurturing sequences', err);
+      }
+    };
+
+    const fetchMessagingUsage = async () => {
+      try {
+        const usageResp = await axios.get(`${API_BASE_URL}/messaging/stats`, { headers: getAuthHeaders() });
+        const usage = usageResp.data?.data || usageResp.data || {};
+
+        setMessagingUsage({
+          whatsappCredits: usage.credits?.totalUsed || 0,
+          emailCredits: 0, // TODO: Add email credits tracking
+          smsCredits: 0, // TODO: Add SMS credits tracking
+          totalMessages: usage.messages?.sent || 0
+        });
+      } catch (err) {
+        console.warn('Could not fetch messaging usage', err);
+        // Set default values if API fails
+        setMessagingUsage({
+          whatsappCredits: 0,
+          emailCredits: 0,
+          smsCredits: 0,
+          totalMessages: 0
+        });
+      }
+    };
+
     fetchData();
+    fetchSequences();
+    fetchMessagingUsage();
   }, [token, coachId, toast]);
 
   // Action handlers
@@ -1423,6 +1461,27 @@ const AutomationDashboard = () => {
     setUseGraphBuilder(true);
     onGraphBuilderOpen();
   };
+
+  const openSequenceEditor = (sequence = null) => {
+    const seq = sequence || null;
+    // Start with an empty canvas; user must add a Trigger first
+    const ruleForEditor = {
+      _id: seq?._id,
+      name: seq?.name || 'New Sequence',
+      description: seq?.description || '',
+      coachId: coachId,
+      workflowType: 'graph',
+      nodes: [],
+      edges: [],
+      isActive: seq?.isActive ?? true,
+      meta: { type: 'nurturing-sequence' }
+    };
+    setGraphBuilderRule(ruleForEditor);
+    setUseGraphBuilder(true);
+    onGraphBuilderOpen();
+  };
+
+  
 
   const [viewMode, setViewMode] = useState(false);
   
@@ -1444,6 +1503,248 @@ const AutomationDashboard = () => {
 
   const handleGraphBuilderSave = async (workflowData) => {
     try {
+      // If this graph was opened for a nurturing/message sequence, save to nurturing-sequences endpoints
+      if (graphBuilderRule?.meta?.type === 'nurturing-sequence') {
+        // Allow saving if at least one trigger and one action node exist
+        const nodes = workflowData.nodes || [];
+        const edges = workflowData.edges || [];
+        const hasTrigger = nodes.some(n => n.type === 'trigger');
+        const hasAction = nodes.some(n => n.type === 'action');
+        if (!hasTrigger || !hasAction) {
+          toast('At least one trigger and one action node are required', 'error');
+          return;
+        }
+
+        // Extract all trigger nodes
+        const triggerNodes = nodes.filter(n => n.type === 'trigger');
+        const triggers = triggerNodes.map(t => ({
+          event: t.data?.nodeType || t.data?.label || '',
+          config: t.data?.config || {},
+          label: t.data?.label || ''
+        }));
+
+        // Extract action nodes and convert them to steps
+        // First, check if there's a sequence node (legacy support)
+        const sequenceNodes = nodes.filter(n => n.type === 'sequence' || n.data?.nodeType === 'sequence');
+        let steps = [];
+        
+        if (sequenceNodes.length > 0) {
+          // Legacy: Use sequence node steps
+          const seqNode = sequenceNodes[0];
+          const rawSteps = (seqNode && seqNode.data && seqNode.data.sequenceSteps) ? seqNode.data.sequenceSteps : [];
+          steps = rawSteps.map((s, idx) => {
+            const delayAmount = Number(s.delayAmount || 0) || 0;
+            const delayUnit = s.delayUnit || 'minutes';
+            let delayDays = 0;
+            let delayHours = 0;
+            if (delayUnit === 'days') delayDays = delayAmount;
+            else if (delayUnit === 'hours') delayHours = delayAmount;
+            else if (delayUnit === 'minutes') {
+              delayHours = Math.floor(delayAmount / 60);
+            }
+            const actionType = (s.channel === 'email') ? 'send_email' : (s.channel === 'whatsapp' || s.channel === 'sms') ? 'send_whatsapp_message' : 'send_notification';
+            return {
+              stepNumber: idx + 1,
+              name: s.title || `Step ${idx + 1}`,
+              description: s.content || '',
+              actionType,
+              actionConfig: {
+                content: s.content || '',
+                templateId: s.templateId || null,
+                subject: s.subject || '',
+                rawDelayUnit: s.delayUnit || null,
+                rawDelayAmount: s.delayAmount || null,
+              },
+              delayDays,
+              delayHours,
+              isActive: true,
+            };
+          });
+        } else {
+          // New: Convert action nodes to steps, following the workflow order
+          const actionNodes = nodes.filter(n => n.type === 'action');
+          const delayNodes = nodes.filter(n => n.type === 'delay');
+          
+          // Build a map of node connections to determine order
+          const nodeMap = new Map();
+          const incomingEdges = new Map();
+          const outgoingEdges = new Map();
+          
+          edges.forEach(edge => {
+            if (!incomingEdges.has(edge.target)) {
+              incomingEdges.set(edge.target, []);
+            }
+            incomingEdges.get(edge.target).push(edge.source);
+            
+            if (!outgoingEdges.has(edge.source)) {
+              outgoingEdges.set(edge.source, []);
+            }
+            outgoingEdges.get(edge.source).push(edge.target);
+          });
+          
+          // Find starting nodes (nodes with no incoming edges from action/trigger nodes, or connected to triggers)
+          const startingNodes = [];
+          triggerNodes.forEach(trigger => {
+            const triggerOutgoing = outgoingEdges.get(trigger.id) || [];
+            triggerOutgoing.forEach(targetId => {
+              if (!startingNodes.includes(targetId)) {
+                startingNodes.push(targetId);
+              }
+            });
+          });
+          
+          // Traverse the graph starting from trigger nodes to build ordered steps
+          const visited = new Set();
+          const orderedActions = [];
+          
+          const traverse = (nodeId, accumulatedDelay = { days: 0, hours: 0, minutes: 0 }) => {
+            if (visited.has(nodeId)) return;
+            visited.add(nodeId);
+            
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+            
+            if (node.type === 'action') {
+              const actionType = node.data?.nodeType || '';
+              const config = node.data?.config || {};
+              
+              // Map action type to step actionType
+              let stepActionType = 'send_notification';
+              if (actionType.includes('whatsapp') || actionType.includes('sms')) {
+                stepActionType = 'send_whatsapp_message';
+              } else if (actionType.includes('email')) {
+                stepActionType = 'send_email';
+              } else if (actionType.includes('notification')) {
+                stepActionType = 'send_notification';
+              }
+              
+              // Convert delay to days and hours
+              let delayDays = accumulatedDelay.days || 0;
+              let delayHours = accumulatedDelay.hours || 0;
+              if (accumulatedDelay.minutes > 0) {
+                delayHours += Math.floor(accumulatedDelay.minutes / 60);
+              }
+              
+              orderedActions.push({
+                nodeId: node.id,
+                stepNumber: orderedActions.length + 1,
+                name: node.data?.label || `Step ${orderedActions.length + 1}`,
+                description: node.data?.description || '',
+                actionType: stepActionType,
+                actionConfig: {
+                  ...config,
+                  message: config.message || config.body || config.content || '',
+                  subject: config.subject || '',
+                  templateId: config.templateId || null,
+                },
+                delayDays,
+                delayHours,
+                isActive: true,
+              });
+              
+              // Reset delay after action
+              accumulatedDelay = { days: 0, hours: 0, minutes: 0 };
+            } else if (node.type === 'delay') {
+              const delayConfig = node.data?.config || {};
+              accumulatedDelay = {
+                days: delayConfig.delayDays || 0,
+                hours: delayConfig.delayHours || 0,
+                minutes: delayConfig.delayMinutes || 0,
+                seconds: delayConfig.delaySeconds || 0,
+              };
+              // Convert seconds to minutes
+              if (accumulatedDelay.seconds > 0) {
+                accumulatedDelay.minutes += Math.floor(accumulatedDelay.seconds / 60);
+              }
+            }
+            
+            // Continue to next nodes
+            const nextNodes = outgoingEdges.get(nodeId) || [];
+            nextNodes.forEach(nextId => {
+              traverse(nextId, { ...accumulatedDelay });
+            });
+          };
+          
+          // Start traversal from each starting node
+          startingNodes.forEach(startId => {
+            traverse(startId);
+          });
+          
+          // If no edges or traversal didn't capture all actions, add remaining actions
+          if (edges.length === 0 || orderedActions.length < actionNodes.length) {
+            const capturedNodeIds = new Set(orderedActions.map(a => a.nodeId));
+            actionNodes.forEach((node, idx) => {
+              if (!capturedNodeIds.has(node.id)) {
+                const actionType = node.data?.nodeType || '';
+                let stepActionType = 'send_notification';
+                if (actionType.includes('whatsapp') || actionType.includes('sms')) {
+                  stepActionType = 'send_whatsapp_message';
+                } else if (actionType.includes('email')) {
+                  stepActionType = 'send_email';
+                }
+                
+                const config = node.data?.config || {};
+                orderedActions.push({
+                  nodeId: node.id,
+                  stepNumber: orderedActions.length + 1,
+                  name: node.data?.label || `Step ${orderedActions.length + 1}`,
+                  description: node.data?.description || '',
+                  actionType: stepActionType,
+                  actionConfig: {
+                    ...config,
+                    message: config.message || config.body || config.content || '',
+                    subject: config.subject || '',
+                    templateId: config.templateId || null,
+                  },
+                  delayDays: 0,
+                  delayHours: 0,
+                  isActive: true,
+                });
+              }
+            });
+          }
+          
+          // Remove nodeId from final steps
+          steps = orderedActions.map(({ nodeId, ...step }) => step);
+        }
+
+        const payload = {
+          name: workflowData.name || 'Untitled Sequence',
+          description: workflowData.description || '',
+          steps,
+          triggers, // Send triggers array
+          category: 'custom',
+        };
+
+        let response;
+        if (graphBuilderRule?._id) {
+          response = await axios.put(
+            `${API_BASE_URL}/nurturing-sequences/${graphBuilderRule._id}`,
+            payload,
+            { headers: getAuthHeaders() }
+          );
+          const updatedSeq = response.data?.data || response.data;
+          if (updatedSeq) {
+            setNurturingSequences(prev => prev.map(s => s._id === updatedSeq._id ? updatedSeq : s));
+            toast('Messaging sequence updated successfully!', 'success');
+          }
+        } else {
+          response = await axios.post(
+            `${API_BASE_URL}/nurturing-sequences`,
+            payload,
+            { headers: getAuthHeaders() }
+          );
+          const createdSeq = response.data?.data || response.data;
+          if (createdSeq) {
+            setNurturingSequences(prev => [createdSeq, ...prev]);
+            toast('Messaging sequence created successfully!', 'success');
+          }
+        }
+
+        onGraphBuilderClose();
+        setGraphBuilderRule(null);
+        return;
+      }
       let response;
       if (graphBuilderRule?._id) {
         // Update existing rule
@@ -1671,6 +1972,16 @@ const AutomationDashboard = () => {
     });
   }, [automationRules, searchTerm, statusFilter]);
 
+  const filteredSequences = useMemo(() => {
+    return nurturingSequences.filter(seq => {
+      const matchesSearch = seq.name?.toLowerCase().includes(sequenceSearchTerm.toLowerCase());
+      const matchesStatus = sequenceStatusFilter === 'all' ||
+        (sequenceStatusFilter === 'active' && seq.isActive) ||
+        (sequenceStatusFilter === 'inactive' && !seq.isActive);
+      return matchesSearch && matchesStatus;
+    });
+  }, [nurturingSequences, sequenceSearchTerm, sequenceStatusFilter]);
+
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return 'Never';
@@ -1746,6 +2057,44 @@ const AutomationDashboard = () => {
   return (
     <Box maxW="full" py={6} px={8} bg="gray.50" minH="100vh">
       <VStack spacing={6} align="stretch">
+        <Tabs index={activeTabIndex} onChange={(i) => setActiveTabIndex(i)} colorScheme="blue">
+          <TabList borderBottom="1px" borderColor="gray.200" px={6} pt={2}>
+            <Tab
+              _selected={{ color: 'blue.600', borderBottom: '2px solid', borderColor: 'blue.600' }}
+              fontWeight="500"
+              fontSize="sm"
+              px={4}
+              py={3}
+              color="gray.600"
+              _hover={{ color: 'gray.900' }}
+            >
+              Automation Rules
+            </Tab>
+            <Tab
+              _selected={{ color: 'blue.600', borderBottom: '2px solid', borderColor: 'blue.600' }}
+              fontWeight="500"
+              fontSize="sm"
+              px={4}
+              py={3}
+              color="gray.600"
+              _hover={{ color: 'gray.900' }}
+            >
+              Messaging Sequences
+            </Tab>
+            <Tab
+              _selected={{ color: 'blue.600', borderBottom: '2px solid', borderColor: 'blue.600' }}
+              fontWeight="500"
+              fontSize="sm"
+              px={4}
+              py={3}
+              color="gray.600"
+              _hover={{ color: 'gray.900' }}
+            >
+              Messaging Usage
+            </Tab>
+          </TabList>
+          <TabPanels>
+            <TabPanel>
         {/* Hero + Stats + Filters */}
         <Box
           bg="white"
@@ -1765,18 +2114,18 @@ const AutomationDashboard = () => {
                 </Text>
               </VStack>
               <HStack spacing={3}>
-                <Button
-                  leftIcon={<FiRefreshCw />}
+                <IconButton
+                  icon={<FiRefreshCw />}
+                  aria-label="Refresh"
                   onClick={() => window.location.reload()}
                   variant="outline"
-                  size="md"
-                >
-                  Refresh
-                </Button>
+                  size="sm"
+                />
                 <Button
                   leftIcon={<FiPlus />}
                   colorScheme="blue"
-                  size="md"
+                  size="sm"
+                  fontSize="sm"
                   onClick={openCreateModal}
                 >
                   Create Rule
@@ -2098,6 +2447,362 @@ const AutomationDashboard = () => {
           </Box>
         </Box>
 
+            </TabPanel>
+            <TabPanel>
+              {/* Hero + Stats + Filters (match Automation Rules) */}
+              <Box
+                bg="white"
+                borderRadius="lg"
+                border="1px"
+                borderColor="gray.200"
+                p={6}
+                mb={6}
+              >
+                <VStack spacing={6} align="stretch">
+                  <Flex justify="space-between" align="center" direction={{ base: 'column', md: 'row' }} gap={4}>
+                    <VStack align={{ base: 'center', md: 'start' }} spacing={1}>
+                      <Heading size="lg" color="gray.900" fontWeight="600">
+                        Messaging Sequences
+                      </Heading>
+                      <Text color="gray.500" fontSize="sm" fontWeight="400">
+                        Build automated messaging sequences (WhatsApp, Email)
+                      </Text>
+                    </VStack>
+                    <HStack spacing={3}>
+                      <IconButton
+                        icon={<FiRefreshCw />}
+                        aria-label="Refresh"
+                        onClick={() => window.location.reload()}
+                        variant="outline"
+                        size="sm"
+                      />
+                      <Button
+                        leftIcon={<FiPlus />}
+                        colorScheme="blue"
+                        size="sm"
+                        fontSize="sm"
+                        onClick={() => openSequenceEditor(null)}
+                      >
+                        Create Sequence
+                      </Button>
+                    </HStack>
+                  </Flex>
+
+                  <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={4}>
+                    <StatsCard
+                      title="Total Sequences"
+                      value={sequenceStats.totalSequences}
+                      icon={<FiMessageSquare size={20} />}
+                      color="blue"
+                    />
+                    <StatsCard
+                      title="Active Sequences"
+                      value={sequenceStats.activeSequences}
+                      icon={<FiCheckCircle size={20} />}
+                      color="green"
+                    />
+                    <StatsCard
+                      title="Inactive Sequences"
+                      value={sequenceStats.inactiveSequences}
+                      icon={<FiPause size={20} />}
+                      color="orange"
+                    />
+                    <StatsCard
+                      title="Total Steps"
+                      value={sequenceStats.totalSteps}
+                      icon={<FiZap size={20} />}
+                      color="purple"
+                    />
+                  </SimpleGrid>
+
+                  <HStack spacing={4} justify="space-between" flexWrap="wrap">
+                    <HStack spacing={3} flex={1} minW="300px">
+                      <InputGroup maxW="400px" flex={1}>
+                        <InputLeftElement pointerEvents="none">
+                          <SearchIcon color="gray.400" />
+                        </InputLeftElement>
+                        <Input
+                          placeholder="Search sequences..."
+                          value={sequenceSearchTerm}
+                          onChange={(e) => setSequenceSearchTerm(e.target.value)}
+                          bg="gray.50"
+                          border="none"
+                          _focus={{ bg: 'white', border: '1px', borderColor: 'blue.300' }}
+                        />
+                      </InputGroup>
+                      <Select
+                        maxW="180px"
+                        value={sequenceStatusFilter}
+                        onChange={(e) => setSequenceStatusFilter(e.target.value)}
+                        bg="gray.50"
+                        border="none"
+                        _focus={{ bg: 'white', border: '1px', borderColor: 'blue.300' }}
+                      >
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </Select>
+                    </HStack>
+                  </HStack>
+                </VStack>
+              </Box>
+
+              {/* Table only (no extra heading) */}
+              <Box
+                bg="white"
+                borderRadius="lg"
+                border="1px"
+                borderColor="gray.200"
+                p={0}
+              >
+                <Box>
+                  {filteredSequences.length === 0 ? (
+                    <Box py={12} textAlign="center">
+                      <VStack spacing={3}>
+                        <FiZap size={48} color="gray.300" />
+                        <Text color="gray.500" fontSize="sm" fontWeight="500">No sequences found</Text>
+                        <Text color="gray.400" fontSize="xs">Create your first messaging sequence to get started</Text>
+                      </VStack>
+                    </Box>
+                  ) : (
+                    <TableContainer w="full" overflowX="auto">
+                      <Table variant="simple" size="md" w="full">
+                        <Thead>
+                          <Tr bg="gray.50">
+                            <Th>Name</Th>
+                            <Th>Steps</Th>
+                            <Th>Channel Types</Th>
+                            <Th>Actions</Th>
+                            <Th>Status</Th>
+                            <Th>Controls</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {filteredSequences.map(seq => (
+                            <Tr key={seq._id} borderBottom="1px" borderColor="gray.100">
+                              <Td>
+                                <VStack align="start" spacing={0.5}>
+                                  <Text fontWeight="600" fontSize="sm" color="gray.900">{seq.name}</Text>
+                                  <Text color="gray.400" fontSize="xs">{seq.description}</Text>
+                                </VStack>
+                              </Td>
+                              <Td>{(seq.steps || []).length}</Td>
+                              <Td>
+                                {Array.from(new Set((seq.steps || []).map(s => {
+                                  if (s.actionType === 'send_whatsapp_message') return 'WhatsApp';
+                                  if (s.actionType === 'send_email') return 'Email';
+                                  return s.actionType || 'Unknown';
+                                }))).join(', ')}
+                              </Td>
+                              <Td>
+                                <HStack spacing={1} flexWrap="wrap">
+                                  {Array.from(new Set((seq.steps || []).map(s => s.actionType))).slice(0, 3).map((actionType, index) => (
+                                    <Box
+                                      key={index}
+                                      px={2}
+                                      py={1}
+                                      bg="blue.50"
+                                      borderRadius="sm"
+                                      border="1px"
+                                      borderColor="blue.100"
+                                    >
+                                      <Text fontSize="11px" fontWeight="600" color="blue.700">
+                                        {actionType === 'send_whatsapp_message' ? 'Send Message' :
+                                         actionType === 'send_email' ? 'Send Email' :
+                                         actionType === 'create_task' ? 'Create Task' :
+                                         actionType === 'add_note_to_lead' ? 'Add Note' :
+                                         actionType || 'Unknown'}
+                                      </Text>
+                                    </Box>
+                                  ))}
+                                  {(seq.steps || []).length > 3 && (
+                                    <Box
+                                      px={2}
+                                      py={1}
+                                      bg="gray.50"
+                                      borderRadius="sm"
+                                      border="1px"
+                                      borderColor="gray.200"
+                                    >
+                                      <Text fontSize="11px" fontWeight="600" color="gray.600">
+                                        +{(seq.steps || []).length - 3}
+                                      </Text>
+                                    </Box>
+                                  )}
+                                </HStack>
+                              </Td>
+                              <Td>
+                                <StatusBadge isActive={seq.isActive} status={seq.status} />
+                              </Td>
+                              <Td>
+                                <HStack justify="flex-end" spacing={2}>
+                                  <Button size="sm" variant="ghost" onClick={() => openSequenceEditor(seq)}>Edit</Button>
+                                  <Switch
+                                    size="sm"
+                                    isChecked={seq.isActive}
+                                    onChange={async () => {
+                                      try {
+                                        await axios.put(`${API_BASE_URL}/nurturing-sequences/${seq._id}/toggle`, {}, { headers: getAuthHeaders() });
+                                        setNurturingSequences(prev => prev.map(s => s._id === seq._id ? { ...s, isActive: !s.isActive } : s));
+                                      } catch (err) { toast('Failed to toggle', 'error'); }
+                                    }}
+                                    colorScheme="green"
+                                  />
+                                </HStack>
+                              </Td>
+                            </Tr>
+                          ))}
+                        </Tbody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </Box>
+              </Box>
+            </TabPanel>
+            <TabPanel>
+        <Box
+                bg="white"
+                borderRadius="lg"
+                border="1px"
+                borderColor="gray.200"
+                p={6}
+          mb={6}
+              >
+                <VStack spacing={6} align="stretch">
+                  <Flex justify="space-between" align="center" direction={{ base: 'column', md: 'row' }} gap={4}>
+                    <VStack align={{ base: 'center', md: 'start' }} spacing={1}>
+                      <Heading size="lg" color="gray.900" fontWeight="600">
+                        Messaging Usage
+                      </Heading>
+                      <Text color="gray.500" fontSize="sm" fontWeight="400">
+                        Track your messaging credits and usage statistics
+                      </Text>
+                    </VStack>
+                    <HStack spacing={3}>
+                      <Text fontSize="sm" color="gray.600">Use dummy data</Text>
+                      <Switch
+                        colorScheme="blue"
+                        isChecked={useDummyUsage}
+                        onChange={(e) => setUseDummyUsage(e.target.checked)}
+                      />
+                    </HStack>
+                  </Flex>
+
+                  {/* Line chart view */}
+                  <Box bg="gray.50" borderRadius="lg" p={4} border="1px" borderColor="gray.100">
+                    <Text fontWeight="600" color="gray.800" mb={3}>Credits Usage Over Time</Text>
+                    <Box h="220px" position="relative">
+                      {(() => {
+                        const width = 600;
+                        const height = 200;
+                        const padding = 30;
+                        const dummySeries = [
+                          { label: 'WhatsApp', color: '#2b6cb0', data: [5, 9, 14, 12, 18, 20, 24] },
+                          { label: 'Email', color: '#38a169', data: [2, 3, 5, 4, 6, 7, 9] },
+                          { label: 'SMS', color: '#d69e2e', data: [1, 1, 2, 2, 3, 3, 4] },
+                        ];
+                        const actualSeries = messagingUsage.history || [];
+                        const seriesToUse = useDummyUsage || actualSeries.length === 0 ? dummySeries : actualSeries;
+
+                        const maxY = Math.max(...seriesToUse.flatMap(s => s.data)) || 1;
+                        const points = (arr) => arr.map((v, i) => {
+                          const x = padding + (i / Math.max(arr.length - 1, 1)) * (width - padding * 2);
+                          const y = height - padding - (v / maxY) * (height - padding * 2);
+                          return `${x},${y}`;
+                        }).join(' ');
+
+                        return (
+                          <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
+                            {/* Axes */}
+                            <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#cbd5e0" strokeWidth="1" />
+                            <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#cbd5e0" strokeWidth="1" />
+                            {seriesToUse.map((s, idx) => (
+                              <polyline
+                                key={idx}
+                                fill="none"
+                                stroke={s.color}
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                points={points(s.data)}
+                              />
+                            ))}
+                          </svg>
+                        );
+                      })()}
+                    </Box>
+                    <HStack spacing={4} mt={3}>
+                      {(() => {
+                        const series = useDummyUsage || !messagingUsage.history || messagingUsage.history.length === 0
+                          ? [
+                              { label: 'WhatsApp', color: '#2b6cb0' },
+                              { label: 'Email', color: '#38a169' },
+                              { label: 'SMS', color: '#d69e2e' },
+                            ]
+                          : messagingUsage.history.map(s => ({ label: s.label, color: s.color || '#2b6cb0' }));
+                        return series.map((s, i) => (
+                          <HStack key={i} spacing={2}>
+                            <Box w="12px" h="12px" borderRadius="full" bg={s.color} />
+                            <Text fontSize="sm" color="gray.700">{s.label}</Text>
+                          </HStack>
+                        ));
+                      })()}
+                    </HStack>
+                  </Box>
+
+                  {/* Usage Table */}
+                  <Box>
+                    <Heading size="md" color="gray.900" mb={4}>
+                      Recent Messaging Activity
+                    </Heading>
+                    <TableContainer w="full" overflowX="auto">
+                      <Table variant="simple" size="md" w="full">
+                        <Thead>
+                          <Tr bg="gray.50">
+                            <Th>Date</Th>
+                            <Th>Channel</Th>
+                            <Th>Recipient</Th>
+                            <Th>Credits Used</Th>
+                            <Th>Status</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {messagingUsage.totalMessages === 0 ? (
+                            <Tr>
+                              <Td colSpan={5} textAlign="center" py={8}>
+                                <VStack spacing={3}>
+                                  <FiMessageSquare size={48} color="gray.300" />
+                                  <Text color="gray.500">No messaging activity yet</Text>
+                                  <Text color="gray.400" fontSize="sm">Usage data will appear here once you start sending messages</Text>
+                                </VStack>
+                              </Td>
+                            </Tr>
+                          ) : (
+                            <Tr>
+                              <Td>{new Date().toLocaleDateString()}</Td>
+                              <Td>
+                                <HStack>
+                                  <FiMessageSquare size={16} />
+                                  <Text>WhatsApp</Text>
+                                </HStack>
+                              </Td>
+                              <Td>Sample Lead</Td>
+                              <Td>{messagingUsage.whatsappCredits}</Td>
+                              <Td>
+                                <Badge colorScheme="green" variant="subtle">
+                                  Sent
+                                </Badge>
+                              </Td>
+                            </Tr>
+                          )}
+                        </Tbody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                </VStack>
+              </Box>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
         {/* Create Rule Modal */}
         <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="xl">
           <ModalOverlay />

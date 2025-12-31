@@ -38,6 +38,9 @@ import {
   ModalCloseButton,
   useDisclosure,
   InputGroup,
+  Tabs,
+  TabList,
+  Tab,
   InputLeftElement,
   Stat,
   StatLabel,
@@ -63,7 +66,8 @@ import {
   Progress,
   Divider,
   Tag,
-  TagLabel
+  TagLabel,
+  useColorMode
 } from '@chakra-ui/react';
 import {
   SearchIcon,
@@ -339,62 +343,6 @@ const ProfessionalLoader = () => {
   );
 };
 
-// Stats Card Component
-const StatsCard = ({ title, value, icon, color = "blue", trend, isLoading = false }) => {
-  const bgColor = useColorModeValue(`${color}.50`, `${color}.900`);
-  const borderColor = useColorModeValue(`${color}.200`, `${color}.700`);
-  
-  return (
-    <Box
-      bg={bgColor}
-      border="1px"
-      borderColor={borderColor}
-      borderRadius="lg"
-      p={5}
-      minH="120px"
-      display="flex"
-      alignItems="center"
-      transition="all 0.2s"
-      _hover={{ transform: 'translateY(-2px)', borderColor: `${color}.300`, boxShadow: 'md' }}
-    >
-      <HStack spacing={3} align="center">
-        <Box
-          p={2}
-          bg={`${color}.100`}
-          borderRadius="md"
-          color={`${color}.600`}
-          fontSize="lg"
-        >
-          {icon}
-        </Box>
-        <VStack align="start" spacing={0} flex={1}>
-          <Text fontSize="xs" fontWeight="600" color={`${color}.600`} textTransform="uppercase" letterSpacing="0.2em">
-            {title}
-          </Text>
-          {isLoading ? (
-            <Skeleton height="22px" width="60px" mt={1} />
-          ) : (
-            <Text fontSize="xl" fontWeight="600" color={`${color}.800`} mt={0.5}>
-              {value}
-            </Text>
-          )}
-        </VStack>
-        {trend !== undefined && trend !== null && (
-          <Badge 
-            colorScheme={trend > 0 ? 'green' : 'red'} 
-            variant="solid" 
-            size="sm"
-            borderRadius="md"
-            px={2}
-            py={0.5}
-          >
-            {trend > 0 ? '+' : ''}{trend}%
-          </Badge>
-        )}
-      </HStack>
-    </Box>
-  );
-};
 
 // --- BEAUTIFUL TOAST NOTIFICATIONS ---
 const useCustomToast = () => {
@@ -563,6 +511,7 @@ function FunnelManagementComponent() {
   const secondaryTextColor = useColorModeValue('gray.500', 'gray.400');
   const inputBg = useColorModeValue('gray.100', 'gray.700');
   const shadowColor = useColorModeValue('md', 'dark-lg');
+  const { colorMode } = useColorMode();
 
   // Helper Functions
   const determineFunnelType = (stages) => {
@@ -1212,6 +1161,48 @@ function FunnelManagementComponent() {
     return sortedFunnels.slice(startIndex, endIndex);
   }, [sortedFunnels, currentPage, itemsPerPage]);
 
+  const funnelStats = useMemo(() => {
+    const total = funnels.length;
+    const active = funnels.filter((f) => f.isActive).length;
+    const drafts = Math.max(total - active, 0);
+    const totalStages = funnels.reduce(
+      (sum, f) => sum + (f.stageCount ?? f.stages?.length ?? 0),
+      0
+    );
+    const avgStages = total ? (totalStages / total).toFixed(1) : '0.0';
+
+    return [
+      {
+        label: 'Total Funnels',
+        value: total,
+        helper: 'Workspace funnels',
+        icon: FiGlobe,
+        color: 'brand'
+      },
+      {
+        label: 'Active Funnels',
+        value: active,
+        helper: 'Currently live',
+        icon: FiPlay,
+        color: 'green'
+      },
+      {
+        label: 'Drafts',
+        value: drafts,
+        helper: 'Not live yet',
+        icon: FiPause,
+        color: 'orange'
+      },
+      {
+        label: 'Total Stages',
+        value: totalStages,
+        helper: `Avg ${avgStages} per funnel`,
+        icon: FiTarget,
+        color: 'purple'
+      }
+    ];
+  }, [funnels]);
+
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   // Pagination handlers
@@ -1384,56 +1375,159 @@ function FunnelManagementComponent() {
                       bg="linear-gradient(120deg, rgba(59,130,246,0.95), rgba(99,102,241,0.95))"
                       color="white"
                       borderRadius="lg"
-                      px={8}
-                      py={5}
+                      px={6}
+                      py={4}
                       fontWeight="600"
                       fontSize="sm"
-                      letterSpacing="0.05em"
+                      letterSpacing="0.03em"
                       onClick={() => handleOpenModal(false, null)}
-                      boxShadow="0 15px 40px -25px rgba(59,130,246,1)"
-                      _hover={{ transform: 'translateY(-2px)', boxShadow: '0 20px 45px -25px rgba(59,130,246,1)' }}
+                      boxShadow="0 12px 32px -24px rgba(59,130,246,1)"
+                      _hover={{ transform: 'translateY(-2px)', boxShadow: '0 18px 38px -24px rgba(59,130,246,1)' }}
                       _active={{ transform: 'translateY(0)' }}
                     >
                       New Funnel
                     </Button>
                   </HStack>
                 </Flex>
-                
-                {/* Stats Cards - Professional Design */}
-                <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={4}>
-                  <StatsCard
-                    title="Total Funnels"
-                    value={stats.total}
-                    icon={<Box as={FiUsers} size="24px" />}
-                    color="blue"
-                    trend={12}
-                    isLoading={loading}
-                  />
-                  <StatsCard
-                    title="Active Funnels"
-                    value={stats.active}
-                    icon={<Box as={FiTrendingUp} size="24px" />}
-                    color="green"
-                    trend={8}
-                    isLoading={loading}
-                  />
-                  <StatsCard
-                    title="Total Stages"
-                    value={funnels.reduce((sum, f) => sum + f.stageCount, 0)}
-                    icon={<Box as={FiTarget} size="24px" />}
-                    color="orange"
-                    trend={15}
-                    isLoading={loading}
-                  />
-                  <StatsCard
-                    title="Conversion Rate"
-                    value="3.2%"
-                    icon={<Box as={FiBarChart2} size="24px" />}
-                    color="purple"
-                    trend={5}
-                    isLoading={loading}
-                  />
+
+                <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={4} w="full">
+                  {funnelStats.map((card) => {
+                    const isDark = colorMode === 'dark';
+                    const bgTone = isDark ? `${card.color}.900` : `${card.color}.50`;
+                    const borderTone = isDark ? `${card.color}.700` : `${card.color}.200`;
+                    const iconBg = isDark ? `${card.color}.800` : `${card.color}.100`;
+                    const iconColor = isDark ? `${card.color}.200` : `${card.color}.600`;
+                    const valueColor = isDark ? `${card.color}.100` : `${card.color}.700`;
+
+                    return (
+                      <Box
+                        key={card.label}
+                        p={4}
+                        bg={bgTone}
+                        borderRadius="lg"
+                        border="1px"
+                        borderColor={borderTone}
+                        boxShadow="sm"
+                        transition="all 0.2s ease"
+                        _hover={{ transform: 'translateY(-2px)', boxShadow: 'md' }}
+                      >
+                        <HStack spacing={4} align="center">
+                          <Box
+                            w="44px"
+                            h="44px"
+                            borderRadius="md"
+                            bg={iconBg}
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                            color={iconColor}
+                            border="1px solid"
+                            borderColor={isDark ? `${card.color}.600` : `${card.color}.200`}
+                          >
+                            <Box as={card.icon} boxSize={5} />
+                          </Box>
+                          <VStack align="start" spacing={1}>
+                            <Text
+                              fontSize="xs"
+                              fontWeight="700"
+                              color={iconColor}
+                              letterSpacing="0.05em"
+                              textTransform="uppercase"
+                            >
+                              {card.label}
+                            </Text>
+                            <Text fontSize="2xl" fontWeight="800" color={valueColor} lineHeight="1">
+                              {card.value}
+                            </Text>
+                          </VStack>
+                        </HStack>
+                      </Box>
+                    );
+                  })}
                 </SimpleGrid>
+
+                {/* Filters in header */}
+                <Stack
+                  direction={{ base: 'column', md: 'row' }}
+                  spacing={3}
+                  align={{ base: 'stretch', md: 'center' }}
+                  justify="space-between"
+                  w="100%"
+                >
+                  <InputGroup flex="1" maxW="640px">
+                    <InputLeftElement pointerEvents="none">
+                      <SearchIcon color={secondaryTextColor} />
+                    </InputLeftElement>
+                    <Input
+                      placeholder="Search funnels..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      bg="white"
+                      borderRadius="lg"
+                      border="1px"
+                      borderColor="gray.200"
+                      _focus={{ borderColor: 'blue.300', boxShadow: '0 0 0 1px var(--chakra-colors-blue-300)' }}
+                      _hover={{ borderColor: 'gray.300' }}
+                      transition="all 0.2s ease"
+                    />
+                  </InputGroup>
+                  <HStack spacing={2} alignSelf={{ base: 'stretch', md: 'flex-end' }}>
+                    <Select
+                      size="sm"
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      bg="white"
+                      borderRadius="lg"
+                      border="1px"
+                      borderColor="gray.200"
+                      _focus={{ borderColor: 'blue.300', boxShadow: '0 0 0 1px var(--chakra-colors-blue-300)', transform: 'translateY(-1px)' }}
+                      _hover={{ borderColor: 'gray.300', transform: 'translateY(-1px)' }}
+                      transition="all 0.15s ease"
+                      minW="170px"
+                      sx={{
+                        '& option': {
+                          transition: 'all 0.15s ease',
+                          _hover: {
+                            transform: 'translateX(2px)',
+                            backgroundColor: 'blue.50'
+                          }
+                        }
+                      }}
+                    >
+                      <option value="all">All Status</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </Select>
+                    <Select
+                      size="sm"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      bg="white"
+                      borderRadius="lg"
+                      border="1px"
+                      borderColor="gray.200"
+                      _focus={{ borderColor: 'blue.300', boxShadow: '0 0 0 1px var(--chakra-colors-blue-300)', transform: 'translateY(-1px)' }}
+                      _hover={{ borderColor: 'gray.300', transform: 'translateY(-1px)' }}
+                      transition="all 0.15s ease"
+                      minW="200px"
+                      sx={{
+                        '& option': {
+                          transition: 'all 0.15s ease',
+                          _hover: {
+                            transform: 'translateX(2px)',
+                            backgroundColor: 'blue.50'
+                          }
+                        }
+                      }}
+                    >
+                      <option value="name">Sort by Name</option>
+                      <option value="conversionRate">Sort by Conversion</option>
+                      <option value="revenue">Sort by Revenue</option>
+                      <option value="createdAt">Sort by Date</option>
+                    </Select>
+                  </HStack>
+                </Stack>
+                
               </VStack>
             </CardHeader>
           </Card>
@@ -1451,91 +1545,42 @@ function FunnelManagementComponent() {
           >
             <CardHeader py={6}>
               <VStack align="stretch" spacing={4}>
-                <Stack
-                  direction={{ base: 'column', md: 'row' }}
-                  spacing={4}
-                  align={{ base: 'stretch', md: 'center' }}
-                >
-                  <InputGroup flex="1">
-                    <InputLeftElement pointerEvents="none">
-                      <SearchIcon color={secondaryTextColor} />
-                    </InputLeftElement>
-                    <Input
-                      placeholder="Search funnels..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      bg="white"
-                      borderRadius="lg"
-                      border="1px"
-                      borderColor="gray.200"
-                      _focus={{ borderColor: 'gray.400', boxShadow: 'none' }}
-                    />
-                  </InputGroup>
-                  <HStack spacing={2}>
-                    <Select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      bg="white"
-                      borderRadius="lg"
-                      border="1px"
-                      borderColor="gray.200"
-                      _focus={{ borderColor: 'gray.400', boxShadow: 'none' }}
-                    >
-                      <option value="all">All Status</option>
-                      <option value="active">Active</option>
-                      <option value="draft">Draft</option>
-                      <option value="paused">Paused</option>
-                    </Select>
-                    <Select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      bg="white"
-                      borderRadius="lg"
-                      border="1px"
-                      borderColor="gray.200"
-                      _focus={{ borderColor: 'gray.400', boxShadow: 'none' }}
-                    >
-                      <option value="name">Sort by Name</option>
-                      <option value="conversionRate">Sort by Conversion</option>
-                      <option value="revenue">Sort by Revenue</option>
-                      <option value="createdAt">Sort by Date</option>
-                    </Select>
-                  </HStack>
-                </Stack>
-                <VStack align="flex-start" spacing={1}>
-                  <Text fontSize="sm" color="gray.600" fontWeight="medium">
-                    Select Funnel Type
+                {/* Removed bottom filters to keep controls only in the top header */}
+                <Box>
+                  <Text fontSize="sm" color="gray.600" fontWeight="medium" mb={2}>
+                    Funnel Type
                   </Text>
-                  <HStack
-                    spacing={2}
-                    bg="gray.100"
-                    borderRadius="md"
-                    p={1}
-                    w="100%"
-                    maxW={{ base: '100%', sm: '320px' }}
+                  <Tabs
+                    index={filterType === 'coach' ? 1 : 0}
+                    onChange={(i) => setFilterType(i === 1 ? 'coach' : 'default')}
+                    colorScheme="blue"
                   >
-                    <Button
-                      size="sm"
-                      borderRadius="md"
-                      flex="1"
-                      variant={filterType === 'default' ? 'solid' : 'ghost'}
-                      colorScheme="blue"
-                      onClick={() => setFilterType('default')}
-                    >
-                      Customer
-                    </Button>
-                    <Button
-                      size="sm"
-                      borderRadius="md"
-                      flex="1"
-                      variant={filterType === 'coach' ? 'solid' : 'ghost'}
-                      colorScheme="purple"
-                      onClick={() => setFilterType('coach')}
-                    >
-                      Coach
-                    </Button>
-                  </HStack>
-                </VStack>
+                    <TabList borderBottom="1px" borderColor="gray.200">
+                      <Tab
+                        _selected={{ color: 'blue.600', borderBottom: '2px solid', borderColor: 'blue.600' }}
+                        fontWeight="600"
+                        fontSize="sm"
+                        px={4}
+                        py={3}
+                        color="gray.600"
+                        _hover={{ color: 'gray.900' }}
+                      >
+                        Customer
+                      </Tab>
+                      <Tab
+                        _selected={{ color: 'blue.600', borderBottom: '2px solid', borderColor: 'blue.600' }}
+                        fontWeight="600"
+                        fontSize="sm"
+                        px={4}
+                        py={3}
+                        color="gray.600"
+                        _hover={{ color: 'gray.900' }}
+                      >
+                        Coach
+                      </Tab>
+                    </TabList>
+                  </Tabs>
+                </Box>
                 {selectedFunnels.length > 0 && (
                   <Box px={5} py={3} bg="gray.50" borderRadius="xl" border="1px" borderColor="gray.100">
                     <Flex
@@ -1880,9 +1925,17 @@ function FunnelManagementComponent() {
                                               setMenuFunnelId(null);
                                               handleDuplicateFunnel(funnel.id);
                                             }}
-                                            _hover={{ bg: 'blue.50', color: 'blue.600' }}
+                                            _hover={{
+                                              bg: 'blue.50',
+                                              color: 'blue.600',
+                                              transform: 'translateX(2px)'
+                                            }}
+                                            transition="all 0.15s ease"
+                                            borderRadius="4px"
                                             py={3}
                                             px={4}
+                                            mx={1}
+                                            my={0.5}
                                             fontSize="sm"
                                             fontWeight="medium"
                                             h="auto"
@@ -1901,9 +1954,17 @@ function FunnelManagementComponent() {
                                               setMenuFunnelId(null);
                                               handleShareFunnel(funnel);
                                             }}
-                                            _hover={{ bg: 'green.50', color: 'green.600' }}
+                                            _hover={{
+                                              bg: 'green.50',
+                                              color: 'green.600',
+                                              transform: 'translateX(2px)'
+                                            }}
+                                            transition="all 0.15s ease"
+                                            borderRadius="4px"
                                             py={3}
                                             px={4}
+                                            mx={1}
+                                            my={0.5}
                                             fontSize="sm"
                                             fontWeight="medium"
                                             h="auto"
@@ -1922,9 +1983,17 @@ function FunnelManagementComponent() {
                                               setMenuFunnelId(null);
                                               handleDeleteFunnel(funnel);
                                             }}
-                                            _hover={{ bg: 'red.50', color: 'red.600' }}
+                                            _hover={{
+                                              bg: 'red.50',
+                                              color: 'red.600',
+                                              transform: 'translateX(2px)'
+                                            }}
+                                            transition="all 0.15s ease"
+                                            borderRadius="4px"
                                             py={3}
                                             px={4}
+                                            mx={1}
+                                            my={0.5}
                                             fontSize="sm"
                                             fontWeight="medium"
                                             h="auto"
@@ -2160,39 +2229,74 @@ function FunnelManagementComponent() {
           </Card>
 
           {/* Create/Edit Modal */}
-          <Modal isOpen={isModalOpen} onClose={onModalClose} size="xl">
-            <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
-            <ModalContent borderRadius="2xl">
-              <ModalHeader>
-                {isEditMode ? 'Edit Funnel' : 'Create New Funnel'}
+          <Modal isOpen={isModalOpen} onClose={onModalClose} size="xl" isCentered>
+            <ModalOverlay bg="blackAlpha.800" backdropFilter="blur(2px)" />
+            <ModalContent
+              borderRadius="10px"
+              boxShadow="xl"
+              border="1px"
+              borderColor="gray.150"
+              bg="white"
+            >
+              <ModalHeader pb={1}>
+                <VStack align="start" spacing={1}>
+                  <Heading size="md" fontWeight="700" color={textColor}>
+                    {isEditMode ? 'Edit Funnel' : 'Create New Funnel'}
+                  </Heading>
+                  <Text fontSize="sm" color="gray.500" fontWeight="500">
+                    Set up the essentials for your funnel.
+                  </Text>
+                </VStack>
               </ModalHeader>
               <ModalCloseButton />
-              <ModalBody>
+              <ModalBody pb={3}>
                 <VStack spacing={4} align="stretch">
                   <FormControl>
-                    <FormLabel>Funnel Name</FormLabel>
+                    <FormLabel fontWeight="600" fontSize="sm" color={useColorModeValue('gray.600', 'gray.300')}>
+                      Funnel Name
+                    </FormLabel>
                     <Input
+                      size="sm"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="Enter funnel name"
+                      bg="gray.50"
+                      borderColor="gray.200"
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-300)' }}
+                      _hover={{ borderColor: 'gray.300' }}
                     />
                   </FormControl>
                   
                   <FormControl>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel fontWeight="600" fontSize="sm" color={useColorModeValue('gray.600', 'gray.300')}>
+                      Description
+                    </FormLabel>
                     <Textarea
+                      size="sm"
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       placeholder="Describe your funnel"
                       rows={3}
+                      bg="gray.50"
+                      borderColor="gray.200"
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-300)' }}
+                      _hover={{ borderColor: 'gray.300' }}
                     />
                   </FormControl>
                   
                   <FormControl>
-                    <FormLabel>Target Audience</FormLabel>
+                    <FormLabel fontWeight="600" fontSize="sm" color={useColorModeValue('gray.600', 'gray.300')}>
+                      Target Audience
+                    </FormLabel>
                     <Select
+                      size="sm"
                       value={formData.targetAudience}
                       onChange={(e) => setFormData({ ...formData, targetAudience: e.target.value })}
+                      bg="gray.50"
+                      borderColor="gray.200"
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-300)' }}
+                      _hover={{ borderColor: 'gray.300' }}
+                      transition="all 0.15s ease"
                     >
                       <option value="customer">Customer</option>
                       <option value="coach">Coach</option>
@@ -2200,41 +2304,45 @@ function FunnelManagementComponent() {
                   </FormControl>
                   
                   <FormControl>
-                    <FormLabel>Funnel URL</FormLabel>
-                    <HStack spacing={2}>
-                      <Input
-                        value={formData.funnelUrl}
-                        onChange={(e) => setFormData({ ...formData, funnelUrl: e.target.value })}
-                        placeholder="funnel-url-name"
-                        bg={inputBg}
-                        border="2px"
-                        borderColor={borderColor}
-                        _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px #3b82f6' }}
-                        _hover={{ borderColor: 'blue.300' }}
-                      />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        leftIcon={<Box as={FiCopy} />}
-                        onClick={() => copyToClipboard(formData.funnelUrl)}
-                        isDisabled={!formData.funnelUrl}
-                        colorScheme="blue"
-                      >
-                        Copy
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setFormData({ ...formData, funnelUrl: generateFunnelUrl(formData.name) })}
-                        colorScheme="green"
-                        isDisabled={!formData.name}
-                      >
-                        Generate
-                      </Button>
-                    </HStack>
-                    <Text fontSize="xs" color="gray.500" mt={1}>
-                      This will be your funnel's public URL. Leave empty to auto-generate or click Generate for a new one.
-                    </Text>
+                    <FormLabel fontWeight="600" fontSize="sm" color={useColorModeValue('gray.600', 'gray.300')}>
+                      Funnel URL
+                    </FormLabel>
+                    <VStack spacing={2} align="stretch">
+                      <HStack spacing={2}>
+                        <Input
+                          size="sm"
+                          value={formData.funnelUrl}
+                          onChange={(e) => setFormData({ ...formData, funnelUrl: e.target.value })}
+                          placeholder="funnel-url-name"
+                          bg="gray.50"
+                          border="1px"
+                          borderColor="gray.200"
+                          _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-300)' }}
+                          _hover={{ borderColor: 'gray.300' }}
+                        />
+                        <IconButton
+                          icon={<Box as={FiCopy} />}
+                          aria-label="Copy URL"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => copyToClipboard(formData.funnelUrl)}
+                          isDisabled={!formData.funnelUrl}
+                        />
+                        <Button
+                          size="sm"
+                          variant="solid"
+                          colorScheme="blue"
+                          fontSize="sm"
+                          onClick={() => setFormData({ ...formData, funnelUrl: generateFunnelUrl(formData.name) })}
+                          isDisabled={!formData.name}
+                        >
+                          Generate
+                        </Button>
+                      </HStack>
+                      <Text fontSize="xs" color="gray.500">
+                        This will be your funnel's public URL. Leave empty to auto-generate or click Generate.
+                      </Text>
+                    </VStack>
                   </FormControl>
                   
                   {/* Index Page Selection - Only show when editing and stages exist */}
@@ -2242,13 +2350,24 @@ function FunnelManagementComponent() {
                     <FormControl>
                       <FormLabel>Index Page (Landing Page)</FormLabel>
                       <Select
+                        size="sm"
                         value={formData.indexPageId}
                         onChange={(e) => setFormData({ ...formData, indexPageId: e.target.value })}
-                        bg={inputBg}
-                        border="2px"
-                        borderColor={borderColor}
-                        _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px #3b82f6' }}
-                        _hover={{ borderColor: 'blue.300' }}
+                        bg="gray.50"
+                        border="1px"
+                        borderColor="gray.200"
+                        _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-300)', transform: 'translateY(-1px)' }}
+                        _hover={{ borderColor: 'gray.300', transform: 'translateY(-1px)' }}
+                        transition="all 0.15s ease"
+                        sx={{
+                          '& option': {
+                            transition: 'all 0.15s ease',
+                            _hover: {
+                              transform: 'translateX(2px)',
+                              backgroundColor: 'blue.50'
+                            }
+                          }
+                        }}
                       >
                         {selectedFunnel.stages
                           .filter(stage => stage.isEnabled !== false)
@@ -2266,20 +2385,25 @@ function FunnelManagementComponent() {
                 </VStack>
               </ModalBody>
               <ModalFooter>
-                <Button variant="ghost" mr={3} onClick={onModalClose}>
-                  Cancel
-                </Button>
-                <Button
-                  bg="blue.500"
-                  color="white"
-                  onClick={handleCreateOrUpdateFunnel}
-                  isLoading={actionLoading}
-                  loadingText={isEditMode ? 'Updating...' : 'Creating...'}
-                  _hover={{ bg: 'blue.600' }}
-                  _active={{ bg: 'blue.700' }}
-                >
-                  {isEditMode ? 'Update Funnel' : 'Create Funnel'}
-                </Button>
+                <HStack w="100%" justify="flex-end" spacing={3}>
+                  <Button variant="ghost" size="sm" onClick={onModalClose}>
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    fontSize="sm"
+                    fontWeight="600"
+                    bg="blue.500"
+                    color="white"
+                    onClick={handleCreateOrUpdateFunnel}
+                    isLoading={actionLoading}
+                    loadingText={isEditMode ? 'Updating...' : 'Creating...'}
+                    _hover={{ bg: 'blue.600' }}
+                    _active={{ bg: 'blue.700' }}
+                  >
+                    {isEditMode ? 'Update Funnel' : 'Create Funnel'}
+                  </Button>
+                </HStack>
               </ModalFooter>
             </ModalContent>
           </Modal>
