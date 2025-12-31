@@ -126,7 +126,7 @@ import {
   FiFileText, FiUser, FiMail, FiPhone, FiCalendar, FiFilter, FiUpload,
   FiEye, FiEdit, FiTrash2, FiCopy, FiUsers, FiMoreVertical, 
   FiPlay, FiPause, FiBarChart2, FiTrendingUp, FiTarget, FiGlobe,
-  FiZoomIn, FiZoomOut, FiMaximize2
+  FiZoomIn, FiZoomOut, FiMaximize2, FiRefreshCw, FiPlus
 } from 'react-icons/fi';
 
 // --- BEAUTIFUL SKELETON COMPONENTS ---
@@ -2030,6 +2030,14 @@ const MLMDashboard = () => {
   const [commissions, setCommissions] = useState([]);
   const [commissionSummary, setCommissionSummary] = useState({ totalEarned: 0, pendingAmount: 0, totalCommissions: 0 });
   const [adminRequests, setAdminRequests] = useState([]);
+  const [showAdminRequestForm, setShowAdminRequestForm] = useState(false);
+  const [sponsorSearchResults, setSponsorSearchResults] = useState([]);
+  const [selectedSponsor, setSelectedSponsor] = useState(null);
+  const [requestForm, setRequestForm] = useState({
+    requestType: 'sponsor_change',
+    requestedSponsorId: '',
+    reason: ''
+  });
   const [coachPerformance, setCoachPerformance] = useState(null);
   const [salesPerformance, setSalesPerformance] = useState(null);
   const [clientPerformance, setClientPerformance] = useState(null);
@@ -2137,6 +2145,10 @@ const MLMDashboard = () => {
   });
 
   const BASE_URL = API_BASE_URL;
+
+  const [isReportDetailOpen, setIsReportDetailOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [reportDetail, setReportDetail] = useState(null);
 
   // API Headers - ENHANCED with fallback authentication
   const getHeaders = () => {
@@ -2425,16 +2437,24 @@ const MLMDashboard = () => {
       return;
     }
     
+    const authData = effectiveAuth;
+    if (!authData.coachId || !authData.token) {
+      console.warn('⚠️ fetchReports: Missing authentication data');
+      return;
+    }
+    
     fetchingRef.current.reports = true;
     setLoading(true);
     try {
-      const response = await fetch(`${BASE_URL}/api/advanced-mlm/reports/${user?.id}?limit=10`, {
+      const response = await fetch(`${BASE_URL}/api/advanced-mlm/reports/${authData.coachId}?limit=10`, {
         headers: getHeaders()
       });
       if (response.ok) {
         const data = await response.json();
         setReports(data.success ? data.data : data);
+        console.log('✅ Reports fetched successfully:', data);
       } else {
+        console.error('❌ fetchReports: API Error', response.status, response.statusText);
         setReports([]);
       }
     } catch (error) {
@@ -2443,6 +2463,118 @@ const MLMDashboard = () => {
       setReports([]);
     } finally {
       fetchingRef.current.reports = false;
+      setLoading(false);
+    }
+  };
+
+  const fetchReportDetail = async reportId => {
+    if (!reportId) {
+      console.warn('⚠️ fetchReportDetail: No report ID provided');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`${BASE_URL}/api/advanced-mlm/reports/detail/${reportId}`, {
+        headers: getHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const reportData = data.success ? data.data : data;
+        setReportDetail(reportData);
+        console.log('✅ Report detail fetched successfully:', reportData);
+      } else {
+        console.error('❌ fetchReportDetail: API Error', response.status, response.statusText);
+        setReportDetail(null);
+        toast('Failed to fetch report details', 'error');
+      }
+    } catch (error) {
+      console.error('💥 fetchReportDetail Error:', error);
+      setReportDetail(null);
+      toast('Failed to fetch report details', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openReportDetail = report => {
+    setSelectedReport(report);
+    setIsReportDetailOpen(true);
+    if (report?._id) {
+      fetchReportDetail(report._id);
+    } else {
+      console.warn('⚠️ openReportDetail: No report ID found');
+      setReportDetail(null);
+    }
+  };
+
+  const closeReportDetail = () => {
+    setIsReportDetailOpen(false);
+    setSelectedReport(null);
+    setReportDetail(null);
+  };
+
+  const downloadReportDetail = () => {
+    const data = reportDetail;
+    if (!data) return;
+    const fileName = `report-${data.reportId || 'detail'}.json`;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadIndividualReport = async (report) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${BASE_URL}/api/advanced-mlm/reports/download/${report._id}`, {
+        headers: getHeaders()
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `report-${report.reportType}-${report._id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast('Report downloaded successfully', 'success');
+      } else {
+        // Fallback to JSON download if PDF not available
+        const detailResponse = await fetch(`${BASE_URL}/api/advanced-mlm/reports/detail/${report._id}`, {
+          headers: getHeaders()
+        });
+        
+        if (detailResponse.ok) {
+          const data = await detailResponse.json();
+          const reportData = data.success ? data.data : data;
+          const fileName = `report-${report.reportType}-${report._id}.json`;
+          const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast('Report downloaded successfully', 'success');
+        } else {
+          throw new Error('Failed to download report');
+        }
+      }
+    } catch (error) {
+      console.error('💥 downloadIndividualReport Error:', error);
+      toast('Failed to download report', 'error');
+    } finally {
       setLoading(false);
     }
   };
@@ -2493,6 +2625,96 @@ const MLMDashboard = () => {
     } catch (error) {
       console.error('💥 fetchAdminRequests Error:', error);
       toast('Failed to fetch admin requests', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Search for sponsors
+  const searchSponsors = async (query) => {
+    if (!query || query.length < 3) {
+      setSponsorSearchResults([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${BASE_URL}/api/coach-hierarchy/search-sponsor?query=${encodeURIComponent(query)}`, {
+        headers: getHeaders()
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          // Combine digital and external sponsors
+          const allSponsors = [
+            ...(data.data?.digitalSponsors || []).map(s => ({
+              ...s,
+              type: 'digital',
+              displayId: s.selfCoachId
+            })),
+            ...(data.data?.externalSponsors || []).map(s => ({
+              ...s,
+              type: 'external',
+              displayId: s.phone || s.email
+            }))
+          ];
+          setSponsorSearchResults(allSponsors);
+        }
+      }
+    } catch (error) {
+      console.error('💥 searchSponsors Error:', error);
+    }
+  };
+
+  // Submit admin request
+  const submitAdminRequest = async () => {
+    const authData = effectiveAuth;
+    if (!authData.coachId || !authData.token) {
+      toast('Authentication required', 'error');
+      return;
+    }
+
+    if (!selectedSponsor || !requestForm.reason.trim()) {
+      toast('Please select a sponsor and provide a reason', 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const requestData = {
+        requestType: 'sponsor_change',
+        requestedData: {
+          sponsorId: selectedSponsor._id,
+          sponsorName: selectedSponsor.name,
+          sponsorType: selectedSponsor.type
+        },
+        reason: requestForm.reason
+      };
+
+      const response = await fetch(`${BASE_URL}/api/coach-hierarchy/admin-request`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(requestData)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          toast('Admin request submitted successfully', 'success');
+          setShowAdminRequestForm(false);
+          setSelectedSponsor(null);
+          setRequestForm({ requestType: 'sponsor_change', requestedSponsorId: '', reason: '' });
+          setSponsorSearchResults([]);
+          fetchAdminRequests(); // Refresh the list
+        } else {
+          toast(data.message || 'Failed to submit request', 'error');
+        }
+      } else {
+        toast('Failed to submit admin request', 'error');
+      }
+    } catch (error) {
+      console.error('💥 submitAdminRequest Error:', error);
+      toast('Failed to submit admin request', 'error');
     } finally {
       setLoading(false);
     }
@@ -2653,28 +2875,37 @@ const MLMDashboard = () => {
 
   const generateReport = async (e) => {
     e.preventDefault();
+    
+    const authData = effectiveAuth;
+    if (!authData.coachId || !authData.token) {
+      toast('Authentication required', 'error');
+      return;
+    }
+    
     setLoading(true);
     try {
       const response = await fetch(`${BASE_URL}/api/advanced-mlm/generate-report`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
-          sponsorId: user?.id,
+          sponsorId: authData.coachId,
           ...reportConfig
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        toast('Report generation started');
+        console.log('✅ Report generation started:', data);
+        toast('Report generation started', 'success');
         onReportModalClose();
         fetchReports();
       } else {
-        throw new Error('Failed to generate report');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to generate report');
       }
     } catch (error) {
       console.error('💥 generateReport Error:', error);
-      toast(error.message, 'error');
+      toast(error.message || 'Failed to generate report', 'error');
     } finally {
       setLoading(false);
     }
@@ -4740,9 +4971,25 @@ const MLMDashboard = () => {
                           Generate and manage comprehensive team performance reports
                         </Text>
                       </VStack>
-                      <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={onReportModalOpen}>
-                        Generate New Report
-                      </Button>
+                      <HStack spacing={3}>
+                        <Button 
+                          leftIcon={<AddIcon />} 
+                          colorScheme="blue" 
+                          onClick={onReportModalOpen}
+                        >
+                          Generate New Report
+                        </Button>
+                        <Button 
+                          leftIcon={<FiRefreshCw />} 
+                          variant="outline" 
+                          colorScheme="gray"
+                          onClick={fetchReports}
+                          isLoading={fetchingRef.current.reports}
+                          loadingText="Refreshing..."
+                        >
+                          Refresh
+                        </Button>
+                      </HStack>
                     </Flex>
 
                     {loading ? (
@@ -4804,6 +5051,7 @@ const MLMDashboard = () => {
                                     leftIcon={<ViewIcon />}
                                     colorScheme="blue"
                                     _hover={{ bg: 'blue.50' }}
+                                    onClick={() => openReportDetail(report)}
                                   >
                                     View
                                   </Button>
@@ -4814,6 +5062,7 @@ const MLMDashboard = () => {
                                     isDisabled={report.status !== 'completed'}
                                     _hover={{ bg: 'green.50' }}
                                     title="Download Report"
+                                    onClick={() => downloadIndividualReport(report)}
                                   />
                                 </ButtonGroup>
                               </VStack>
@@ -5001,9 +5250,18 @@ const MLMDashboard = () => {
                           Track your hierarchy change requests and their status
                         </Text>
                       </VStack>
-                      <Button leftIcon={<RepeatIcon />} colorScheme="blue" onClick={fetchAdminRequests} isLoading={loading}>
-                        Refresh
-                      </Button>
+                      <HStack spacing={3}>
+                        <Button 
+                          leftIcon={<FiPlus />} 
+                          colorScheme="blue" 
+                          onClick={() => setShowAdminRequestForm(true)}
+                        >
+                          New Request
+                        </Button>
+                        <Button leftIcon={<RepeatIcon />} colorScheme="gray" onClick={fetchAdminRequests} isLoading={loading}>
+                          Refresh
+                        </Button>
+                      </HStack>
                     </Flex>
 
                     {loading ? (
@@ -5490,6 +5748,73 @@ const MLMDashboard = () => {
         </ModalContent>
       </Modal>
 
+      <Modal isOpen={isReportDetailOpen} onClose={closeReportDetail} size="xl">
+        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
+        <ModalContent borderRadius="7px">
+          <ModalHeader>
+            <HStack spacing={3} justifyContent="space-between">
+              <VStack align="start" spacing={0}>
+                <Text fontSize="lg" fontWeight="bold">Report Details</Text>
+                <Text fontSize="sm" color="gray.500">{selectedReport?.reportType?.replace(/_/g, ' ') || ''}</Text>
+              </VStack>
+              <Button leftIcon={<DownloadIcon />} variant="outline" colorScheme="green" onClick={downloadReportDetail} isDisabled={!reportDetail}>
+                Download
+              </Button>
+            </HStack>
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            {loading && !reportDetail ? (
+              <VStack spacing={4} align="stretch">
+                <Skeleton height="24px" />
+                <Skeleton height="120px" />
+                <Skeleton height="24px" />
+                <Skeleton height="200px" />
+              </VStack>
+            ) : reportDetail ? (
+              <VStack spacing={6} align="stretch">
+                <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+                  <Card><CardBody><VStack align="start" spacing={1}><Text fontSize="xs" color="gray.500">Status</Text><Text fontWeight="600">{reportDetail.status}</Text></VStack></CardBody></Card>
+                  <Card><CardBody><VStack align="start" spacing={1}><Text fontSize="xs" color="gray.500">Period</Text><Text fontWeight="600">{reportDetail.reportPeriod?.period}</Text></VStack></CardBody></Card>
+                  <Card><CardBody><VStack align="start" spacing={1}><Text fontSize="xs" color="gray.500">Generated</Text><Text fontWeight="600">{reportDetail.generatedAt ? new Date(reportDetail.generatedAt).toLocaleDateString() : 'N/A'}</Text></VStack></CardBody></Card>
+                </SimpleGrid>
+                <Card>
+                  <CardHeader>
+                    <Heading size="sm">Individual Metrics</Heading>
+                  </CardHeader>
+                  <CardBody>
+                    <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
+                      <VStack align="start"><Text fontSize="xs" color="gray.500">Leads</Text><Text fontWeight="600">{reportDetail.reportData?.individualMetrics?.leadsGenerated || 0}</Text></VStack>
+                      <VStack align="start"><Text fontSize="xs" color="gray.500">Conversions</Text><Text fontWeight="600">{reportDetail.reportData?.individualMetrics?.leadsConverted || 0}</Text></VStack>
+                      <VStack align="start"><Text fontSize="xs" color="gray.500">Sales</Text><Text fontWeight="600">{reportDetail.reportData?.individualMetrics?.salesClosed || 0}</Text></VStack>
+                      <VStack align="start"><Text fontSize="xs" color="gray.500">Revenue</Text><Text fontWeight="600">{reportDetail.reportData?.individualMetrics?.revenueGenerated || 0}</Text></VStack>
+                    </SimpleGrid>
+                  </CardBody>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <Heading size="sm">Team Metrics</Heading>
+                  </CardHeader>
+                  <CardBody>
+                    <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
+                      <VStack align="start"><Text fontSize="xs" color="gray.500">Team Size</Text><Text fontWeight="600">{reportDetail.reportData?.teamMetrics?.teamSize || 0}</Text></VStack>
+                      <VStack align="start"><Text fontSize="xs" color="gray.500">Leads</Text><Text fontWeight="600">{reportDetail.reportData?.teamMetrics?.teamLeads || 0}</Text></VStack>
+                      <VStack align="start"><Text fontSize="xs" color="gray.500">Sales</Text><Text fontWeight="600">{reportDetail.reportData?.teamMetrics?.teamSales || 0}</Text></VStack>
+                      <VStack align="start"><Text fontSize="xs" color="gray.500">Revenue</Text><Text fontWeight="600">{reportDetail.reportData?.teamMetrics?.teamRevenue || 0}</Text></VStack>
+                    </SimpleGrid>
+                  </CardBody>
+                </Card>
+              </VStack>
+            ) : (
+              <Text color="gray.600">No report details available</Text>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" onClick={closeReportDetail}>Close</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
       {/* Enhanced View Coach Modal */}
       {selectedCoach && (
         <Modal isOpen={isViewModalOpen} onClose={onViewModalClose} size="4xl">
@@ -5783,6 +6108,140 @@ const MLMDashboard = () => {
           </ModalContent>
         </Modal>
       )}
+
+      {/* Admin Request Form Modal */}
+      <Modal isOpen={showAdminRequestForm} onClose={() => setShowAdminRequestForm(false)} size="lg">
+        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
+        <ModalContent borderRadius="7px">
+          <ModalHeader>
+            <HStack spacing={3}>
+              <Box p={2} bg="blue.100" borderRadius="7px" color="blue.600">
+                <FiUser />
+              </Box>
+              <VStack align="start" spacing={0}>
+                <Heading size="lg" color="gray.800">Submit Admin Request</Heading>
+                <Text fontSize="sm" color="gray.600">Request sponsor ID change</Text>
+              </VStack>
+            </HStack>
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={4} align="stretch">
+              <Alert status="info" borderRadius="7px">
+                <AlertIcon />
+                <Box>
+                  <Text fontWeight="600" color="blue.800">Hierarchy Locking Policy</Text>
+                  <Text fontSize="sm" color="blue.700" mt={1}>
+                    Your sponsor ID is locked after signup for security. Any changes require admin approval.
+                  </Text>
+                </Box>
+              </Alert>
+
+              <FormControl>
+                <FormLabel fontWeight="600" color="gray.700">Request Type</FormLabel>
+                <Input value="Sponsor ID Change" isReadOnly bg="gray.50" />
+              </FormControl>
+
+              <FormControl>
+                <FormLabel fontWeight="600" color="gray.700">Search New Sponsor</FormLabel>
+                <Input
+                  placeholder="Search by name, coach ID, phone, or email..."
+                  onChange={(e) => searchSponsors(e.target.value)}
+                  bg="white"
+                />
+                {sponsorSearchResults.length > 0 && (
+                  <VStack align="stretch" spacing={2} mt={2} maxH="200px" overflowY="auto">
+                    {sponsorSearchResults.map((sponsor) => (
+                      <Card
+                        key={sponsor._id}
+                        p={3}
+                        border="1px"
+                        borderColor="gray.200"
+                        borderRadius="7px"
+                        cursor="pointer"
+                        onClick={() => {
+                          setSelectedSponsor(sponsor);
+                          setSponsorSearchResults([]);
+                        }}
+                        bg={selectedSponsor?._id === sponsor._id ? "blue.50" : "white"}
+                        _hover={{ bg: "gray.50" }}
+                      >
+                        <HStack justify="space-between">
+                          <VStack align="start" spacing={1}>
+                            <Text fontWeight="600" color="gray.800">{sponsor.name}</Text>
+                            <Text fontSize="xs" color="gray.600">
+                              {sponsor.type === 'digital' ? `ID: ${sponsor.displayId}` : `${sponsor.displayId}`}
+                            </Text>
+                          </VStack>
+                          <Badge colorScheme={sponsor.type === 'digital' ? 'blue' : 'green'} variant="subtle">
+                            {sponsor.type === 'digital' ? 'Digital System' : 'External'}
+                          </Badge>
+                        </HStack>
+                      </Card>
+                    ))}
+                  </VStack>
+                )}
+              </FormControl>
+
+              {selectedSponsor && (
+                <Card p={3} bg="green.50" border="1px" borderColor="green.200" borderRadius="7px">
+                  <HStack justify="space-between">
+                    <VStack align="start" spacing={1}>
+                      <Text fontWeight="600" color="green.800">Selected Sponsor</Text>
+                      <Text color="green.700">{selectedSponsor.name}</Text>
+                      <Text fontSize="xs" color="green.600">
+                        {selectedSponsor.type === 'digital' ? `ID: ${selectedSponsor.displayId}` : `${selectedSponsor.displayId}`}
+                      </Text>
+                    </VStack>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      colorScheme="red"
+                      onClick={() => setSelectedSponsor(null)}
+                    >
+                      <FiTrash2 />
+                    </Button>
+                  </HStack>
+                </Card>
+              )}
+
+              <FormControl>
+                <FormLabel fontWeight="600" color="gray.700">Reason for Change</FormLabel>
+                <Textarea
+                  placeholder="Please explain why you need to change your sponsor ID..."
+                  value={requestForm.reason}
+                  onChange={(e) => setRequestForm({ ...requestForm, reason: e.target.value })}
+                  rows={4}
+                  resize="none"
+                />
+              </FormControl>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <ButtonGroup spacing={3}>
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  setShowAdminRequestForm(false);
+                  setSelectedSponsor(null);
+                  setRequestForm({ requestType: 'sponsor_change', requestedSponsorId: '', reason: '' });
+                  setSponsorSearchResults([]);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                colorScheme="blue" 
+                onClick={submitAdminRequest}
+                isLoading={loading}
+                isDisabled={!selectedSponsor || !requestForm.reason.trim()}
+              >
+                Submit Request
+              </Button>
+            </ButtonGroup>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* Confirmation Modal */}
       <ConfirmationModal
