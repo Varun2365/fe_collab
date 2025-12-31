@@ -5077,20 +5077,16 @@ const LeadsView = () => {
 
   // Main component render
   return (
-    <Box bg="gray.100" h="100vh" overflow="hidden" display="flex" flexDirection="column">
-      <Box flex="1" overflowY="auto">
-        <Box maxW="full" mx="auto" px={{ base: 4, md: 6 }}>
-          <VStack spacing={8} align="stretch" w="full" pt={{ base: 4, md: 6 }} pb={{ base: 4, md: 6 }}>
+    <Box bg="gray.100" minH="100vh">
+      <Box maxW="full" mx="auto" px={{ base: 4, md: 6 }}>
+        <VStack spacing={8} align="stretch" w="full" pt={{ base: 4, md: 6 }} pb={{ base: 4, md: 6 }}>
             {/* Combined Header & Stats Section - Sticky */}
-            <Card 
-              bg="white" 
-              borderRadius="8px" 
-              boxShadow="none" 
-              border="1px" 
+            <Card
+              bg="white"
+              borderRadius="8px"
+              boxShadow="none"
+              border="1px"
               borderColor="gray.200"
-              position="sticky"
-              top={{ base: 4, md: 6 }}
-              zIndex={10}
             >
             <CardHeader py={4} px={6} borderBottom="1px" borderColor="gray.100">
               <Flex justify="space-between" align="center" direction={{ base: 'column', lg: 'row' }} gap={4}>
@@ -5733,7 +5729,6 @@ const LeadsView = () => {
             onStaffCardClick={handleStaffCardClick}
           />
         </VStack>
-        </Box>
       </Box>
     </Box>
   );

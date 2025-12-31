@@ -18,7 +18,6 @@ import {
   FiHome,
   FiUsers,
   FiBarChart,
-  FiSettings,
   FiCalendar,
   FiZap,
   FiTrendingUp,
@@ -200,18 +199,6 @@ const Sidebar = () => {
       title: 'Account',
       items: [
         { icon: FiUserCheck, label: 'Profile', path: '/profile', badge: null, type: 'single' },
-        { 
-          icon: FiSettings, 
-          label: 'Settings', 
-          path: '/settings', 
-          badge: null, 
-          type: 'dropdown',
-          subItems: [
-            { icon: FiMessageCircle, label: 'WhatsApp Settings', path: '/whatsapp_setup', badge: null },
-            { icon: FiVideo, label: 'Zoom Settings', path: '/zoom_settings', badge: null },
-            { icon: FiCreditCard, label: 'Payment Gateways', path: '/payment_gateways', badge: null },
-          ]
-        },
         // { icon: FiCreditCard, label: 'Subscription', path: '/subscription', badge: null, type: 'single' }, // Moved to Profile
         // { icon: FiGlobe, label: 'Custom Domains', path: '/dns', badge: 'New', type: 'single' }, // Commented out
       ]
@@ -325,7 +312,7 @@ const Sidebar = () => {
     const isExpanded = expandedItems.has(item.path);
     const isItemActive = isActive(item.path);
     const isItemHovered = hoveredItem === item.name;
-    const useNeutralBg = item.label === 'Lead Management' || item.label === 'Settings' || item.label === 'Client Management';
+    const useNeutralBg = item.label === 'Lead Management' || item.label === 'Client Management';
 
     if (item.type === 'dropdown') {
       return (

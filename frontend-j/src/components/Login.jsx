@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { loginSuccess, testAction } from '../redux/authSlice';
@@ -32,7 +32,22 @@ import {
   SlideFade,
   IconButton,
   Image,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure,
+  Divider,
+  Progress,
 } from '@chakra-ui/react';
+import {
+  CheckCircleIcon,
+  WarningIcon,
+  InfoIcon,
+  CloseIcon,
+} from '@chakra-ui/icons';
 import {
   FaEnvelope,
   FaLock,
@@ -50,10 +65,106 @@ import loginHeroJpg from '../login.jpg';
 
 import { API_BASE_URL as BASE_API_URL } from '../config/apiConfig';
 
+// Custom toast hook matching calendar style
+const useCustomToast = () => {
+  const toast = useToast();
+
+  return useCallback((message, status = 'info') => {
+    const statusConfig = {
+      success: {
+        title: 'Success',
+        bg: 'white',
+        borderColor: 'green.200',
+        iconColor: 'green.500',
+        titleColor: 'green.700',
+        textColor: 'gray.700',
+        icon: CheckCircleIcon
+      },
+      error: {
+        title: 'Error',
+        bg: 'white',
+        borderColor: 'red.200',
+        iconColor: 'red.500',
+        titleColor: 'red.700',
+        textColor: 'gray.700',
+        icon: WarningIcon
+      },
+      warning: {
+        title: 'Warning',
+        bg: 'white',
+        borderColor: 'orange.200',
+        iconColor: 'orange.500',
+        titleColor: 'orange.700',
+        textColor: 'gray.700',
+        icon: WarningIcon
+      },
+      info: {
+        title: 'Info',
+        bg: 'white',
+        borderColor: 'blue.200',
+        iconColor: 'blue.500',
+        titleColor: 'blue.700',
+        textColor: 'gray.700',
+        icon: InfoIcon
+      }
+    };
+
+    const config = statusConfig[status] || statusConfig.info;
+    const IconComponent = config.icon;
+
+    toast({
+      duration: 4000,
+      isClosable: true,
+      position: 'top-right',
+      render: ({ onClose }) => (
+        <Box
+          bg={config.bg}
+          border="1px solid"
+          borderColor={config.borderColor}
+          borderRadius="7px"
+          boxShadow="0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
+          p={4}
+          display="flex"
+          alignItems="flex-start"
+          gap={3}
+          minW="320px"
+          maxW="400px"
+        >
+          <Box
+            as={IconComponent}
+            color={config.iconColor}
+            boxSize={5}
+            mt={0.5}
+            flexShrink={0}
+          />
+          <VStack align="start" spacing={1} flex={1}>
+            <Text fontSize="sm" fontWeight="600" color={config.titleColor}>
+              {config.title}
+            </Text>
+            <Text fontSize="sm" color={config.textColor} lineHeight="1.5">
+              {message}
+            </Text>
+          </VStack>
+          <IconButton
+            aria-label="Close"
+            icon={<CloseIcon />}
+            size="xs"
+            variant="ghost"
+            color="gray.400"
+            onClick={onClose}
+            _hover={{ color: 'gray.600', bg: 'gray.50' }}
+            borderRadius="7px"
+          />
+        </Box>
+      ),
+    });
+  }, [toast]);
+};
+
 const Login = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const toast = useToast();
+  const toast = useCustomToast();
 
   const [input, setInput] = useState({
     email: '',
@@ -63,6 +174,18 @@ const Login = () => {
   const [showOtpForm, setShowOtpForm] = useState(false);
   const [otp, setOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Forgot password modal state
+  const { isOpen: isForgotPasswordOpen, onOpen: onForgotPasswordOpen, onClose: onForgotPasswordClose } = useDisclosure();
+  const [forgotPasswordStep, setForgotPasswordStep] = useState('email'); // 'email' | 'otp' | 'newPassword' | 'success'
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [forgotPasswordOtp, setForgotPasswordOtp] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -103,13 +226,7 @@ const Login = () => {
       console.log('📧 OTP Response data:', data);
 
       if (response.ok && data.success) {
-        toast({
-          title: 'OTP Sent Successfully',
-          description: 'Verification code has been sent to your email address.',
-          status: 'success',
-          duration: 4000,
-          isClosable: true,
-        });
+        toast('Verification code has been sent to your email address.', 'success');
         setShowOtpForm(true);
         setOtp('');
       } else {
@@ -125,13 +242,7 @@ const Login = () => {
           errorMessage = 'Access denied. This account may already be verified.';
         }
         
-        toast({
-          title: 'Error Sending OTP',
-          description: errorMessage,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
+        toast(errorMessage, 'error');
         
         console.error('📧 OTP Error:', {
           status: response.status,
@@ -141,13 +252,7 @@ const Login = () => {
       }
     } catch (error) {
       console.error('📧 OTP resend error:', error);
-      toast({
-        title: 'Connection Error',
-        description: 'Network connection failed. Please check your connection and try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      toast('Network connection failed. Please check your connection and try again.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -158,13 +263,7 @@ const Login = () => {
     e.preventDefault();
     
     if (!otp || otp.length !== 6) {
-      toast({
-        title: 'Invalid OTP',
-        description: 'Please enter the complete 6-digit verification code.',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true,
-      });
+      toast('Please enter the complete 6-digit verification code.', 'warning');
       return;
     }
     
@@ -180,13 +279,7 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        toast({
-          title: 'Email Verified Successfully',
-          description: 'Redirecting to your dashboard...',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
+        toast('Redirecting to your dashboard...', 'success');
         
         const { user, token } = data;
 
@@ -224,23 +317,11 @@ const Login = () => {
           navigate('/dashboard');
         }
       } else {
-        toast({
-          title: 'Verification Failed',
-          description: data.message || 'Invalid OTP. Please try again.',
-          status: 'error',
-          duration: 4000,
-          isClosable: true,
-        });
+        toast(data.message || 'Invalid OTP. Please try again.', 'error');
       }
     } catch (error) {
       console.error('OTP verification error:', error);
-      toast({
-        title: 'Connection Error',
-        description: 'Unable to verify OTP. Please check your connection.',
-        status: 'error',
-        duration: 4000,
-        isClosable: true,
-      });
+      toast('Unable to verify OTP. Please check your connection.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -250,13 +331,7 @@ const Login = () => {
     e.preventDefault();
 
     if (!input.email || !input.password) {
-      toast({
-        title: 'Required Fields Missing',
-        description: 'Please enter both email address and password.',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true,
-      });
+      toast('Please enter both email address and password.', 'warning');
       return;
     }
 
@@ -345,13 +420,7 @@ const Login = () => {
           // Staff ko bhi coach ke redux mein store karo
           dispatch(loginSuccess({ user, token }));
           
-          toast({
-            title: `Welcome Back, ${user.name || 'Staff Member'}`,
-            description: 'Redirecting to dashboard...',
-            status: 'success',
-            duration: 3000,
-            isClosable: true,
-          });
+          toast(`Welcome back, ${user.name || 'Staff Member'}! Redirecting to dashboard...`, 'success');
           
           // Staff ko coach ke dashboard pe redirect karo
           navigate('/dashboard');
@@ -364,13 +433,7 @@ const Login = () => {
           
           dispatch(loginSuccess({ user, token }));
           
-          toast({
-            title: `Welcome Back, ${user.name || 'User'}`,
-            description: 'Redirecting to your dashboard...',
-            status: 'success',
-            duration: 3000,
-            isClosable: true,
-          });
+          toast(`Welcome back, ${user.name || 'User'}! Redirecting to your dashboard...`, 'success');
           
           navigate('/dashboard');
         }
@@ -435,26 +498,147 @@ const Login = () => {
             message: errorMessage
           });
           
-          toast({
-            title: 'Authentication Failed',
-            description: errorMessage,
-            status: 'error',
-            duration: 5000,
-            isClosable: true,
-          });
+          toast(errorMessage, 'error');
         }
       }
     } catch (error) {
       console.error('🔐 Login error (catch):', error);
-      toast({
-        title: 'Connection Error',
-        description: 'Unable to connect to the server. Please check your internet connection and try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      toast('Unable to connect to the server. Please check your internet connection and try again.', 'error');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Forgot Password Handlers
+  const handleOpenForgotPassword = () => {
+    setForgotPasswordStep('email');
+    setForgotPasswordEmail(input.email || '');
+    setForgotPasswordOtp('');
+    setResetToken('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+    onForgotPasswordOpen();
+  };
+
+  const handleCloseForgotPassword = () => {
+    if (!forgotPasswordLoading) {
+      onForgotPasswordClose();
+      setForgotPasswordStep('email');
+      setForgotPasswordEmail('');
+      setForgotPasswordOtp('');
+      setResetToken('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    }
+  };
+
+  const handleSendResetOtp = async () => {
+    if (!forgotPasswordEmail || !forgotPasswordEmail.includes('@')) {
+      toast('Please enter a valid email address.', 'warning');
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    try {
+      const response = await fetch(`${BASE_API_URL}/api/auth/forgot-password-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotPasswordEmail }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast('Password reset OTP sent to your email.', 'success');
+        setForgotPasswordStep('otp');
+      } else {
+        toast(data.message || 'Failed to send OTP. Please try again.', 'error');
+      }
+    } catch (error) {
+      console.error('Forgot password OTP error:', error);
+      toast('Network error. Please check your connection.', 'error');
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  const handleVerifyResetOtp = async () => {
+    if (!forgotPasswordOtp || forgotPasswordOtp.length !== 6) {
+      toast('Please enter the complete 6-digit OTP.', 'warning');
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    try {
+      const response = await fetch(`${BASE_API_URL}/api/auth/verify-password-reset-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotPasswordEmail, otp: forgotPasswordOtp }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast('OTP verified successfully.', 'success');
+        setResetToken(data.resetToken);
+        setForgotPasswordStep('newPassword');
+      } else {
+        toast(data.message || 'Invalid OTP. Please try again.', 'error');
+      }
+    } catch (error) {
+      console.error('Verify reset OTP error:', error);
+      toast('Network error. Please check your connection.', 'error');
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast('Password must be at least 6 characters long.', 'warning');
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      toast('Passwords do not match.', 'error');
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    try {
+      const response = await fetch(`${BASE_API_URL}/api/auth/reset-password-with-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resetToken: resetToken,
+          newPassword: newPassword,
+          confirmPassword: confirmNewPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast('Password reset successfully! You can now login.', 'success');
+        setForgotPasswordStep('success');
+      } else {
+        toast(data.message || 'Failed to reset password. Please try again.', 'error');
+      }
+    } catch (error) {
+      console.error('Reset password error:', error);
+      toast('Network error. Please check your connection.', 'error');
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  const getStepProgress = () => {
+    switch (forgotPasswordStep) {
+      case 'email': return 25;
+      case 'otp': return 50;
+      case 'newPassword': return 75;
+      case 'success': return 100;
+      default: return 0;
     }
   };
 
@@ -653,12 +837,14 @@ const Login = () => {
                           Password
                         </FormLabel>
                         <Text 
-                          as={Link} 
-                          to="/reset-password"
+                          as="button"
+                          type="button"
+                          onClick={handleOpenForgotPassword}
                           fontSize="sm" 
                           color="brand.600" 
                           fontWeight="500"
                           _hover={{ color: "brand.700", textDecoration: "underline" }}
+                          cursor="pointer"
                         >
                           Forgot Password?
                         </Text>
@@ -774,6 +960,439 @@ const Login = () => {
           </Box>
       </Flex>
 
+      {/* Forgot Password Modal */}
+      <Modal 
+        isOpen={isForgotPasswordOpen} 
+        onClose={handleCloseForgotPassword} 
+        isCentered
+        size="md"
+        closeOnOverlayClick={false}
+        closeOnEsc={false}
+      >
+        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
+        <ModalContent 
+          borderRadius="16px" 
+          mx={4}
+          overflow="hidden"
+          boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+        >
+          {/* Progress Bar */}
+          <Progress 
+            value={getStepProgress()} 
+            size="xs" 
+            colorScheme="purple"
+            bg="gray.100"
+            borderRadius="0"
+          />
+          
+          <ModalHeader 
+            pt={6} 
+            pb={2} 
+            px={6}
+            borderBottom="none"
+          >
+            <VStack align="start" spacing={1}>
+              <Heading size="md" fontWeight="700" color="#0f172a">
+                {forgotPasswordStep === 'email' && 'Reset Your Password'}
+                {forgotPasswordStep === 'otp' && 'Verify Your Identity'}
+                {forgotPasswordStep === 'newPassword' && 'Create New Password'}
+                {forgotPasswordStep === 'success' && 'Password Reset Complete'}
+              </Heading>
+              <Text fontSize="sm" color="gray.500" fontWeight="400">
+                {forgotPasswordStep === 'email' && 'Enter your email to receive a verification code'}
+                {forgotPasswordStep === 'otp' && 'Enter the 6-digit code sent to your email'}
+                {forgotPasswordStep === 'newPassword' && 'Choose a strong password for your account'}
+                {forgotPasswordStep === 'success' && 'You can now login with your new password'}
+              </Text>
+            </VStack>
+          </ModalHeader>
+          
+          <ModalCloseButton 
+            isDisabled={forgotPasswordLoading} 
+            top={4} 
+            right={4}
+            borderRadius="full"
+            _hover={{ bg: 'gray.100' }}
+          />
+          
+          <ModalBody px={6} pb={6} pt={4}>
+            {/* Step 1: Email Entry */}
+            {forgotPasswordStep === 'email' && (
+              <VStack spacing={5}>
+                <Flex
+                  w="64px"
+                  h="64px"
+                  borderRadius="full"
+                  bg="purple.50"
+                  align="center"
+                  justify="center"
+                >
+                  <Icon as={FaEnvelope} boxSize={6} color="purple.600" />
+                </Flex>
+                
+                <FormControl>
+                  <FormLabel 
+                    fontSize="sm" 
+                    fontWeight="500" 
+                    color="gray.600"
+                    mb={2}
+                  >
+                    Email Address
+                  </FormLabel>
+                  <InputGroup size="lg">
+                    <InputLeftElement h="50px">
+                      <Icon as={FaEnvelope} color="gray.400" />
+                    </InputLeftElement>
+                    <Input
+                      type="email"
+                      value={forgotPasswordEmail}
+                      onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                      placeholder="Enter your email address"
+                      borderRadius="md"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: "purple.200" }}
+                      _focus={{
+                        borderColor: "#4f46e5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.15)"
+                      }}
+                      bg="white"
+                      fontSize="md"
+                      h="50px"
+                    />
+                  </InputGroup>
+                </FormControl>
+
+                <Button
+                  w="full"
+                  size="lg"
+                  bg="#4f46e5"
+                  color="white"
+                  _hover={{
+                    bg: "#4338ca",
+                    transform: "translateY(-1px)",
+                    boxShadow: "0 10px 25px rgba(79, 70, 229, 0.25)"
+                  }}
+                  _active={{ transform: "translateY(0)" }}
+                  isLoading={forgotPasswordLoading}
+                  loadingText="Sending..."
+                  onClick={handleSendResetOtp}
+                  borderRadius="md"
+                  fontSize="md"
+                  fontWeight="600"
+                  h="50px"
+                  transition="all 0.2s ease"
+                >
+                  Send Verification Code
+                </Button>
+                
+                <Text fontSize="sm" color="gray.500" textAlign="center">
+                  Remember your password?{' '}
+                  <Text 
+                    as="button" 
+                    type="button"
+                    color="#4f46e5" 
+                    fontWeight="500"
+                    onClick={handleCloseForgotPassword}
+                    _hover={{ textDecoration: 'underline' }}
+                  >
+                    Back to login
+                  </Text>
+                </Text>
+              </VStack>
+            )}
+
+            {/* Step 2: OTP Verification */}
+            {forgotPasswordStep === 'otp' && (
+              <VStack spacing={5}>
+                <Flex
+                  w="64px"
+                  h="64px"
+                  borderRadius="full"
+                  bg="purple.50"
+                  align="center"
+                  justify="center"
+                >
+                  <Icon as={FaShieldAlt} boxSize={6} color="purple.600" />
+                </Flex>
+                
+                <Text fontSize="sm" color="gray.600" textAlign="center">
+                  We sent a verification code to{' '}
+                  <Text as="span" fontWeight="600" color="#0f172a">
+                    {forgotPasswordEmail}
+                  </Text>
+                </Text>
+
+                <HStack spacing={3} justify="center">
+                  <PinInput
+                    otp
+                    size="lg"
+                    value={forgotPasswordOtp}
+                    onChange={setForgotPasswordOtp}
+                    placeholder="0"
+                  >
+                    {[...Array(6)].map((_, index) => (
+                      <PinInputField 
+                        key={index}
+                        borderRadius="md" 
+                        borderColor="gray.200"
+                        border="2px solid"
+                        _hover={{ borderColor: "purple.200" }}
+                        _focus={{
+                          borderColor: "#4f46e5",
+                          boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.15)"
+                        }}
+                        fontSize="xl"
+                        fontWeight="600"
+                        color="#0f172a"
+                        bg="white"
+                        h="56px"
+                        w="48px"
+                      />
+                    ))}
+                  </PinInput>
+                </HStack>
+
+                <Button
+                  w="full"
+                  size="lg"
+                  bg="#4f46e5"
+                  color="white"
+                  _hover={{
+                    bg: "#4338ca",
+                    transform: "translateY(-1px)",
+                    boxShadow: "0 10px 25px rgba(79, 70, 229, 0.25)"
+                  }}
+                  _active={{ transform: "translateY(0)" }}
+                  isLoading={forgotPasswordLoading}
+                  loadingText="Verifying..."
+                  onClick={handleVerifyResetOtp}
+                  borderRadius="md"
+                  fontSize="md"
+                  fontWeight="600"
+                  h="50px"
+                  transition="all 0.2s ease"
+                >
+                  Verify Code
+                </Button>
+
+                <HStack spacing={1} justify="center">
+                  <Text fontSize="sm" color="gray.500">
+                    Didn't receive the code?
+                  </Text>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    color="#4f46e5"
+                    fontWeight="500"
+                    onClick={handleSendResetOtp}
+                    isDisabled={forgotPasswordLoading}
+                    _hover={{ textDecoration: 'underline' }}
+                  >
+                    Resend
+                  </Button>
+                </HStack>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<FaArrowLeft />}
+                  onClick={() => setForgotPasswordStep('email')}
+                  color="gray.500"
+                  _hover={{ color: "#4f46e5", bg: "purple.50" }}
+                  isDisabled={forgotPasswordLoading}
+                >
+                  Change email
+                </Button>
+              </VStack>
+            )}
+
+            {/* Step 3: New Password */}
+            {forgotPasswordStep === 'newPassword' && (
+              <VStack spacing={5}>
+                <Flex
+                  w="64px"
+                  h="64px"
+                  borderRadius="full"
+                  bg="purple.50"
+                  align="center"
+                  justify="center"
+                >
+                  <Icon as={FaLock} boxSize={6} color="purple.600" />
+                </Flex>
+
+                <FormControl>
+                  <FormLabel 
+                    fontSize="sm" 
+                    fontWeight="500" 
+                    color="gray.600"
+                    mb={2}
+                  >
+                    New Password
+                  </FormLabel>
+                  <InputGroup size="lg">
+                    <InputLeftElement h="50px">
+                      <Icon as={FaLock} color="gray.400" />
+                    </InputLeftElement>
+                    <Input
+                      type={showNewPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      borderRadius="md"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: "purple.200" }}
+                      _focus={{
+                        borderColor: "#4f46e5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.15)"
+                      }}
+                      bg="white"
+                      fontSize="md"
+                      h="50px"
+                    />
+                    <InputRightElement h="50px">
+                      <IconButton
+                        variant="ghost"
+                        aria-label={showNewPassword ? "Hide password" : "Show password"}
+                        icon={<Icon as={showNewPassword ? FaEyeSlash : FaEye} />}
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        color="gray.400"
+                        _hover={{ color: "gray.600", bg: "transparent" }}
+                        size="sm"
+                      />
+                    </InputRightElement>
+                  </InputGroup>
+                </FormControl>
+
+                <FormControl>
+                  <FormLabel 
+                    fontSize="sm" 
+                    fontWeight="500" 
+                    color="gray.600"
+                    mb={2}
+                  >
+                    Confirm New Password
+                  </FormLabel>
+                  <InputGroup size="lg">
+                    <InputLeftElement h="50px">
+                      <Icon as={FaLock} color="gray.400" />
+                    </InputLeftElement>
+                    <Input
+                      type={showConfirmNewPassword ? "text" : "password"}
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      borderRadius="md"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: "purple.200" }}
+                      _focus={{
+                        borderColor: "#4f46e5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.15)"
+                      }}
+                      bg="white"
+                      fontSize="md"
+                      h="50px"
+                    />
+                    <InputRightElement h="50px">
+                      <IconButton
+                        variant="ghost"
+                        aria-label={showConfirmNewPassword ? "Hide password" : "Show password"}
+                        icon={<Icon as={showConfirmNewPassword ? FaEyeSlash : FaEye} />}
+                        onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                        color="gray.400"
+                        _hover={{ color: "gray.600", bg: "transparent" }}
+                        size="sm"
+                      />
+                    </InputRightElement>
+                  </InputGroup>
+                  {newPassword && newPassword.length < 6 && (
+                    <Text fontSize="xs" color="red.500" mt={1}>
+                      Password must be at least 6 characters
+                    </Text>
+                  )}
+                  {confirmNewPassword && newPassword !== confirmNewPassword && (
+                    <Text fontSize="xs" color="red.500" mt={1}>
+                      Passwords do not match
+                    </Text>
+                  )}
+                </FormControl>
+
+                <Button
+                  w="full"
+                  size="lg"
+                  bg="#4f46e5"
+                  color="white"
+                  _hover={{
+                    bg: "#4338ca",
+                    transform: "translateY(-1px)",
+                    boxShadow: "0 10px 25px rgba(79, 70, 229, 0.25)"
+                  }}
+                  _active={{ transform: "translateY(0)" }}
+                  isLoading={forgotPasswordLoading}
+                  loadingText="Resetting..."
+                  onClick={handleResetPassword}
+                  borderRadius="md"
+                  fontSize="md"
+                  fontWeight="600"
+                  h="50px"
+                  transition="all 0.2s ease"
+                  isDisabled={!newPassword || newPassword.length < 6 || newPassword !== confirmNewPassword}
+                >
+                  Reset Password
+                </Button>
+              </VStack>
+            )}
+
+            {/* Step 4: Success */}
+            {forgotPasswordStep === 'success' && (
+              <VStack spacing={6} py={4}>
+                <Flex
+                  w="80px"
+                  h="80px"
+                  borderRadius="full"
+                  bg="green.50"
+                  align="center"
+                  justify="center"
+                >
+                  <Icon as={FaCheckCircle} boxSize={10} color="green.500" />
+                </Flex>
+                
+                <VStack spacing={2}>
+                  <Heading size="md" fontWeight="700" color="#0f172a" textAlign="center">
+                    Password Reset Successful!
+                  </Heading>
+                  <Text fontSize="sm" color="gray.500" textAlign="center">
+                    Your password has been changed successfully. You can now login with your new password.
+                  </Text>
+                </VStack>
+
+                <Button
+                  w="full"
+                  size="lg"
+                  bg="#4f46e5"
+                  color="white"
+                  _hover={{
+                    bg: "#4338ca",
+                    transform: "translateY(-1px)",
+                    boxShadow: "0 10px 25px rgba(79, 70, 229, 0.25)"
+                  }}
+                  _active={{ transform: "translateY(0)" }}
+                  onClick={handleCloseForgotPassword}
+                  borderRadius="md"
+                  fontSize="md"
+                  fontWeight="600"
+                  h="50px"
+                  transition="all 0.2s ease"
+                >
+                  Back to Login
+                </Button>
+              </VStack>
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
 
       <style jsx global>{`
         .swal-button--confirm {

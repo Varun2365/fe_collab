@@ -522,6 +522,227 @@ const resetPassword = async (req, res) => {
     }
 };
 
+// @desc    Request password reset OTP
+// @route   POST /api/auth/forgot-password-otp
+// @access  Public
+const forgotPasswordOtp = async (req, res) => {
+    try {
+        const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide an email address.'
+            });
+        }
+
+        const user = await User.findOne({ email: email.toLowerCase().trim() });
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'No user found with that email address.'
+            });
+        }
+
+        // Generate OTP
+        const otp = generateOtp();
+        
+        // Delete any existing OTP for this email first
+        await Otp.findOneAndDelete({ email: email.toLowerCase().trim() });
+        
+        // Save new OTP to database (schema has TTL of 5 minutes via createdAt)
+        await Otp.create({
+            email: email.toLowerCase().trim(),
+            otp
+        });
+
+        // Send OTP email with password reset specific styling
+        const mailOptions = {
+            to: email,
+            subject: 'FunnelsEye: Password Reset OTP',
+            html: `
+                <div style="font-family: 'Inter', Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f7fa; padding: 20px 0;">
+                    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 16px rgba(0,0,0,0.1);">
+                        <div style="position: relative; height: 120px; background-color: #6a1b9a; padding-top: 20px; text-align: center;">
+                            <h1 style="color: #ffffff; font-size: 32px; margin: 0; padding-bottom: 10px;">FunnelsEye</h1>
+                            <p style="color: #ffffff; font-size: 16px; margin: 0;">Your Path to Growth</p>
+                            <svg viewBox="0 0 1440 60" preserveAspectRatio="none" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 60px; fill: #f4f7fa;">
+                                <path d="M0,32L120,42.7C240,53,480,75,720,74.7C960,75,1200,53,1320,42.7L1440,32L1440,0L1320,0C1200,0,960,0,720,0C480,0,240,0,120,0L0,0Z"></path>
+                            </svg>
+                        </div>
+                        <div style="padding: 30px; text-align: center;">
+                            <h2 style="color: #0056b3; font-size: 24px; margin-bottom: 20px;">Password Reset Request</h2>
+                            <p style="font-size: 16px; margin-bottom: 25px;">Dear User,</p>
+                            <p style="font-size: 18px; margin-bottom: 30px;">You requested a password reset for your FunnelsEye account. Use the following OTP to reset your password:</p>
+                            <div style="background-color: #e0f2f7; border: 1px solid #b3e5fc; border-radius: 10px; padding: 18px 30px; display: inline-block; margin-bottom: 30px;">
+                                <h3 style="font-size: 38px; color: #e91e63; margin: 0; font-weight: bold; letter-spacing: 3px;">${otp}</h3>
+                            </div>
+                            <p style="font-size: 14px; color: #777; margin-top: 0;">This OTP is valid for 5 minutes. Please ensure you use it promptly.</p>
+                            <p style="font-size: 14px; color: #777; margin-top: 15px;">If you did not request this password reset, please ignore this email.</p>
+                            <p style="font-size: 16px; font-weight: bold; margin-top: 30px; color: #555;">Thank you,<br/>The FunnelsEye Team</p>
+                        </div>
+                        <div style="position: relative; height: 80px; background-color: #6a1b9a; padding: 10px 0; text-align: center;">
+                            <p style="color: #ffffff; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} FunnelsEye. All rights reserved.</p>
+                            <svg viewBox="0 0 1440 60" preserveAspectRatio="none" style="position: absolute; top: 0; left: 0; width: 100%; height: 60px; fill: #ffffff; transform: rotateX(180deg);">
+                                <path d="M0,32L120,42.7C240,53,480,75,720,74.7C960,75,1200,53,1320,42.7L1440,32L1440,0L1320,0C1200,0,960,0,720,0C480,0,240,0,120,0L0,0Z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+        
+        await emailConfigService.sendEmail(mailOptions);
+        console.log(`Password reset OTP sent successfully to ${email}`);
+
+        res.status(200).json({
+            success: true,
+            message: 'Password reset OTP sent to your email address.'
+        });
+    } catch (error) {
+        console.error('Error in forgot password OTP:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Server error during password reset request.'
+        });
+    }
+};
+
+// @desc    Verify password reset OTP
+// @route   POST /api/auth/verify-password-reset-otp
+// @access  Public
+const verifyPasswordResetOtp = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        
+        if (!email || !otp) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide email and OTP.'
+            });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+
+        // Find OTP record (TTL is handled by MongoDB, createdAt expires after 5 minutes)
+        const otpRecord = await Otp.findOne({ 
+            email: normalizedEmail, 
+            otp: otp.toString()
+        });
+
+        console.log('Looking for OTP:', { email: normalizedEmail, otp: otp.toString() });
+        console.log('Found OTP record:', otpRecord);
+
+        if (!otpRecord) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid or expired OTP.'
+            });
+        }
+
+        // Generate a temporary reset token for the password change step
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        
+        // Store the reset token temporarily
+        const user = await User.findOne({ email: normalizedEmail });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found.'
+            });
+        }
+
+        // Hash the token and store it
+        user.resetPasswordToken = crypto
+            .createHash('sha256')
+            .update(resetToken)
+            .digest('hex');
+        user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+        await user.save({ validateBeforeSave: false });
+
+        // Delete the OTP record as it's been used
+        await Otp.findOneAndDelete({ email: normalizedEmail });
+
+        res.status(200).json({
+            success: true,
+            message: 'OTP verified successfully.',
+            resetToken: resetToken
+        });
+    } catch (error) {
+        console.error('Error in verify password reset OTP:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Server error during OTP verification.'
+        });
+    }
+};
+
+// @desc    Reset password with OTP-verified token
+// @route   POST /api/auth/reset-password-with-otp
+// @access  Public
+const resetPasswordWithOtp = async (req, res) => {
+    try {
+        const { resetToken, newPassword, confirmPassword } = req.body;
+        
+        if (!resetToken || !newPassword || !confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide reset token and new password.'
+            });
+        }
+
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'Passwords do not match.'
+            });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password must be at least 6 characters long.'
+            });
+        }
+
+        // Hash the provided token
+        const hashedToken = crypto
+            .createHash('sha256')
+            .update(resetToken)
+            .digest('hex');
+
+        const user = await User.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpire: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid or expired reset token.'
+            });
+        }
+
+        // Update password
+        user.password = newPassword;
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Password reset successfully. You can now login with your new password.'
+        });
+    } catch (error) {
+        console.error('Error in reset password with OTP:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Server error during password reset.'
+        });
+    }
+};
+
 // @desc    Resend OTP
 // @route   POST /api/auth/resend-otp
 // @access  Public
@@ -1101,6 +1322,9 @@ module.exports = {
     logout,
     forgotPassword,
     resetPassword,
+    forgotPasswordOtp,
+    verifyPasswordResetOtp,
+    resetPasswordWithOtp,
     resendOtp,
     upgradeToCoach,
     lockHierarchy,

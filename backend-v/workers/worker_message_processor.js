@@ -117,20 +117,36 @@ const initMessageProcessorWorker = async () => {
                         return;
                     }
                     
-                    queueMessage.retries = (queueMessage.retries || 0) + 1;
+                    const currentRetries = queueMessage.retries || 0;
                     const recipient = queueMessage.data?.to || 'unknown';
+                    const errorMessage = error.message || 'Unknown error';
                     
-                    if (queueMessage.retries < 3) {
+                    if (currentRetries < 2) { // Max 2 retries (total 3 attempts)
                         // Requeue with delay (exponential backoff)
-                        const delay = Math.pow(2, queueMessage.retries) * 1000;
-                        logger.warn(`[MESSAGE_WORKER] Requeuing WhatsApp message (retry ${queueMessage.retries}): ${recipient}`);
+                        const newRetries = currentRetries + 1;
+                        const delay = Math.pow(2, newRetries) * 1000;
+                        logger.warn(`[MESSAGE_WORKER] Requeuing WhatsApp message (retry ${newRetries}/2): ${recipient}`);
                         
-                        setTimeout(() => {
-                            channel.nack(msg, false, true); // Requeue
+                        // Update the message with new retry count and republish
+                        queueMessage.retries = newRetries;
+                        
+                        setTimeout(async () => {
+                            try {
+                                // Ack the old message and publish a new one with updated retry count
+                                channel.ack(msg);
+                                await channel.sendToQueue(
+                                    'whatsapp_messages',
+                                    Buffer.from(JSON.stringify(queueMessage)),
+                                    { persistent: true }
+                                );
+                            } catch (requeueError) {
+                                logger.error(`[MESSAGE_WORKER] Failed to requeue message:`, requeueError);
+                            }
                         }, delay);
                     } else {
                         // Max retries reached, reject and don't requeue
-                        logger.error(`[MESSAGE_WORKER] WhatsApp message failed after ${queueMessage.retries} retries: ${recipient}`);
+                        logger.error(`[MESSAGE_WORKER] WhatsApp message failed after ${currentRetries + 1} attempts: ${recipient}`);
+                        logger.error(`[MESSAGE_WORKER] Final error: ${errorMessage}`);
                         channel.ack(msg); // Acknowledge to remove from queue after max retries
                     }
                 }
@@ -239,17 +255,33 @@ const initMessageProcessorWorker = async () => {
 // Check if error is permanent (shouldn't be retried)
 function isPermanentWhatsAppError(error) {
     // Check error code
-    if (error.code === 'TOKEN_EXPIRED' || error.code === 'OAUTH_ERROR') {
+    if (error.code === 'TOKEN_EXPIRED' || error.code === 'OAUTH_ERROR' || error.code === 'TEMPLATE_NOT_FOUND') {
         return true;
     }
     
     // Check error message for permanent error indicators
-    const errorMessage = error.message || '';
-    if (errorMessage.includes('Session has expired') ||
-        errorMessage.includes('Error validating access token') ||
-        errorMessage.includes('TOKEN_EXPIRED') ||
-        errorMessage.includes('invalid token') ||
-        errorMessage.includes('token expired')) {
+    const errorMessage = (error.message || '').toLowerCase();
+    const permanentErrorPatterns = [
+        'session has expired',
+        'error validating access token',
+        'token_expired',
+        'invalid token',
+        'token expired',
+        'template name does not exist',
+        'template not found',
+        'not approved',
+        'invalid phone number',
+        'recipient not valid',
+        'phone number not valid',
+        'invalid recipient',
+        'number of parameters does not match',
+        'parameter format does not match',
+        'requires',
+        'parameters but only',
+        'please provide all required parameters'
+    ];
+    
+    if (permanentErrorPatterns.some(pattern => errorMessage.includes(pattern))) {
         return true;
     }
     
@@ -259,11 +291,21 @@ function isPermanentWhatsAppError(error) {
         return true; // Token expired error
     }
     
+    // Check for template errors (Meta error codes)
+    // 132000 = Parameter count mismatch
+    // 132001 = Template not found
+    // 132005 = Template format not correct
+    const metaErrorCode = error.response?.data?.error?.code || error.originalError?.error?.code;
+    if (metaErrorCode === 132000 || metaErrorCode === 132001 || metaErrorCode === 132005) {
+        return true;
+    }
+    
     // Check for other permanent OAuth errors
     if (error.response?.data?.error?.type === 'OAuthException' &&
         (error.response?.data?.error?.code === 190 || 
-         error.response?.data?.error?.code === 102)) {
-        return true; // Invalid or expired token
+         error.response?.data?.error?.code === 102 ||
+         error.response?.data?.error?.code >= 132000 && error.response?.data?.error?.code <= 132099)) {
+        return true; // Invalid or expired token / template errors
     }
     
     return false;

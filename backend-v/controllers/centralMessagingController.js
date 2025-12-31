@@ -776,19 +776,56 @@ exports.getAnalytics = asyncHandler(async (req, res) => {
 // @access  Private (Coach/Staff/Admin)
 exports.getTemplates = asyncHandler(async (req, res) => {
     try {
-        const userId = req.user.id;
-        const userRole = req.user.role;
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
         const { type, category } = req.query;
 
-        const { coachId, userType } = await getUserContext(userId, userRole);
+        console.log('🔄 [CENTRAL_MESSAGING] getTemplates - Starting for user:', userId, 'role:', userRole);
 
-        // Get Meta templates (admin-created, for WhatsApp)
-        const centralConfig = await CentralWhatsApp.findOne({ isActive: true });
-        const metaTemplates = centralConfig?.templates || [];
+        let coachId = null;
+        let userType = 'coach';
+        
+        try {
+            const context = await getUserContext(userId, userRole);
+            coachId = context.coachId;
+            userType = context.userType;
+        } catch (contextError) {
+            console.log('⚠️ [CENTRAL_MESSAGING] getUserContext failed, using defaults:', contextError.message);
+        }
+
+        // Get Meta templates using the same service as admin endpoint
+        // This ensures consistent formatting and ALL coaches can see ALL templates
+        let metaTemplates = [];
+        try {
+            const result = await centralWhatsAppService.getTemplates();
+            // Filter for approved templates and add source field
+            metaTemplates = (result.templates || [])
+                .filter(t => t.status === 'APPROVED')
+                .map(t => ({
+                    ...t,
+                    source: 'meta'
+                }));
+            console.log('📋 [CENTRAL_MESSAGING] Meta templates from service:', metaTemplates.length);
+        } catch (serviceError) {
+            console.error('⚠️ [CENTRAL_MESSAGING] Error fetching Meta templates:', serviceError.message);
+            // Fallback to direct DB query
+            const centralConfig = await CentralWhatsApp.findOne({ isActive: true });
+            const rawMetaTemplates = centralConfig?.templates || [];
+            metaTemplates = rawMetaTemplates
+                .filter(t => t.status === 'APPROVED')
+                .map(t => ({
+                    ...t.toObject ? t.toObject() : t,
+                    name: t.templateName || t.name,
+                    templateName: t.templateName || t.name,
+                    templateId: t.templateId || t._id?.toString(),
+                    source: 'meta'
+                }));
+            console.log('📋 [CENTRAL_MESSAGING] Meta templates from fallback:', metaTemplates.length);
+        }
 
         // Get local templates
         let localQuery = {};
-        if (userType !== 'admin') {
+        if (userType !== 'admin' && coachId) {
             localQuery.$or = [
                 { isPreBuilt: true },
                 { coachId: coachId }
@@ -803,13 +840,18 @@ exports.getTemplates = asyncHandler(async (req, res) => {
         }
 
         const localTemplates = await MessageTemplate.find(localQuery);
+        console.log('📋 [CENTRAL_MESSAGING] Local templates count:', localTemplates.length);
 
         res.json({
             success: true,
             data: {
-                metaTemplates: metaTemplates.filter(t => t.status === 'APPROVED'),
+                metaTemplates,
                 localTemplates,
-                userType
+                userType,
+                debug: {
+                    metaCount: metaTemplates.length,
+                    localCount: localTemplates.length
+                }
             }
         });
 
