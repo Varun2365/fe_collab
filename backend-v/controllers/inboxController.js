@@ -402,34 +402,68 @@ async function getCoachContactPhones(coachId) {
 }
 
 // Helper function to group messages by conversation
-function groupMessagesByConversation(messages, coachId, isAdmin = false) {
+async function groupMessagesByConversation(messages, coachId, isAdmin = false) {
     const conversations = {};
-    
+    const phoneNumbers = new Set();
+
+    // Collect all unique phone numbers to look up contacts
+    messages.forEach(message => {
+        if (message.recipientPhone) phoneNumbers.add(message.recipientPhone);
+    });
+
+    // Look up contacts/leads for these phone numbers
+    const phoneArray = Array.from(phoneNumbers);
+    let contacts = [];
+    if (phoneArray.length > 0) {
+        const query = isAdmin ?
+            { phone: { $in: phoneArray } } :
+            { coachId, phone: { $in: phoneArray } };
+
+        contacts = await Lead.find(query).select('name phone email').lean();
+    }
+
+    // Create a phone-to-contact map
+    const contactMap = {};
+    contacts.forEach(contact => {
+        if (contact.phone) {
+            contactMap[contact.phone] = contact;
+        }
+    });
+
     messages.forEach(message => {
         const contactPhone = message.recipientPhone;
         const conversationKey = contactPhone;
-        
+
         if (!conversations[conversationKey]) {
+            const contact = contactMap[contactPhone];
             conversations[conversationKey] = {
                 contactPhone,
+                participantPhone: contactPhone, // Add for frontend compatibility
+                participantName: contact?.name || null, // Add for frontend compatibility
+                name: contact?.name || null, // Alternative field
+                contact: contact || null,
                 lastMessage: message,
+                lastMessageAt: message.sentAt,
+                lastMessageContent: message.content,
                 unreadCount: 0,
                 totalMessages: 0
             };
         }
-        
+
         conversations[conversationKey].totalMessages++;
-        
+
         if (!message.isRead && message.senderId.toString() !== coachId?.toString()) {
             conversations[conversationKey].unreadCount++;
         }
-        
+
         if (message.sentAt > conversations[conversationKey].lastMessage.sentAt) {
             conversations[conversationKey].lastMessage = message;
+            conversations[conversationKey].lastMessageAt = message.sentAt;
+            conversations[conversationKey].lastMessageContent = message.content;
         }
     });
-    
-    return Object.values(conversations).sort((a, b) => 
+
+    return Object.values(conversations).sort((a, b) =>
         new Date(b.lastMessage.sentAt) - new Date(a.lastMessage.sentAt)
     );
 }

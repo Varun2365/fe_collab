@@ -5,7 +5,6 @@ import { getCoachId, getToken, debugAuthState } from '../../utils/authUtils';
 import { API_BASE_URL } from '../../config/apiConfig';
 import {
   Box,
-  Container,
   Flex,
   Grid,
   GridItem,
@@ -576,21 +575,22 @@ const Profile = () => {
             }}
           />
 
-          {/* Profile Content Card with Overview Content */}
+          {/* Profile Content - No Container */}
           <Box px={6} position="relative" mt="-60px" zIndex={1}>
             <Box maxW="6xl" mx="auto">
-              <Card 
-                mb={8} 
-                bg={cardBg} 
+              {/* Profile Header Section - Compact 2 Column Layout */}
+              <Box
+                pt={16}
+                pb={5}
+                px={8}
+                mb={8}
+                bg={cardBg}
                 borderRadius="10px"
                 border="1px solid"
                 borderColor={borderColor}
                 boxShadow="0 8px 24px rgba(0, 0, 0, 0.12)"
-                overflow="hidden"
               >
-                {/* Profile Header Section - Compact 2 Column Layout */}
-                <CardBody pt={16} pb={5} px={8}>
-                  <Grid templateColumns={{ base: "1fr", lg: "auto 1px 1fr" }} gap={6} alignItems="start">
+                  <Grid templateColumns={{ base: "1fr", lg: "300px 1px 1fr" }} gap={6} alignItems="start">
                   {/* Left Section - Avatar & Stats (Horizontal) */}
                   <VStack spacing={3} align={{ base: 'center', lg: 'start' }} w="100%">
                     {/* Avatar Section */}
@@ -949,8 +949,7 @@ const Profile = () => {
                     </HStack>
                   </VStack>
                   </Grid>
-                </CardBody>
-              </Card>
+              </Box>
             </Box>
           </Box>
         </Box>
@@ -1196,44 +1195,195 @@ const Profile = () => {
                 </Grid>
               </TabPanel>
 
-              {/* Lead Magnets Tab */}
+              {/* Lead Magnets Tab - Redesigned */}
               <TabPanel px={0}>
-                <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }} gap={6}>
-                  {Object.entries(user.leadMagnets || {}).map(([key, magnet]) => (
-                    <Card key={key} bg={cardBg} shadow="md">
-                      <CardHeader>
-                        <Flex justify="space-between" align="center">
-                          <Heading size="sm" color={textColor}>
-                            {magnet.title || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                          </Heading>
-                          <Badge colorScheme={magnet.isActive ? 'green' : 'gray'}>
-                            {magnet.isActive ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </Flex>
-                      </CardHeader>
-                      <CardBody>
-                        <Text fontSize="sm" color={mutedTextColor} mb={4}>
-                          {magnet.description || 'No description available'}
-                        </Text>
-                        <SimpleGrid columns={2} spacing={4} mb={4}>
-                          <Stat textAlign="center">
-                            <StatNumber fontSize="md" color="blue.500">{magnet.downloads || 0}</StatNumber>
-                            <StatLabel fontSize="xs">Downloads</StatLabel>
-                          </Stat>
-                          <Stat textAlign="center">
-                            <StatNumber fontSize="md" color="green.500">{magnet.leadsGenerated || 0}</StatNumber>
-                            <StatLabel fontSize="xs">Leads</StatLabel>
-                          </Stat>
-                        </SimpleGrid>
-                        <HStack spacing={2}>
-                          <IconButton icon={<FaEye />} size="sm" colorScheme="blue" />
-                          <IconButton icon={<FaEdit />} size="sm" colorScheme="gray" />
-                          <IconButton icon={<FaShareAlt />} size="sm" colorScheme="green" />
-                        </HStack>
-                      </CardBody>
-                    </Card>
-                  ))}
-                </Grid>
+                <VStack spacing={8} align="stretch">
+                  {/* Empty State */}
+                  {(!user.leadMagnets || Object.keys(user.leadMagnets).length === 0) && (
+                    <Center py={20}>
+                      <VStack spacing={6} maxW="400px" textAlign="center">
+                        <Box
+                          p={6}
+                          borderRadius="full"
+                          bg="gray.100"
+                          _dark={{ bg: "gray.700" }}
+                        >
+                          <Icon as={FaFileAlt} boxSize={8} color="gray.400" />
+                        </Box>
+                        <VStack spacing={2}>
+                          <Text fontSize="xl" fontWeight="600" color={textColor}>
+                            No Lead Magnets Yet
+                          </Text>
+                          <Text fontSize="sm" color={mutedTextColor} lineHeight="1.6">
+                            Create engaging lead magnets to capture and nurture your audience.
+                          </Text>
+                        </VStack>
+                        <Button
+                          colorScheme="blue"
+                          size="lg"
+                          w="full"
+                          h="12"
+                          borderRadius="lg"
+                          fontSize="md"
+                          fontWeight="600"
+                          leftIcon={<FaPlus />}
+                          _hover={{ transform: 'translateY(-1px)', shadow: 'lg' }}
+                          transition="all 0.2s"
+                        >
+                          Create Lead Magnet
+                        </Button>
+                      </VStack>
+                    </Center>
+                  )}
+
+                  {/* Lead Magnets Grid */}
+                  {user.leadMagnets && Object.keys(user.leadMagnets).length > 0 && (
+                    <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={8}>
+                      {Object.entries(user.leadMagnets).map(([key, magnet]) => (
+                        <Card
+                          key={key}
+                          bg={cardBg}
+                          borderRadius="xl"
+                          boxShadow="0 2px 12px rgba(0, 0, 0, 0.04)"
+                          border="1px solid"
+                          borderColor="gray.100"
+                          _dark={{ borderColor: "gray.700" }}
+                          overflow="hidden"
+                          transition="all 0.2s ease-in-out"
+                          _hover={{
+                            transform: 'translateY(-1px)',
+                            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
+                            borderColor: 'gray.200'
+                          }}
+                        >
+                          <CardBody p={8}>
+                            <VStack spacing={8} align="stretch" h="full">
+                              {/* Header Section - Clean and Minimal */}
+                              <VStack spacing={3} align="start">
+                                <Flex justify="space-between" align="start" w="full">
+                                  <Heading
+                                    size="lg"
+                                    color={textColor}
+                                    fontWeight="600"
+                                    lineHeight="1.2"
+                                    pr={4}
+                                    flex={1}
+                                  >
+                                    {magnet.title || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                  </Heading>
+                                  <Badge
+                                    colorScheme={magnet.isActive ? 'green' : 'gray'}
+                                    variant="subtle"
+                                    fontSize="xs"
+                                    fontWeight="500"
+                                    px={2}
+                                    py={1}
+                                    borderRadius="md"
+                                    textTransform="none"
+                                  >
+                                    {magnet.isActive ? 'Active' : 'Inactive'}
+                                  </Badge>
+                                </Flex>
+
+                                {magnet.description && (
+                                  <Text
+                                    color={mutedTextColor}
+                                    fontSize="sm"
+                                    lineHeight="1.5"
+                                    opacity={0.75}
+                                    noOfLines={2}
+                                  >
+                                    {magnet.description}
+                                  </Text>
+                                )}
+                              </VStack>
+
+                              {/* Stats Section - Minimal and Clean */}
+                              <HStack spacing={8} justify="center" pt={4}>
+                                <VStack spacing={1} align="center" flex={1}>
+                                  <Text
+                                    fontSize="3xl"
+                                    fontWeight="700"
+                                    color="blue.600"
+                                    _dark={{ color: "blue.300" }}
+                                    lineHeight="1"
+                                  >
+                                    {magnet.downloads || 0}
+                                  </Text>
+                                  <Text
+                                    fontSize="xs"
+                                    color={mutedTextColor}
+                                    fontWeight="500"
+                                    textTransform="uppercase"
+                                    letterSpacing="0.5px"
+                                    textAlign="center"
+                                  >
+                                    Downloads
+                                  </Text>
+                                </VStack>
+
+                                <Divider orientation="vertical" h="40px" borderColor="gray.200" />
+
+                                <VStack spacing={1} align="center" flex={1}>
+                                  <Text
+                                    fontSize="3xl"
+                                    fontWeight="700"
+                                    color="green.600"
+                                    _dark={{ color: "green.300" }}
+                                    lineHeight="1"
+                                  >
+                                    {magnet.leadsGenerated || 0}
+                                  </Text>
+                                  <Text
+                                    fontSize="xs"
+                                    color={mutedTextColor}
+                                    fontWeight="500"
+                                    textTransform="uppercase"
+                                    letterSpacing="0.5px"
+                                    textAlign="center"
+                                  >
+                                    Leads
+                                  </Text>
+                                </VStack>
+                              </HStack>
+
+                              {/* Actions - Minimal Icon Buttons */}
+                              <HStack spacing={2} justify="center" pt={4}>
+                                <IconButton
+                                  size="sm"
+                                  variant="ghost"
+                                  colorScheme="blue"
+                                  icon={<FaEye />}
+                                  borderRadius="lg"
+                                  aria-label="View lead magnet"
+                                  _hover={{ bg: "blue.50", color: "blue.600" }}
+                                />
+                                <IconButton
+                                  size="sm"
+                                  variant="ghost"
+                                  colorScheme="gray"
+                                  icon={<FaEdit />}
+                                  borderRadius="lg"
+                                  aria-label="Edit lead magnet"
+                                  _hover={{ bg: "gray.50" }}
+                                />
+                                <IconButton
+                                  size="sm"
+                                  variant="ghost"
+                                  colorScheme="green"
+                                  icon={<FaShareAlt />}
+                                  borderRadius="lg"
+                                  aria-label="Share lead magnet"
+                                  _hover={{ bg: "green.50", color: "green.600" }}
+                                />
+                              </HStack>
+                            </VStack>
+                          </CardBody>
+                        </Card>
+                      ))}
+                    </SimpleGrid>
+                  )}
+                </VStack>
               </TabPanel>
 
               {/* Settings Tab */}
@@ -1312,502 +1462,371 @@ const Profile = () => {
                 </Grid>
               </TabPanel>
 
-              {/* Subscription Tab */}
+              {/* Subscription Tab - Minimal & Elegant */}
               <TabPanel px={0}>
-                <VStack spacing={6} align="stretch">
+                <VStack spacing={8} align="stretch">
                   {subscriptionLoading ? (
-                    <Center py={10}>
-                      <Spinner size="xl" color="blue.500" />
+                    <Center py={20}>
+                      <VStack spacing={4}>
+                        <Spinner size="lg" color="blue.500" thickness="3px" />
+                        <Text fontSize="sm" color={mutedTextColor} fontWeight="500">
+                          Loading subscription details...
+                        </Text>
+                      </VStack>
                     </Center>
                   ) : (
                     <>
-                      {/* No Subscription Message */}
+                      {/* No Subscription State */}
                       {!subscription && (
-                        <Card bg={cardBg} borderRadius="xl" boxShadow="lg" border="2px solid" borderColor="gray.200">
-                          <CardBody>
-                            <VStack spacing={4} py={8}>
-                              <Icon as={FiAlertTriangle} boxSize={12} color="orange.500" />
-                              <Box textAlign="center">
-                                <Heading size="md" color={textColor} mb={2}>
-                                  No Active Subscription
-                                </Heading>
-                                <Text color={mutedTextColor} mb={4}>
-                                  You don't have an active subscription. Please select a plan below to get started.
-                                </Text>
-                                <Button
-                                  colorScheme="blue"
-                                  size="lg"
-                                  onClick={() => {
-                                    const token = localStorage.getItem('token');
-                                    if (token) {
-                                      window.location.href = `${API_BASE_URL}/subscription-plans?token=${encodeURIComponent(token)}`;
-                                    } else {
-                                      window.location.href = `${API_BASE_URL}/subscription-plans`;
-                                    }
-                                  }}
-                                >
-                                  View Available Plans
-                                </Button>
-                              </Box>
+                        <Center py={20}>
+                          <VStack spacing={6} maxW="400px" textAlign="center">
+                            <Box
+                              p={6}
+                              borderRadius="full"
+                              bg="gray.100"
+                              _dark={{ bg: "gray.700" }}
+                            >
+                              <Icon as={FaCreditCard} boxSize={8} color="gray.400" />
+                            </Box>
+                            <VStack spacing={2}>
+                              <Text fontSize="xl" fontWeight="600" color={textColor}>
+                                No Active Subscription
+                              </Text>
+                              <Text fontSize="sm" color={mutedTextColor} lineHeight="1.6">
+                                Choose a plan to unlock premium features and grow your business.
+                              </Text>
                             </VStack>
-                          </CardBody>
-                        </Card>
+                            <Button
+                              colorScheme="blue"
+                              size="lg"
+                              w="full"
+                              h="12"
+                              borderRadius="lg"
+                              fontSize="md"
+                              fontWeight="600"
+                              onClick={() => {
+                                const token = localStorage.getItem('token');
+                                if (token) {
+                                  window.location.href = `${API_BASE_URL}/subscription-plans?token=${encodeURIComponent(token)}`;
+                                } else {
+                                  window.location.href = `${API_BASE_URL}/subscription-plans`;
+                                }
+                              }}
+                              _hover={{ transform: 'translateY(-1px)', shadow: 'lg' }}
+                              transition="all 0.2s"
+                            >
+                              View Plans
+                            </Button>
+                          </VStack>
+                        </Center>
                       )}
 
-                      {/* Current Plan Status */}
+                      {/* Active Subscription State */}
                       {subscription && (
-                        <>
-                          <Card bg={cardBg} border="2px solid" borderColor={subscription.status === 'active' ? 'green.200' : 'red.200'} borderRadius="xl" boxShadow="lg">
-                            <CardHeader bg={subscription.status === 'active' ? 'green.50' : 'red.50'} borderRadius="xl">
-                              <HStack justify="space-between" align="center">
-                                <HStack spacing={4}>
-                                  <Box
-                                    p={3}
-                                    borderRadius="full"
-                                    bg={subscription.status === 'active' ? 'green.100' : 'red.100'}
-                                  >
-                                    <Icon 
-                                      as={subscription.status === 'active' ? FiCheck : FiX} 
-                                      boxSize={6} 
-                                      color={subscription.status === 'active' ? 'green.600' : 'red.600'} 
-                                    />
-                                  </Box>
-                                  <Box>
-                                    <Text fontSize="xl" fontWeight="bold" color={textColor}>
-                                      {subscription.planId?.name || 'No Active Plan'}
+                        <VStack spacing={8} align="stretch">
+                          {/* Current Plan Card - Clean & Minimal */}
+                          <Card
+                            bg={cardBg}
+                            borderRadius="2xl"
+                            boxShadow="0 4px 20px rgba(0, 0, 0, 0.08)"
+                            border="1px solid"
+                            borderColor="gray.100"
+                            _dark={{ borderColor: "gray.700" }}
+                            overflow="hidden"
+                          >
+                            <CardBody p={8}>
+                              <VStack spacing={6} align="stretch">
+                                {/* Plan Header */}
+                                <HStack justify="space-between" align="center">
+                                  <HStack spacing={4}>
+                                    <Box
+                                      p={3}
+                                      borderRadius="xl"
+                                      bg={subscription.status === 'active' ? 'green.50' : 'red.50'}
+                                      _dark={{
+                                        bg: subscription.status === 'active' ? 'green.900' : 'red.900'
+                                      }}
+                                    >
+                                      <Icon
+                                        as={subscription.status === 'active' ? FiCheck : FiX}
+                                        boxSize={5}
+                                        color={subscription.status === 'active' ? 'green.600' : 'red.600'}
+                                      />
+                                    </Box>
+                                    <VStack align="start" spacing={1}>
+                                      <Text fontSize="2xl" fontWeight="700" color={textColor}>
+                                        {subscription.planId?.name || 'Premium Plan'}
+                                      </Text>
+                                      <HStack spacing={2}>
+                                        <Badge
+                                          colorScheme={getStatusColor(subscription.status)}
+                                          variant="subtle"
+                                          px={3}
+                                          py={1}
+                                          borderRadius="lg"
+                                          fontSize="xs"
+                                          fontWeight="600"
+                                          textTransform="uppercase"
+                                          letterSpacing="0.5px"
+                                        >
+                                          {subscription.status}
+                                        </Badge>
+                                        {subscription.daysUntilExpiry && (
+                                          <Text fontSize="sm" color={mutedTextColor}>
+                                            {subscription.daysUntilExpiry} days left
+                                          </Text>
+                                        )}
+                                      </HStack>
+                                    </VStack>
+                                  </HStack>
+                                  <VStack align="end" spacing={1}>
+                                    <Text fontSize="3xl" fontWeight="800" color="blue.600">
+                                      {formatCurrency(subscription.billing?.amount, subscription.billing?.currency)}
                                     </Text>
-                                    <Text fontSize="md" color={mutedTextColor}>
-                                      {subscription.status === 'active' ? '✅ Active Subscription' : '❌ Inactive Subscription'}
+                                    <Text fontSize="sm" color={mutedTextColor} textTransform="uppercase" letterSpacing="1px">
+                                      per {subscription.billing?.billingCycle || 'month'}
                                     </Text>
-                                  </Box>
+                                  </VStack>
                                 </HStack>
-                                <VStack align="end" spacing={1}>
-                                  <Badge
-                                    colorScheme={getStatusColor(subscription.status)}
-                                    fontSize="md"
-                                    px={4}
-                                    py={2}
-                                    borderRadius="full"
+
+                                {/* Key Metrics - Minimal Grid */}
+                                <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
+                                  <Box
+                                    p={5}
+                                    borderRadius="xl"
+                                    bg="blue.50"
+                                    _dark={{ bg: "blue.900", borderColor: "blue.700" }}
+                                    border="1px solid"
+                                    borderColor="blue.100"
                                   >
-                                    {subscription.status?.toUpperCase()}
-                                  </Badge>
-                                  {subscription.daysUntilExpiry && (
-                                    <Text fontSize="sm" color={mutedTextColor}>
-                                      {subscription.daysUntilExpiry} days remaining
-                                    </Text>
-                                  )}
-                                </VStack>
-                              </HStack>
-                            </CardHeader>
-                            <CardBody>
-                              <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6}>
-                                {/* Billing Info */}
-                                <Box>
-                                  <HStack mb={3}>
-                                    <Icon as={FiDollarSign} color="blue.500" />
-                                    <Text fontWeight="semibold" color={textColor}>Billing</Text>
-                                  </HStack>
-                                  <VStack align="stretch" spacing={2}>
-                                    <HStack justify="space-between">
-                                      <Text fontSize="sm" color={mutedTextColor}>Amount:</Text>
-                                      <Text fontSize="sm" fontWeight="bold" color={textColor}>
-                                        {formatCurrency(subscription.billing?.amount, subscription.billing?.currency)}
+                                    <VStack spacing={2} align="center">
+                                      <Icon as={FiUsers} boxSize={6} color="blue.600" />
+                                      <Text fontSize="2xl" fontWeight="800" color="blue.700" _dark={{ color: "blue.300" }}>
+                                        {subscription.usage?.currentLeads || 0}
                                       </Text>
-                                    </HStack>
-                                    <HStack justify="space-between">
-                                      <Text fontSize="sm" color={mutedTextColor}>Cycle:</Text>
-                                      <Text fontSize="sm" fontWeight="semibold" color={textColor}>
-                                        {subscription.billing?.billingCycle}
+                                      <Text fontSize="sm" color="blue.600" fontWeight="500">
+                                        Total Leads
                                       </Text>
-                                    </HStack>
-                                    <HStack justify="space-between">
-                                      <Text fontSize="sm" color={mutedTextColor}>Next Billing:</Text>
-                                      <Text fontSize="sm" fontWeight="semibold" color={textColor}>
-                                        {formatDate(subscription.billing?.nextBillingDate)}
+                                    </VStack>
+                                  </Box>
+
+                                  <Box
+                                    p={5}
+                                    borderRadius="xl"
+                                    bg="green.50"
+                                    _dark={{ bg: "green.900", borderColor: "green.700" }}
+                                    border="1px solid"
+                                    borderColor="green.100"
+                                  >
+                                    <VStack spacing={2} align="center">
+                                      <Icon as={FiTrendingUp} boxSize={6} color="green.600" />
+                                      <Text fontSize="2xl" fontWeight="800" color="green.700" _dark={{ color: "green.300" }}>
+                                        {subscription.usage?.currentFunnels || 0}
                                       </Text>
-                                    </HStack>
-                                    <HStack justify="space-between">
-                                      <Text fontSize="sm" color={mutedTextColor}>Payment Status:</Text>
-                                      <Badge
-                                        colorScheme={subscription.billing?.paymentStatus === 'paid' ? 'green' : 'red'}
-                                        size="sm"
-                                      >
-                                        {subscription.billing?.paymentStatus}
-                                      </Badge>
-                                    </HStack>
-                                  </VStack>
-                                </Box>
+                                      <Text fontSize="sm" color="green.600" fontWeight="500">
+                                        Active Funnels
+                                      </Text>
+                                    </VStack>
+                                  </Box>
 
-                                {/* Usage Stats */}
-                                <Box>
-                                  <HStack mb={3}>
-                                    <Icon as={FiBarChart} color="green.500" />
-                                    <Text fontWeight="semibold" color={textColor}>Usage</Text>
-                                  </HStack>
-                                  <VStack align="stretch" spacing={3}>
-                                    <Box>
-                                      <HStack justify="space-between" mb={1}>
-                                        <Text fontSize="xs" color={mutedTextColor}>Funnels</Text>
-                                        <Text fontSize="xs" fontWeight="semibold" color={textColor}>
-                                          {subscription.usage?.currentFunnels || 0} / {subscription.planId?.features?.maxFunnels === -1 ? '∞' : subscription.planId?.features?.maxFunnels || 0}
-                                        </Text>
-                                      </HStack>
-                                      <Progress
-                                        value={getUsagePercentage(
-                                          subscription.usage?.currentFunnels || 0,
-                                          subscription.planId?.features?.maxFunnels || 1
-                                        )}
-                                        colorScheme="blue"
-                                        size="sm"
-                                        borderRadius="md"
-                                      />
-                                    </Box>
-                                    <Box>
-                                      <HStack justify="space-between" mb={1}>
-                                        <Text fontSize="xs" color={mutedTextColor}>Leads</Text>
-                                        <Text fontSize="xs" fontWeight="semibold" color={textColor}>
-                                          {subscription.usage?.currentLeads || 0} / {subscription.limits?.maxLeads === -1 || subscription.planId?.limits?.maxLeads === -1 ? '∞' : (subscription.limits?.maxLeads || subscription.planId?.limits?.maxLeads || 0).toLocaleString()}
-                                        </Text>
-                                      </HStack>
-                                      <Progress
-                                        value={getUsagePercentage(
-                                          subscription.usage?.currentLeads || 0,
-                                          subscription.limits?.maxLeads || subscription.planId?.limits?.maxLeads || 1
-                                        )}
-                                        colorScheme="green"
-                                        size="sm"
-                                        borderRadius="md"
-                                      />
-                                    </Box>
-                                    <Box>
-                                      <HStack justify="space-between" mb={1}>
-                                        <Text fontSize="xs" color={mutedTextColor}>Staff</Text>
-                                        <Text fontSize="xs" fontWeight="semibold" color={textColor}>
-                                          {subscription.usage?.currentStaff || 0} / {subscription.planId?.features?.maxStaff === -1 ? '∞' : subscription.planId?.features?.maxStaff || 0}
-                                        </Text>
-                                      </HStack>
-                                      <Progress
-                                        value={getUsagePercentage(
-                                          subscription.usage?.currentStaff || 0,
-                                          subscription.planId?.features?.maxStaff || 1
-                                        )}
-                                        colorScheme="purple"
-                                        size="sm"
-                                        borderRadius="md"
-                                      />
-                                    </Box>
-                                  </VStack>
-                                </Box>
+                                  <Box
+                                    p={5}
+                                    borderRadius="xl"
+                                    bg="purple.50"
+                                    _dark={{ bg: "purple.900", borderColor: "purple.700" }}
+                                    border="1px solid"
+                                    borderColor="purple.100"
+                                  >
+                                    <VStack spacing={2} align="center">
+                                      <Icon as={FiZap} boxSize={6} color="purple.600" />
+                                      <Text fontSize="2xl" fontWeight="800" color="purple.700" _dark={{ color: "purple.300" }}>
+                                        {subscription.usage?.currentStaff || 0}
+                                      </Text>
+                                      <Text fontSize="sm" color="purple.600" fontWeight="500">
+                                        Team Members
+                                      </Text>
+                                    </VStack>
+                                  </Box>
+                                </SimpleGrid>
 
-                                {/* Features */}
-                                <Box>
-                                  <HStack mb={3}>
-                                    <Icon as={FiZap} color="purple.500" />
-                                    <Text fontWeight="semibold" color={textColor}>Features</Text>
-                                  </HStack>
-                                  <VStack align="stretch" spacing={2}>
-                                    <HStack justify="space-between">
-                                      <Text fontSize="sm" color={mutedTextColor}>AI Features:</Text>
-                                      <Icon
-                                        as={subscription.planId?.features?.aiFeatures ? FiCheck : FiX}
-                                        color={subscription.planId?.features?.aiFeatures ? 'green.500' : 'red.500'}
-                                      />
-                                    </HStack>
-                                    <HStack justify="space-between">
-                                      <Text fontSize="sm" color={mutedTextColor}>Analytics:</Text>
-                                      <Icon
-                                        as={subscription.planId?.features?.advancedAnalytics ? FiCheck : FiX}
-                                        color={subscription.planId?.features?.advancedAnalytics ? 'green.500' : 'red.500'}
-                                      />
-                                    </HStack>
-                                    <HStack justify="space-between">
-                                      <Text fontSize="sm" color={mutedTextColor}>Priority Support:</Text>
-                                      <Icon
-                                        as={subscription.planId?.features?.prioritySupport ? FiCheck : FiX}
-                                        color={subscription.planId?.features?.prioritySupport ? 'green.500' : 'red.500'}
-                                      />
-                                    </HStack>
-                                    <HStack justify="space-between">
-                                      <Text fontSize="sm" color={mutedTextColor}>Custom Domain:</Text>
-                                      <Icon
-                                        as={subscription.planId?.features?.customDomain ? FiCheck : FiX}
-                                        color={subscription.planId?.features?.customDomain ? 'green.500' : 'red.500'}
-                                      />
-                                    </HStack>
-                                  </VStack>
-                                </Box>
-
-                                {/* Quick Actions */}
-                                <Box>
-                                  <HStack mb={3}>
-                                    <Icon as={FiTrendingUp} color="orange.500" />
-                                    <Text fontWeight="semibold" color={textColor}>Actions</Text>
-                                  </HStack>
-                                  <VStack spacing={2} align="stretch">
+                                {/* Action Buttons - Minimal */}
+                                {subscription.status === 'active' && (
+                                  <HStack spacing={4} justify="center" pt={4}>
                                     <Button
-                                      size="sm"
+                                      size="md"
+                                      variant="outline"
                                       colorScheme="blue"
                                       leftIcon={<FiTrendingUp />}
                                       onClick={handleUpgrade}
-                                      isDisabled={subscription.status !== 'active'}
+                                      borderRadius="lg"
+                                      fontWeight="500"
                                     >
                                       Upgrade Plan
                                     </Button>
                                     <Button
-                                      size="sm"
-                                      variant="outline"
-                                      leftIcon={<FiRefreshCw />}
-                                      onClick={handleRenew}
-                                      isDisabled={subscription.status !== 'active'}
-                                    >
-                                      Renew
-                                    </Button>
-                                    <Button
-                                      size="sm"
+                                      size="md"
                                       variant="outline"
                                       colorScheme="red"
                                       leftIcon={<FiX />}
                                       onClick={onCancelOpen}
-                                      isDisabled={subscription.status !== 'active'}
+                                      borderRadius="lg"
+                                      fontWeight="500"
                                     >
-                                      Cancel
+                                      Cancel Plan
                                     </Button>
-                                  </VStack>
-                                </Box>
-                              </SimpleGrid>
-                            </CardBody>
-                          </Card>
-
-                          {/* Detailed Usage */}
-                          <Card bg={cardBg} borderRadius="xl" boxShadow="lg">
-                            <CardHeader>
-                              <HStack justify="space-between" align="center">
-                                <HStack spacing={3}>
-                                  <Icon as={FiBarChart} boxSize={6} color="blue.500" />
-                                  <Box>
-                                    <Text fontSize="lg" fontWeight="semibold" color={textColor}>
-                                      Current Plan Service Usage
-                                    </Text>
-                                    <Text fontSize="sm" color={mutedTextColor}>
-                                      {subscription?.planId?.name || 'Premium Fitness Coach'} - Used vs Available
-                                    </Text>
-                                  </Box>
-                                </HStack>
-                                <Button
-                                  size="sm"
-                                  leftIcon={<FiRefreshCw />}
-                                  onClick={loadSubscriptionData}
-                                  variant="outline"
-                                  colorScheme="blue"
-                                >
-                                  Refresh
-                                </Button>
-                              </HStack>
-                            </CardHeader>
-                            <CardBody>
-                              <VStack spacing={6} align="stretch">
-                                {/* Funnels Usage */}
-                                <Box>
-                                  <HStack justify="space-between" mb={2}>
-                                    <HStack spacing={2}>
-                                      <Icon as={FiTrendingUp} color="blue.500" />
-                                      <Text fontWeight="semibold" color={textColor}>Funnels</Text>
-                                    </HStack>
-                                    <Text fontSize="sm" color={mutedTextColor}>
-                                      {subscription?.usage?.currentFunnels || 0} / {subscription?.planId?.features?.maxFunnels === -1 ? '∞' : subscription?.planId?.features?.maxFunnels || 0}
-                                    </Text>
                                   </HStack>
-                                  <Progress
-                                    value={getUsagePercentage(
-                                      subscription?.usage?.currentFunnels || 0,
-                                      subscription?.planId?.features?.maxFunnels || 1
-                                    )}
-                                    colorScheme="blue"
-                                    size="lg"
-                                    borderRadius="md"
-                                  />
-                                  <HStack justify="space-between" mt={1}>
-                                    <Text fontSize="xs" color="green.600">
-                                      Used: {subscription?.usage?.currentFunnels || 0}
-                                    </Text>
-                                    <Text fontSize="xs" color="blue.600">
-                                      Remaining: {subscription?.planId?.features?.maxFunnels === -1 ? '∞' : (subscription?.planId?.features?.maxFunnels || 0) - (subscription?.usage?.currentFunnels || 0)}
-                                    </Text>
-                                  </HStack>
-                                </Box>
-
-                                {/* Leads Usage */}
-                                <Box>
-                                  <HStack justify="space-between" mb={2}>
-                                    <HStack spacing={2}>
-                                      <Icon as={FiUsers} color="green.500" />
-                                      <Text fontWeight="semibold" color={textColor}>Leads</Text>
-                                    </HStack>
-                                    <Text fontSize="sm" color={mutedTextColor}>
-                                      {subscription?.usage?.currentLeads || 0} / {subscription?.planId?.features?.maxLeads === -1 || subscription?.limits?.maxLeads === -1 ? '∞' : (subscription?.limits?.maxLeads || subscription?.planId?.limits?.maxLeads || 0).toLocaleString()}
-                                    </Text>
-                                  </HStack>
-                                  <Progress
-                                    value={getUsagePercentage(
-                                      subscription?.usage?.currentLeads || 0,
-                                      subscription?.limits?.maxLeads || subscription?.planId?.limits?.maxLeads || 1
-                                    )}
-                                    colorScheme="green"
-                                    size="lg"
-                                    borderRadius="md"
-                                  />
-                                  <HStack justify="space-between" mt={1}>
-                                    <Text fontSize="xs" color="green.600">
-                                      Used: {(subscription?.usage?.currentLeads || 0).toLocaleString()}
-                                    </Text>
-                                    <Text fontSize="xs" color="blue.600">
-                                      Remaining: {subscription?.limits?.maxLeads === -1 || subscription?.planId?.limits?.maxLeads === -1 ? '∞' : ((subscription?.limits?.maxLeads || subscription?.planId?.limits?.maxLeads || 0) - (subscription?.usage?.currentLeads || 0)).toLocaleString()}
-                                    </Text>
-                                  </HStack>
-                                </Box>
-
-                                {/* Staff Usage */}
-                                <Box>
-                                  <HStack justify="space-between" mb={2}>
-                                    <HStack spacing={2}>
-                                      <Icon as={FiUsers} color="purple.500" />
-                                      <Text fontWeight="semibold" color={textColor}>Team Members</Text>
-                                    </HStack>
-                                    <Text fontSize="sm" color={mutedTextColor}>
-                                      {subscription?.usage?.currentStaff || 0} / {subscription?.planId?.features?.maxStaff === -1 ? '∞' : subscription?.planId?.features?.maxStaff || 0}
-                                    </Text>
-                                  </HStack>
-                                  <Progress
-                                    value={getUsagePercentage(
-                                      subscription?.usage?.currentStaff || 0,
-                                      subscription?.planId?.features?.maxStaff || 1
-                                    )}
-                                    colorScheme="purple"
-                                    size="lg"
-                                    borderRadius="md"
-                                  />
-                                  <HStack justify="space-between" mt={1}>
-                                    <Text fontSize="xs" color="green.600">
-                                      Used: {subscription?.usage?.currentStaff || 0}
-                                    </Text>
-                                    <Text fontSize="xs" color="blue.600">
-                                      Remaining: {subscription?.planId?.features?.maxStaff === -1 ? '∞' : (subscription?.planId?.features?.maxStaff || 0) - (subscription?.usage?.currentStaff || 0)}
-                                    </Text>
-                                  </HStack>
-                                </Box>
-
-                                {/* Automation Rules Usage */}
-                                <Box>
-                                  <HStack justify="space-between" mb={2}>
-                                    <HStack spacing={2}>
-                                      <Icon as={FiZap} color="orange.500" />
-                                      <Text fontWeight="semibold" color={textColor}>Automation Rules</Text>
-                                    </HStack>
-                                    <Text fontSize="sm" color={mutedTextColor}>
-                                      {subscription?.usage?.currentAutomationRules || 0} / {subscription?.planId?.features?.automationRules === -1 || subscription?.limits?.maxAutomationRules === -1 ? '∞' : (subscription?.planId?.features?.automationRules || subscription?.limits?.maxAutomationRules || 0)}
-                                    </Text>
-                                  </HStack>
-                                  <Progress
-                                    value={getUsagePercentage(
-                                      subscription?.usage?.currentAutomationRules || 0,
-                                      subscription?.planId?.features?.automationRules || subscription?.limits?.maxAutomationRules || 1
-                                    )}
-                                    colorScheme="orange"
-                                    size="lg"
-                                    borderRadius="md"
-                                  />
-                                  <HStack justify="space-between" mt={1}>
-                                    <Text fontSize="xs" color="green.600">
-                                      Used: {subscription?.usage?.currentAutomationRules || 0}
-                                    </Text>
-                                    <Text fontSize="xs" color="blue.600">
-                                      Remaining: {subscription?.planId?.features?.automationRules === -1 || subscription?.limits?.maxAutomationRules === -1 ? '∞' : (subscription?.planId?.features?.automationRules || subscription?.limits?.maxAutomationRules || 0) - (subscription?.usage?.currentAutomationRules || 0)}
-                                    </Text>
-                                  </HStack>
-                                </Box>
+                                )}
                               </VStack>
                             </CardBody>
                           </Card>
 
-                          {/* Payment History */}
-                          {paymentHistory.length > 0 && (
-                            <Card bg={cardBg} borderRadius="xl" boxShadow="lg">
-                              <CardHeader>
-                                <HStack spacing={3}>
-                                  <Icon as={FiFileText} boxSize={6} color="blue.500" />
-                                  <Text fontSize="lg" fontWeight="semibold" color={textColor}>
-                                    Payment History
-                                  </Text>
-                                </HStack>
-                              </CardHeader>
-                              <CardBody>
-                                <TableContainer>
-                                  <Table variant="simple">
-                                    <Thead>
-                                      <Tr>
-                                        <Th>Date</Th>
-                                        <Th>Amount</Th>
-                                        <Th>Status</Th>
-                                        <Th>Transaction ID</Th>
-                                      </Tr>
-                                    </Thead>
-                                    <Tbody>
-                                      {paymentHistory.map((payment, index) => (
-                                        <Tr key={index}>
-                                          <Td>{formatDate(payment.date)}</Td>
-                                          <Td>{formatCurrency(payment.amount, payment.currency)}</Td>
-                                          <Td>
-                                            <Badge colorScheme={payment.status === 'paid' ? 'green' : 'red'}>
-                                              {payment.status}
-                                            </Badge>
-                                          </Td>
-                                          <Td fontSize="sm" color={mutedTextColor}>{payment.transactionId || 'N/A'}</Td>
-                                        </Tr>
-                                      ))}
-                                    </Tbody>
-                                  </Table>
-                                </TableContainer>
+                          {/* Usage Overview - Clean Cards */}
+                          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
+                            {/* Leads Usage */}
+                            <Card bg={cardBg} borderRadius="xl" boxShadow="0 2px 10px rgba(0, 0, 0, 0.05)">
+                              <CardBody p={6}>
+                                <VStack spacing={4} align="stretch">
+                                  <HStack justify="space-between" align="center">
+                                    <HStack spacing={3}>
+                                      <Box p={2} borderRadius="lg" bg="blue.100" _dark={{ bg: "blue.800" }}>
+                                        <Icon as={FiUsers} boxSize={4} color="blue.600" />
+                                      </Box>
+                                      <Text fontSize="lg" fontWeight="600" color={textColor}>
+                                        Leads Usage
+                                      </Text>
+                                    </HStack>
+                                    <Text fontSize="sm" color={mutedTextColor}>
+                                      {(subscription.usage?.currentLeads || 0).toLocaleString()} / {(subscription.limits?.maxLeads === -1 || subscription.planId?.limits?.maxLeads === -1) ? '∞' : (subscription.limits?.maxLeads || subscription.planId?.limits?.maxLeads || 0).toLocaleString()}
+                                    </Text>
+                                  </HStack>
+                                  <Progress
+                                    value={getUsagePercentage(
+                                      subscription.usage?.currentLeads || 0,
+                                      subscription.limits?.maxLeads || subscription.planId?.limits?.maxLeads || 1
+                                    )}
+                                    colorScheme="blue"
+                                    size="md"
+                                    borderRadius="full"
+                                    bg="gray.100"
+                                    _dark={{ bg: "gray.700" }}
+                                  />
+                                  <HStack justify="space-between">
+                                    <Text fontSize="xs" color="green.600" fontWeight="500">
+                                      Used: {(subscription.usage?.currentLeads || 0).toLocaleString()}
+                                    </Text>
+                                    <Text fontSize="xs" color="blue.600" fontWeight="500">
+                                      Available: {(subscription.limits?.maxLeads === -1 || subscription.planId?.limits?.maxLeads === -1) ? '∞' : ((subscription.limits?.maxLeads || subscription.planId?.limits?.maxLeads || 0) - (subscription.usage?.currentLeads || 0)).toLocaleString()}
+                                    </Text>
+                                  </HStack>
+                                </VStack>
                               </CardBody>
                             </Card>
-                          )}
-                        </>
+
+                            {/* Funnels Usage */}
+                            <Card bg={cardBg} borderRadius="xl" boxShadow="0 2px 10px rgba(0, 0, 0, 0.05)">
+                              <CardBody p={6}>
+                                <VStack spacing={4} align="stretch">
+                                  <HStack justify="space-between" align="center">
+                                    <HStack spacing={3}>
+                                      <Box p={2} borderRadius="lg" bg="green.100" _dark={{ bg: "green.800" }}>
+                                        <Icon as={FiTrendingUp} boxSize={4} color="green.600" />
+                                      </Box>
+                                      <Text fontSize="lg" fontWeight="600" color={textColor}>
+                                        Funnels Usage
+                                      </Text>
+                                    </HStack>
+                                    <Text fontSize="sm" color={mutedTextColor}>
+                                      {subscription.usage?.currentFunnels || 0} / {subscription.planId?.features?.maxFunnels === -1 ? '∞' : subscription.planId?.features?.maxFunnels || 0}
+                                    </Text>
+                                  </HStack>
+                                  <Progress
+                                    value={getUsagePercentage(
+                                      subscription.usage?.currentFunnels || 0,
+                                      subscription.planId?.features?.maxFunnels || 1
+                                    )}
+                                    colorScheme="green"
+                                    size="md"
+                                    borderRadius="full"
+                                    bg="gray.100"
+                                    _dark={{ bg: "gray.700" }}
+                                  />
+                                  <HStack justify="space-between">
+                                    <Text fontSize="xs" color="green.600" fontWeight="500">
+                                      Used: {subscription.usage?.currentFunnels || 0}
+                                    </Text>
+                                    <Text fontSize="xs" color="blue.600" fontWeight="500">
+                                      Available: {subscription.planId?.features?.maxFunnels === -1 ? '∞' : (subscription.planId?.features?.maxFunnels || 0) - (subscription.usage?.currentFunnels || 0)}
+                                    </Text>
+                                  </HStack>
+                                </VStack>
+                              </CardBody>
+                            </Card>
+                          </SimpleGrid>
+                        </VStack>
                       )}
                     </>
                   )}
                 </VStack>
 
-                {/* Cancel Subscription Modal */}
-                <Modal isOpen={isCancelOpen} onClose={onCancelClose}>
-                  <ModalOverlay />
-                  <ModalContent>
-                    <ModalHeader>Cancel Subscription</ModalHeader>
+                {/* Cancel Subscription Modal - Minimal Design */}
+                <Modal isOpen={isCancelOpen} onClose={onCancelClose} size="md">
+                  <ModalOverlay backdropFilter="blur(4px)" />
+                  <ModalContent borderRadius="2xl" overflow="hidden">
+                    <ModalHeader pb={2}>
+                      <VStack spacing={2} align="center">
+                        <Box p={3} borderRadius="full" bg="red.50" _dark={{ bg: "red.900" }}>
+                          <Icon as={FiX} boxSize={6} color="red.500" />
+                        </Box>
+                        <Text fontSize="lg" fontWeight="600" color={textColor}>
+                          Cancel Subscription
+                        </Text>
+                      </VStack>
+                    </ModalHeader>
                     <ModalCloseButton />
                     <ModalBody>
-                      <VStack spacing={4} align="stretch">
-                        <Alert status="warning">
+                      <VStack spacing={4}>
+                        <Alert status="warning" borderRadius="lg" p={4}>
                           <AlertIcon />
-                          <AlertDescription>
-                            Are you sure you want to cancel your subscription? This action cannot be undone.
+                          <AlertDescription fontSize="sm" lineHeight="1.6">
+                            Are you sure you want to cancel your subscription? This action cannot be undone and you'll lose access to premium features.
                           </AlertDescription>
                         </Alert>
                         <FormControl>
-                          <FormLabel>Reason for Cancellation (Optional)</FormLabel>
+                          <FormLabel fontSize="sm" fontWeight="500" color={textColor}>
+                            Reason for Cancellation (Optional)
+                          </FormLabel>
                           <Textarea
                             value={cancellationReason}
                             onChange={(e) => setCancellationReason(e.target.value)}
                             placeholder="Please let us know why you're cancelling..."
-                            rows={4}
+                            rows={3}
+                            borderRadius="lg"
+                            focusBorderColor="red.300"
                           />
                         </FormControl>
                       </VStack>
                     </ModalBody>
-                    <ModalFooter>
-                      <Button variant="ghost" mr={3} onClick={onCancelClose}>
-                        Keep Subscription
-                      </Button>
-                      <Button colorScheme="red" onClick={handleCancel}>
-                        Cancel Subscription
-                      </Button>
+                    <ModalFooter pt={6}>
+                      <HStack spacing={3} w="full">
+                        <Button
+                          variant="outline"
+                          onClick={onCancelClose}
+                          flex={1}
+                          borderRadius="lg"
+                          fontWeight="500"
+                        >
+                          Keep Subscription
+                        </Button>
+                        <Button
+                          colorScheme="red"
+                          onClick={handleCancel}
+                          flex={1}
+                          borderRadius="lg"
+                          fontWeight="500"
+                        >
+                          Cancel Subscription
+                        </Button>
+                      </HStack>
                     </ModalFooter>
                   </ModalContent>
                 </Modal>

@@ -205,22 +205,50 @@ class CentralWhatsAppService {
     }
 
     // Send template message
-    async sendTemplateMessage(to, templateName, language = 'en_US', parameters = [], coachId = null) {
+    async sendTemplateMessage(to, templateName, language = null, parameters = [], coachId = null) {
         try {
             const config = await this.getConfig();
             
             // Validate and format phone number
             const formattedTo = this.formatPhoneNumber(to);
             
-            // Get template
+            // Get template from synced data
             const template = config.getTemplateByName(templateName);
             if (!template) {
-                throw new Error(`Template '${templateName}' not found in local templates`);
+                // List available templates for debugging
+                const availableTemplates = config.templates?.map(t => `${t.name || t.templateName} (${t.language})`).join(', ') || 'none';
+                throw new Error(`Template '${templateName}' not found. Available templates: ${availableTemplates}`);
             }
 
             // Check if template is approved
             if (template.status !== 'APPROVED') {
                 throw new Error(`Template '${templateName}' is not approved. Current status: ${template.status}`);
+            }
+
+            // ALWAYS use the template's language from synced data - this is the most reliable
+            const templateLanguage = template.language || 'en';
+            
+            logger.info(`[CentralWhatsApp] Template '${templateName}' - Using language from synced data: ${templateLanguage}`);
+
+            // Count required parameters from template components
+            let requiredParamCount = 0;
+            if (template.components && template.components.length > 0) {
+                template.components.forEach(comp => {
+                    if (comp.type === 'BODY' && comp.text) {
+                        // Count {{1}}, {{2}}, etc. placeholders
+                        const matches = comp.text.match(/\{\{(\d+)\}\}/g);
+                        if (matches) {
+                            requiredParamCount = Math.max(requiredParamCount, matches.length);
+                        }
+                    }
+                });
+            }
+            
+            logger.info(`[CentralWhatsApp] Template '${templateName}' requires ${requiredParamCount} parameters, received ${parameters?.length || 0}`);
+            
+            // Validate parameter count
+            if (requiredParamCount > 0 && (!parameters || parameters.length < requiredParamCount)) {
+                throw new Error(`Template '${templateName}' requires ${requiredParamCount} parameters but only ${parameters?.length || 0} were provided. Please provide all required parameters.`);
             }
 
             const messageData = {
@@ -231,15 +259,15 @@ class CentralWhatsAppService {
                 template: {
                     name: templateName,
                     language: {
-                        code: language
+                        code: templateLanguage
                     }
                 }
             };
 
-            // Add parameters if provided
-            if (parameters && parameters.length > 0) {
-                // Ensure all parameters are strings
-                const stringParams = parameters.map(param => String(param || ''));
+            // Add parameters if required and provided
+            if (requiredParamCount > 0 && parameters && parameters.length > 0) {
+                // Ensure all parameters are strings and take only required count
+                const stringParams = parameters.slice(0, requiredParamCount).map(param => String(param || ''));
                 messageData.template.components = [{
                     type: 'body',
                     parameters: stringParams.map(param => ({
@@ -390,7 +418,7 @@ class CentralWhatsAppService {
             const templatePayload = {
                 name: templateData.name,
                 category: templateData.category,
-                language: templateData.language || 'en_US',
+                language: templateData.language || 'en',
                 components: formattedComponents
             };
             
@@ -470,6 +498,86 @@ class CentralWhatsAppService {
 
         } catch (error) {
             logger.error(`[CentralWhatsApp] Error getting templates:`, error.response?.data || error.message);
+            throw error;
+        }
+    }
+
+    // Get templates LIVE from Meta API (fresh fetch, not from database cache)
+    async getTemplatesFromMeta() {
+        try {
+            const config = await this.getConfig();
+            
+            const businessAccountId = config.businessAccountId;
+            if (!businessAccountId) {
+                throw new Error('WhatsApp Business Account ID not configured');
+            }
+            
+            logger.info(`[CentralWhatsApp] Fetching templates LIVE from Meta API...`);
+            
+            const response = await this.makeApiCall(
+                `/${businessAccountId}/message_templates`,
+                'GET'
+            );
+
+            if (!response.data) {
+                return {
+                    success: true,
+                    templates: [],
+                    message: 'No templates found in Meta account'
+                };
+            }
+
+            // Format templates with all required information
+            const formattedTemplates = (response.data || []).map(metaTemplate => {
+                // Count parameters from template body
+                let parameterCount = 0;
+                if (metaTemplate.components && metaTemplate.components.length > 0) {
+                    metaTemplate.components.forEach(comp => {
+                        if (comp.type === 'BODY' && comp.text) {
+                            const matches = comp.text.match(/\{\{(\d+)\}\}/g);
+                            if (matches) {
+                                parameterCount = Math.max(parameterCount, matches.length);
+                            }
+                        }
+                    });
+                }
+
+                return {
+                    templateId: metaTemplate.id,
+                    templateName: metaTemplate.name,
+                    name: metaTemplate.name, // Alias for compatibility
+                    category: metaTemplate.category,
+                    status: metaTemplate.status,
+                    language: metaTemplate.language || 'en',
+                    components: metaTemplate.components || [],
+                    parameterCount: parameterCount,
+                    source: 'meta_live',
+                    // Extract body text for preview
+                    bodyPreview: metaTemplate.components?.find(c => c.type === 'BODY')?.text || '',
+                };
+            });
+
+            // Filter by status
+            const approvedTemplates = formattedTemplates.filter(t => t.status === 'APPROVED');
+            const pendingTemplates = formattedTemplates.filter(t => t.status === 'PENDING');
+            const rejectedTemplates = formattedTemplates.filter(t => t.status === 'REJECTED');
+
+            logger.info(`[CentralWhatsApp] Fetched ${formattedTemplates.length} templates from Meta (${approvedTemplates.length} approved)`);
+
+            return {
+                success: true,
+                templates: formattedTemplates,
+                approvedTemplates: approvedTemplates,
+                summary: {
+                    total: formattedTemplates.length,
+                    approved: approvedTemplates.length,
+                    pending: pendingTemplates.length,
+                    rejected: rejectedTemplates.length
+                }
+            };
+
+        } catch (error) {
+            logger.error(`[CentralWhatsApp] Error fetching templates from Meta:`, error.response?.data || error.message);
             throw error;
         }
     }
@@ -579,11 +687,11 @@ class CentralWhatsAppService {
             let failedCount = 0;
             
             // Get template language once if sending template messages
-            let templateLanguage = 'en_US';
+            let templateLanguage = 'en';
             if (templateName && templateName.trim()) {
                 const config = await this.getConfig();
                 const template = config.getTemplateByName(templateName);
-                templateLanguage = template?.language || 'en_US';
+                templateLanguage = template?.language || 'en';
             }
             
             for (const phoneNumber of contacts) {
@@ -855,7 +963,7 @@ class CentralWhatsAppService {
             template: {
                 name: template.templateName || template.name,
                 language: {
-                    code: template.language || 'en_US'
+                    code: template.language || 'en'
                 }
             }
         };
@@ -925,7 +1033,7 @@ class CentralWhatsAppService {
             name: template.templateName || template.name,
             category: template.category,
             status: template.status,
-            language: template.language || 'en_US',
+            language: template.language || 'en',
             components: template.components || [],
             variables: variables,
             parameterCount: variables.length,
@@ -1088,6 +1196,7 @@ class CentralWhatsAppService {
                 templateName,
                 templateParameters = {},
                 template,
+                language, // Language can be passed directly from frontend
                 mediaUrl,
                 mediaType = 'image',
                 caption,
@@ -1108,14 +1217,23 @@ class CentralWhatsAppService {
             // If message text is provided, it means local template was rendered, so send as text
             if ((type === 'template' || templateName || template || templateId) && !message) {
                 let finalTemplateName = templateName;
-                let finalLanguage = 'en_US';
+                // Priority: explicit language param > template object language > looked up from DB
+                let finalLanguage = language || null;
                 let finalParameters = [];
+
+                // Get config for template lookup
+                const config = await this.getConfig();
 
                 // If template object is provided (Meta format), extract name and language first (priority)
                 if (template && template.name) {
                     finalTemplateName = template.name;
-                    if (template.language && template.language.code) {
-                        finalLanguage = template.language.code;
+                    // Only use template object language if not explicitly provided
+                    if (!finalLanguage) {
+                        if (template.language && template.language.code) {
+                            finalLanguage = template.language.code;
+                        } else if (template.language && typeof template.language === 'string') {
+                            finalLanguage = template.language;
+                        }
                     }
                     
                     // Extract parameters from template.components if provided
@@ -1130,7 +1248,6 @@ class CentralWhatsAppService {
                 }
                 // If templateId is provided (Meta template ID) and template object not provided, look it up from config
                 else if (templateId && !templateName) {
-                    const config = await this.getConfig();
                     const metaTemplate = config.templates?.find(t => 
                         t.templateId === templateId || 
                         t.templateId === String(templateId) ||
@@ -1139,11 +1256,26 @@ class CentralWhatsAppService {
                     
                     if (metaTemplate) {
                         finalTemplateName = metaTemplate.templateName || metaTemplate.name;
-                        finalLanguage = metaTemplate.language || 'en_US';
-                        // If template has components with text, we can extract variables if needed
-                        logger.info(`[CentralWhatsApp] Found Meta template by ID: ${templateId} -> ${finalTemplateName}`);
+                        // Only use DB language if not explicitly provided
+                        if (!finalLanguage) {
+                            finalLanguage = metaTemplate.language;
+                        }
+                        logger.info(`[CentralWhatsApp] Found Meta template by ID: ${templateId} -> ${finalTemplateName} (${finalLanguage})`);
                     } else {
                         throw new Error(`Template with ID '${templateId}' not found in Meta templates`);
+                    }
+                }
+                // If only templateName is provided, look up the template to get its language
+                else if (templateName) {
+                    const metaTemplate = config.getTemplateByName(templateName);
+                    if (metaTemplate) {
+                        // Only use DB language if not explicitly provided
+                        if (!finalLanguage) {
+                            finalLanguage = metaTemplate.language;
+                        }
+                        logger.info(`[CentralWhatsApp] Found Meta template by name: ${templateName} -> language: ${finalLanguage}`);
+                    } else {
+                        logger.warn(`[CentralWhatsApp] Template '${templateName}' not found in config, will use explicitly passed language or default`);
                     }
                 }
 
@@ -1159,6 +1291,7 @@ class CentralWhatsAppService {
                     throw new Error('Template name is required for Meta template messages');
                 }
 
+                // Pass null for language to let sendTemplateMessage resolve it from the template
                 const result = await this.sendTemplateMessage(to, finalTemplateName, finalLanguage, finalParameters, coachId);
                 return this._ensureWamid(result);
             }

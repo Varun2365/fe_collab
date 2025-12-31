@@ -663,21 +663,37 @@ const WhatsAppDashboard = () => {
         clientId: sendForm.clientId || null
       };
 
-      if (sendForm.templateName && sendForm.templateName !== 'SELECT_TEMPLATE' && selectedTemplate) {
+      // Determine message type and validate content
+      const hasTemplate = sendForm.templateName && sendForm.templateName !== 'SELECT_TEMPLATE' && selectedTemplate;
+      const hasMedia = sendForm.mediaUrl && sendForm.mediaUrl.trim() !== '' && sendForm.mediaUrl !== 'MEDIA';
+      const hasTextMessage = sendForm.message && sendForm.message.trim() !== '';
+      
+      // Validate that at least one type of content is provided
+      if (!hasTemplate && !hasMedia && !hasTextMessage) {
+        setError('Please provide a message, select a template, or add media to send');
+        setLoading(false);
+        return;
+      }
+      
+      if (hasTemplate) {
         messageData.templateName = sendForm.templateName;
+        messageData.type = 'template';
         // Extract parameter values from templateParameters array
         const paramValues = sendForm.templateParameters.map(p => p.value).filter(v => v);
         if (paramValues.length > 0) {
           messageData.parameters = paramValues;
         }
-      } else if (sendForm.mediaUrl && sendForm.mediaUrl !== 'MEDIA') {
+      } else if (hasMedia) {
         messageData.mediaUrl = sendForm.mediaUrl;
         messageData.mediaType = sendForm.mediaType;
-        if (sendForm.message) {
+        messageData.type = 'media';
+        if (hasTextMessage) {
           messageData.message = sendForm.message;
+          messageData.caption = sendForm.message;
         }
-      } else {
+      } else if (hasTextMessage) {
         messageData.message = sendForm.message;
+        messageData.type = 'text';
       }
 
       const result = await apiCall('/central-messaging/v1/admin/send', {

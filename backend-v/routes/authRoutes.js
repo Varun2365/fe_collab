@@ -36,6 +36,21 @@ router.post('/reset-password', authController.resetPassword);
 // Required Body Fields: { "email": "string" }
 router.post('/resend-otp', authController.resendOtp);
 
+// Forgot password with OTP route: Send OTP for password reset (dialog-based flow)
+// POST /api/auth/forgot-password-otp
+// Required Body Fields: { "email": "string" }
+router.post('/forgot-password-otp', authController.forgotPasswordOtp);
+
+// Verify password reset OTP route: Verify OTP and get reset token
+// POST /api/auth/verify-password-reset-otp
+// Required Body Fields: { "email": "string", "otp": "string" }
+router.post('/verify-password-reset-otp', authController.verifyPasswordResetOtp);
+
+// Reset password with OTP-verified token route: Set new password
+// POST /api/auth/reset-password-with-otp
+// Required Body Fields: { "resetToken": "string", "newPassword": "string", "confirmPassword": "string" }
+router.post('/reset-password-with-otp', authController.resetPasswordWithOtp);
+
 // Get available sponsors for coach signup dropdown
 // GET /api/auth/available-sponsors
 // Required Body Fields: None
