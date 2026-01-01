@@ -1655,7 +1655,7 @@ const getTeamPerformance = async (req, res) => {
                     completedTasks: { 
                         $sum: { 
                             $cond: { 
-                                if: { $eq: ['$status', 'Done'] }, 
+                                if: { $eq: ['$status', 'Completed'] }, 
                                 then: 1, 
                                 else: 0 
                             } 
@@ -1889,28 +1889,197 @@ const getReportDetail = async (req, res) => {
 
 // Helper function to generate report data
 async function generateReportData(reportId, sponsorId, reportType, startDate, endDate) {
-    // This would contain the logic to generate comprehensive report data
-    // Implementation would depend on the specific report type
-    console.log(`Generating report data for ${reportId}`);
-    
-    // Placeholder for actual report generation logic
-    const reportData = {
-        individualMetrics: {},
-        teamMetrics: {},
-        comparisons: {},
-        trends: {},
-        goalProgress: {},
-        breakdown: {},
-        insights: []
-    };
+    try {
+        console.log(`Generating report data for ${reportId}`);
+        
+        // Calculate date range filter
+        const dateFilter = {
+            createdAt: {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            }
+        };
 
-    await CoachReport.findOneAndUpdate(
-        { reportId },
-        { 
-            reportData,
-            status: 'completed'
-        }
-    );
+        const coachId = new mongoose.Types.ObjectId(sponsorId);
+
+        // Run aggregations in parallel
+        const [
+            performanceRecord,
+            leadsStats,
+            salesStats,
+            clientStats,
+            commissionStats,
+            downlineStats,
+            tasksStats
+        ] = await Promise.all([
+            // Performance record
+            CoachPerformance.findOne({ coachId }),
+            
+            // Leads statistics
+            Lead.aggregate([
+                { $match: { coachId, ...dateFilter } },
+                {
+                    $group: {
+                        _id: null,
+                        totalLeads: { $sum: 1 },
+                        convertedLeads: { $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] } },
+                        activeLeads: { $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] } },
+                        avgLeadValue: { $avg: '$estimatedValue' }
+                    }
+                }
+            ]),
+            
+            // Sales statistics
+            RazorpayPayment.aggregate([
+                { $match: { coachId, status: 'captured', ...dateFilter } },
+                {
+                    $group: {
+                        _id: null,
+                        totalSales: { $sum: '$amount' },
+                        totalTransactions: { $sum: 1 },
+                        avgTransactionValue: { $avg: '$amount' }
+                    }
+                }
+            ]),
+            
+            // Client statistics
+            User.aggregate([
+                { $match: { sponsorId: coachId, role: 'customer', ...dateFilter } },
+                {
+                    $group: {
+                        _id: null,
+                        totalClients: { $sum: 1 },
+                        activeClients: { $sum: { $cond: [{ $eq: ['$isActive', true] }, 1, 0] } }
+                    }
+                }
+            ]),
+            
+            // Commission statistics
+            Commission.aggregate([
+                { $match: { coachId, ...dateFilter } },
+                {
+                    $group: {
+                        _id: null,
+                        totalCommissions: { $sum: '$amount' },
+                        totalCommissionCount: { $sum: 1 },
+                        avgCommission: { $avg: '$amount' }
+                    }
+                }
+            ]),
+            
+            // Downline statistics
+            User.aggregate([
+                { $match: { sponsorId: coachId, role: 'coach' } },
+                {
+                    $group: {
+                        _id: null,
+                        totalDownline: { $sum: 1 },
+                        activeDownline: { $sum: { $cond: [{ $eq: ['$isActive', true] }, 1, 0] } }
+                    }
+                }
+            ]),
+
+             // Task statistics
+             Task.aggregate([
+                { $match: { assignedTo: coachId, ...dateFilter } },
+                {
+                    $group: {
+                        _id: null,
+                        totalTasks: { $sum: 1 },
+                        completedTasks: { $sum: { $cond: [{ $eq: ['$status', 'Completed'] }, 1, 0] } }
+                    }
+                }
+            ])
+        ]);
+
+        const leads = leadsStats[0] || {};
+        const sales = salesStats[0] || {};
+        const clients = clientStats[0] || {};
+        const commissions = commissionStats[0] || {};
+        const downline = downlineStats[0] || {};
+        const tasks = tasksStats[0] || {};
+
+        // Construct report data matching CoachReport schema
+        const reportData = {
+            individualMetrics: {
+                leadsGenerated: leads.totalLeads || 0,
+                leadsConverted: leads.convertedLeads || 0,
+                conversionRate: leads.totalLeads ? (leads.convertedLeads / leads.totalLeads) * 100 : 0,
+                salesClosed: sales.totalTransactions || 0,
+                revenueGenerated: sales.totalSales || 0,
+                averageDealSize: sales.avgTransactionValue || 0,
+                tasksCompleted: tasks.completedTasks || 0,
+                clientSatisfaction: 0 // Placeholder as strictly review data isn't aggregated yet
+            },
+            teamMetrics: {
+                teamSize: downline.totalDownline || 0,
+                teamLeads: 0, // Would require deep aggregation of downline
+                teamSales: 0, // Would require deep aggregation of downline
+                teamRevenue: 0, // Would require deep aggregation of downline
+                teamConversionRate: 0,
+                averageTeamPerformance: 0
+            },
+            comparisons: {
+                previousPeriod: {
+                    leadsGrowth: 0, // Requires previous period calculation
+                    salesGrowth: 0,
+                    revenueGrowth: 0,
+                    conversionChange: 0
+                },
+                teamAverage: {
+                    leadsVsTeam: 0,
+                    salesVsTeam: 0,
+                    revenueVsTeam: 0,
+                    conversionVsTeam: 0
+                }
+            },
+            trends: {
+                leadTrend: 'stable',
+                salesTrend: 'stable',
+                revenueTrend: 'stable',
+                conversionTrend: 'stable'
+            },
+            goalProgress: {
+                leadsGoal: { achieved: leads.totalLeads || 0, target: 100, percentage: (leads.totalLeads / 100) * 100 },
+                salesGoal: { achieved: sales.totalTransactions || 0, target: 50, percentage: (sales.totalTransactions / 50) * 100 },
+                revenueGoal: { achieved: sales.totalSales || 0, target: 50000, percentage: (sales.totalSales / 50000) * 100 },
+                conversionGoal: { achieved: leads.totalLeads ? (leads.convertedLeads / leads.totalLeads) * 100 : 0, target: 20, percentage: 0 }
+            },
+            breakdown: {
+                leadSources: {
+                    website: 0,
+                    socialMedia: 0,
+                    referrals: 0,
+                    ads: 0,
+                    other: leads.totalLeads || 0
+                },
+                monthlyPerformance: [],
+                teamBreakdown: []
+            },
+            insights: [
+                'Report generated successfully based on real-time data.',
+                `Total Revenue: $${sales.totalSales || 0}`,
+                `Active Team Members: ${downline.activeDownline || 0}`
+            ]
+        };
+
+        await CoachReport.findOneAndUpdate(
+            { reportId },
+            { 
+                reportData,
+                status: 'completed'
+            }
+        );
+        
+        console.log(`Report ${reportId} generated successfully`);
+
+    } catch (error) {
+        console.error(`Error generating report ${reportId}:`, error);
+        await CoachReport.findOneAndUpdate(
+            { reportId },
+            { status: 'failed', error: error.message }
+        );
+    }
 }
 
 // ===== HELPER FUNCTIONS =====

@@ -107,6 +107,7 @@ import {
   FiEye,
   FiArrowUp,
   FiArrowDown,
+  FiArrowLeft,
   FiTarget,
   FiBarChart2,
   FiGlobe,
@@ -151,6 +152,7 @@ const ProfessionalLoader = () => {
           position="relative"
         >
           <Box
+          
             position="absolute"
             top="0"
             left="-100%"
@@ -424,6 +426,9 @@ const TasksAndActivities = () => {
     total: 0
   });
   
+  // Tab management
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  
   // Staff list
   const [staffList, setStaffList] = useState([]);
   const [tasksByStaff, setTasksByStaff] = useState({});
@@ -472,18 +477,18 @@ const TasksAndActivities = () => {
     description: '',
     priority: 'MEDIUM',
     stage: 'LEAD_GENERATION',
-    dueDate: '',
     relatedLead: '',
-    estimatedHours: 1,
-    assignedTo: ''
+    assignedTo: '',
+    dueDate: ''
   });
+  
   
   // Load data
   useEffect(() => {
     loadData();
   }, [filters]);
   
-  // Initialize custom stages on mount (only if no custom stages exist)
+  // Initialize vowoci1010@24faw.com custom stages on mount (only if no custom stages exist)
   useEffect(() => {
     const savedStages = localStorage.getItem('taskCustomStages');
     if (savedStages) {
@@ -494,6 +499,7 @@ const TasksAndActivities = () => {
           return; // Don't override with funnel stages if we have saved custom stages
         }
       } catch (e) {
+        
         console.error('Error parsing saved stages:', e);
       }
     }
@@ -515,7 +521,7 @@ const TasksAndActivities = () => {
         loadKanbanBoard(),
         loadRecentActivities(),
         loadOngoingActivities(),
-        loadActivityStats()
+        loadActivityStats(),
       ]);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -968,6 +974,12 @@ const TasksAndActivities = () => {
     }
   };
   
+  // Handle task card click - show task details
+  const handleTaskCardClick = (task) => {
+    setSelectedTask(task);
+    onTaskDetailOpen();
+  };
+
   // Handle activity card click
   const handleActivityCardClick = async (type, data) => {
     setSelectedActivityType(type);
@@ -1219,13 +1231,17 @@ const TasksAndActivities = () => {
     // Set the selected funnel
     handleFunnelSelect(funnel._id || funnel.id);
     
+    // Automatically switch to Workflow Board tab (index 1)
+    setActiveTabIndex(1);
+    
     // Show toast for feedback
     customToast(`Switched to ${funnel.name} workflow`, 'info');
     
-    // The page stays the same, just updates the workflow context
+    // The page stays the same, just updates the workflow context and switches tab
     // This maintains existing behavior while providing workflow navigation
   };
   
+
   // Handle stage click - focus on specific stage
   const handleStageClick = (stage) => {
     console.log('[Stage] Clicked stage:', stage.name);
@@ -1472,33 +1488,33 @@ const TasksAndActivities = () => {
               ) : (
                 <SimpleGrid columns={{ base: 2, md: 5 }} spacing={4}>
                   <StatsCard
-                    title="Tasks (Work To Do)"
+                    title="Tasks"
                     value={Object.values(kanbanData).reduce((sum, tasks) => sum + (Array.isArray(tasks) ? tasks.length : 0), 0)}
                     icon={<Box as={FiCheckSquare} boxSize={5} />}
                     color="blue"
                   />
                   <StatsCard
-                    title="Overdue Tasks"
+                    title="Overdue"
                     value={kanbanData.Overdue?.length || 0}
                     icon={<Box as={FiAlertCircle} boxSize={5} />}
                     color="red"
                   />
                   <StatsCard
-                    title="Activities (Past Events)"
+                    title="Activities"
                     value={stats.total || 0}
                     icon={<Box as={FiActivity} boxSize={5} />}
                     color="green"
                     onClick={() => handleActivityCardClick('recent', activities)}
                   />
                   <StatsCard
-                    title="Ongoing (Live Work)"
+                    title="Ongoing"
                     value={ongoingActivities.tasks?.length || 0}
                     icon={<Box as={FiPlay} boxSize={5} />}
                     color="purple"
                     onClick={() => handleActivityCardClick('ongoing-tasks', ongoingActivities.tasks || [])}
                   />
                   <StatsCard
-                    title="Upcoming Events"
+                    title="Upcoming"
                     value={ongoingActivities.appointments?.length || 0}
                     icon={<Box as={FiCalendar} boxSize={5} />}
                     color="orange"
@@ -1622,132 +1638,240 @@ const TasksAndActivities = () => {
             </CardBody>
           </Card>
           
-          {/* Tabs: Kanban Board, Activity Feed, and Staff View */}
-          <Tabs defaultIndex={0}>
-            <TabList>
-<<<<<<< HEAD
-              <Tab>📋 Workflow Boards</Tab>
-=======
-              <Tab> Tasks (Work To Do)</Tab>
->>>>>>> f459a6714fbe9079ad00e0d3a3492d7e32dc26c5
-              <Tab> Activities (Past Events)</Tab>
-              <Tab> Ongoing (Live Work)</Tab>
-              <Tab> Staff Tasks</Tab>
+          {/* Main Tab Navigation */}
+          <Tabs defaultIndex={0} index={activeTabIndex} onChange={setActiveTabIndex}>
+            <TabList bg="white" borderBottom="2px" borderColor="gray.200" px={6} py={3}>
+              <Tab 
+                fontSize="md" 
+                fontWeight="600" 
+                _selected={{ color: 'blue.600', borderBottomColor: 'blue.600' }}
+                color="gray.600"
+                pb={3}
+              >
+                All Workflows
+              </Tab>
+              <Tab 
+                fontSize="md" 
+                fontWeight="600" 
+                _selected={{ color: 'blue.600', borderBottomColor: 'blue.600' }}
+                color="gray.600"
+                pb={3}
+              >
+                Workflow Board
+              </Tab>
+              <Tab 
+                fontSize="md" 
+                fontWeight="600" 
+                _selected={{ color: 'blue.600', borderBottomColor: 'blue.600' }}
+                color="gray.600"
+                pb={3}
+              >
+                Activities
+              </Tab>
+              <Tab 
+                fontSize="md" 
+                fontWeight="600" 
+                _selected={{ color: 'blue.600', borderBottomColor: 'blue.600' }}
+                color="gray.600"
+                pb={3}
+              >
+                Ongoing
+              </Tab>
+              <Tab 
+                fontSize="md" 
+                fontWeight="600" 
+                _selected={{ color: 'blue.600', borderBottomColor: 'blue.600' }}
+                color="gray.600"
+                pb={3}
+              >
+                Staff Tasks
+              </Tab>
             </TabList>
             
             <TabPanels>
-<<<<<<< HEAD
-              {/* Workflow Boards Tab - Multiple Funnel-based Boards */}
-=======
-              {/* Kanban Board Tab - Tasks (Work To Do) */}
->>>>>>> f459a6714fbe9079ad00e0d3a3492d7e32dc26c5
+              {/* All Workflows Tab - Table View */}
               <TabPanel px={0}>
-                <Box mb={4} p={4} bg="blue.50" borderRadius="md" border="1px" borderColor="blue.200">
+                <Box mb={4} p={4} bg="linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%)" borderRadius="md" border="1px" borderColor="blue.200">
                   <HStack spacing={3}>
                     <Box as={FiCheckSquare} color="blue.600" boxSize={5} />
                     <VStack align="start" spacing={1}>
-<<<<<<< HEAD
-                      <Text fontWeight="600" color="blue.800" fontSize="lg">Workflow Boards - Funnel Management</Text>
-                      <Text color="blue.600" fontSize="sm">Visual workflow boards representing different funnels. Drag tasks between stages to update their status. Each board represents a complete workflow funnel.</Text>
+                      <Text fontWeight="700" color="blue.800" fontSize="lg">All Workflows</Text>
+                      <Text color="blue.600" fontSize="sm">Complete overview of all workflow boards. Click on any workflow to view its detailed kanban board.</Text>
                     </VStack>
                   </HStack>
                 </Box>
                 
-                {/* Workflow Boards Container */}
-                <VStack spacing={6} align="stretch">
-                  {/* Workflow Selection Cards */}
-                  {!selectedFunnel && funnelsList.length > 0 && (
-                    <Box>
-                      <Text fontWeight="600" color={textColor} mb={4} fontSize="lg">
-                        📊 Select a Workflow to View
-                      </Text>
-                      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
-                        {funnelsList.map(funnel => (
-                          <Card
-                            key={funnel._id || funnel.id}
-                            bg={cardBg}
-                            boxShadow="sm"
-                            border="1px solid"
-                            borderColor={borderColor}
-                            cursor="pointer"
-                            _hover={{ boxShadow: 'md', transform: 'translateY(-2px)', borderColor: 'blue.300' }}
-                            transition="all 0.2s"
-                            onClick={() => handleWorkflowClick(funnel)}
-                          >
-                            <CardBody p={4}>
-                              <VStack align="start" spacing={3}>
-                                <HStack justify="space-between" w="full">
-                                  <Heading size="sm" color={textColor} fontWeight="600">
-                                    {funnel.name || 'Unnamed Funnel'}
-                                  </Heading>
-                                  <Badge colorScheme="blue" variant="outline">
-                                    Workflow
-                                  </Badge>
-                                </HStack>
-                                <Text fontSize="sm" color={mutedTextColor} noOfLines={2}>
-                                  {funnel.description || `Manage tasks through ${funnel.stages?.length || 0} workflow stages`}
-                                </Text>
-                                <HStack justify="space-between" w="full">
-                                  <Text fontSize="xs" color="gray.500">
-                                    {funnel.stages?.length || 0} stages
-                                  </Text>
-                                  <HStack spacing={2}>
-                                    <Icon as={FiArrowRight} boxSize={4} color="blue.500" />
-                                    <Text fontSize="xs" color="blue.500" fontWeight="500">
-                                      Open Workflow
+                {/* Workflow Table */}
+                <Card bg={cardBg} boxShadow="md" border="1px" borderColor={borderColor} borderRadius="7px">
+                  <CardBody p={0}>
+                    <TableContainer>
+                      <Table variant="simple">
+                        <Thead bg="linear-gradient(135deg, rgba(249, 250, 251, 1) 0%, rgba(243, 244, 246, 1) 100%)">
+                          <Tr>
+                            <Th fontWeight="600" color="gray.700" fontSize="sm" py={3}>Workflow Name</Th>
+                            <Th fontWeight="600" color="gray.700" fontSize="sm" py={3}>Stages</Th>
+                            <Th fontWeight="600" color="gray.700" fontSize="sm" py={3}>Active Tasks</Th>
+                            <Th fontWeight="600" color="gray.700" fontSize="sm" py={3}>Status</Th>
+                            <Th fontWeight="600" color="gray.700" fontSize="sm" py={3}>Actions</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {funnelsList.length > 0 ? (
+                            funnelsList.map((funnel, index) => {
+                              const funnelTasks = Object.values(kanbanData).reduce((sum, tasks) => sum + (Array.isArray(tasks) ? tasks.length : 0), 0);
+                              return (
+                                <Tr 
+                                  key={funnel._id || funnel.id}
+                                  _hover={{ bg: 'blue.50' }}
+                                  transition="all 0.2s"
+                                  cursor="pointer"
+                                  onClick={() => handleWorkflowClick(funnel)}
+                                >
+                                  <Td py={4}>
+                                    <VStack align="start" spacing={1}>
+                                      <HStack spacing={2}>
+                                        <Box
+                                          w={3}
+                                          h={3}
+                                          bg="blue.500"
+                                          borderRadius="full"
+                                        />
+                                        <Text fontWeight="600" color={textColor} fontSize="sm">
+                                          {funnel.name || 'Unnamed Funnel'}
+                                        </Text>
+                                      </HStack>
+                                      {funnel.description && (
+                                        <Text fontSize="xs" color={mutedTextColor} noOfLines={1}>
+                                          {funnel.description}
+                                        </Text>
+                                      )}
+                                    </VStack>
+                                  </Td>
+                                  <Td>
+                                    <HStack spacing={1}>
+                                      <Badge colorScheme="blue" fontSize="xs" px={2} py={1}>
+                                        {funnel.stages?.length || 0} stages
+                                      </Badge>
+                                    </HStack>
+                                  </Td>
+                                  <Td>
+                                    <HStack spacing={2}>
+                                      <Text fontWeight="600" color="blue.600" fontSize="sm">
+                                        {funnelTasks}
+                                      </Text>
+                                      <Text fontSize="xs" color={mutedTextColor}>
+                                        tasks
+                                      </Text>
+                                    </HStack>
+                                  </Td>
+                                  <Td>
+                                    <Badge 
+                                      colorScheme={funnel.isActive ? 'green' : 'yellow'} 
+                                      variant="solid"
+                                      fontSize="xs"
+                                      px={2}
+                                      py={1}
+                                    >
+                                      {funnel.isActive ? 'Active' : 'Inactive'}
+                                    </Badge>
+                                  </Td>
+                                  <Td>
+                                    <HStack spacing={2}>
+                                      <Button
+                                        size="xs"
+                                        variant="ghost"
+                                        colorScheme="blue"
+                                        leftIcon={<FiEye />}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleWorkflowClick(funnel);
+                                        }}
+                                      >
+                                        View
+                                      </Button>
+                                      <Button
+                                        size="xs"
+                                        variant="ghost"
+                                        colorScheme="gray"
+                                        leftIcon={<FiEdit />}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          customToast('Edit workflow functionality coming soon', 'info');
+                                        }}
+                                      >
+                                        Edit
+                                      </Button>
+                                    </HStack>
+                                  </Td>
+                                </Tr>
+                              );
+                            })
+                          ) : (
+                            <Tr>
+                              <Td colSpan={5}>
+                                <Center py={8}>
+                                  <VStack spacing={3}>
+                                    <Icon as={FiCheckSquare} boxSize={10} color="gray.400" />
+                                    <Text color="gray.500" fontSize="md" fontWeight="500">
+                                      No workflows found
                                     </Text>
-                                  </HStack>
-                                </HStack>
-                              </VStack>
-                            </CardBody>
-                          </Card>
-                        ))}
-                        <Card
-                          bg="blue.50"
-                          boxShadow="sm"
-                          border="2px dashed"
-                          borderColor="blue.300"
-                          cursor="pointer"
-                          _hover={{ boxShadow: 'md', bg: 'blue.100' }}
-                          transition="all 0.2s"
-                          onClick={() => handleFunnelSelect('all')}
-                        >
-                          <CardBody p={4}>
-                            <VStack align="center" spacing={3}>
-                              <Icon as={FiCheckSquare} boxSize={8} color="blue.500" />
-                              <Text fontWeight="600" color="blue.700" textAlign="center">
-                                All Workflows
-                              </Text>
-                              <Text fontSize="sm" color="blue.600" textAlign="center">
-                                View tasks from all workflows together
-                              </Text>
-                            </VStack>
-                          </CardBody>
-                        </Card>
-                      </SimpleGrid>
-                    </Box>
-                  )}
-                  
-                  {/* Funnel Selection and Workflow Info */}
-                  <Card bg={cardBg} boxShadow="sm" border="1px" borderColor={borderColor} borderRadius="7px">
-                    <CardBody px={6} py={4}>
-                      <HStack justify="space-between" align="center">
-                        <VStack align="start" spacing={1}>
-                          <Text fontWeight="600" color={textColor} fontSize="md">
-                            {selectedFunnel ? `📊 ${selectedFunnel.name} Workflow` : '📊 All Workflows'}
-                          </Text>
-                          <Text fontSize="sm" color={mutedTextColor}>
-                            {selectedFunnel 
-                              ? `${selectedFunnel.stages?.length || 0} stages • ${Object.values(kanbanData).reduce((sum, tasks) => sum + (Array.isArray(tasks) ? tasks.length : 0), 0)} total tasks`
-                              : `${funnelsList.length} funnels • Showing all tasks`
-                            }
-                          </Text>
-                        </VStack>
-                        <HStack spacing={2}>
-                          {selectedFunnel && (
+                                    <Text fontSize="sm" color="gray.400">
+                                      Create your first workflow to get started
+                                    </Text>
+                                    <Button
+                                      leftIcon={<FiPlus />}
+                                      colorScheme="blue"
+                                      size="sm"
+                                      onClick={() => customToast('Create workflow functionality coming soon', 'info')}
+                                    >
+                                      Create Workflow
+                                    </Button>
+                                  </VStack>
+                                </Center>
+                              </Td>
+                            </Tr>
+                          )}
+                        </Tbody>
+                      </Table>
+                    </TableContainer>
+                  </CardBody>
+                </Card>
+              </TabPanel>
+              
+              {/* Workflow Board Tab - Kanban View */}
+              <TabPanel px={0}>
+                <Box mb={4} p={4} bg="linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%)" borderRadius="md" border="1px" borderColor="green.200">
+                  <HStack spacing={3}>
+                    <Box as={FiCheckSquare} color="green.600" boxSize={5} />
+                    <VStack align="start" spacing={1}>
+                      <Text fontWeight="700" color="green.800" fontSize="lg">Workflow Board</Text>
+                      <Text color="green.600" fontSize="sm">Interactive kanban board for task management. Drag and drop tasks between stages to update their status.</Text>
+                    </VStack>
+                  </HStack>
+                </Box>
+                
+                {/* Workflow Selection and Kanban Board */}
+                <VStack spacing={6} align="stretch">
+                  {/* Only show workflow controls when a workflow is selected */}
+                  {selectedFunnel && (
+                    <Card bg={cardBg} boxShadow="sm" border="1px" borderColor={borderColor} borderRadius="7px">
+                      <CardBody px={6} py={4}>
+                        <HStack justify="space-between" align="center">
+                          <VStack align="start" spacing={1}>
+                            <Text fontWeight="600" color={textColor} fontSize="md">
+                              📊 {selectedFunnel.name} Workflow
+                            </Text>
+                            <Text fontSize="sm" color={mutedTextColor}>
+                              {selectedFunnel.stages?.length || 0} stages • {Object.values(kanbanData).reduce((sum, tasks) => sum + (Array.isArray(tasks) ? tasks.length : 0), 0)} total tasks
+                            </Text>
+                          </VStack>
+                          <HStack spacing={2}>
                             <Button
                               leftIcon={<FiArrowLeft />}
-                              onClick={() => handleFunnelSelect('all')}
+                              onClick={() => {
+                                handleFunnelSelect('all');
+                                setActiveTabIndex(0); // Go back to All Workflows tab
+                              }}
                               variant="outline"
                               size="sm"
                               colorScheme="gray"
@@ -1755,399 +1879,306 @@ const TasksAndActivities = () => {
                             >
                               Back to All
                             </Button>
-                          )}
-                          <Select
-                            value={selectedFunnel?._id || selectedFunnel?.id || 'all'}
-                            onChange={(e) => handleFunnelSelect(e.target.value)}
-                            placeholder="Select Workflow"
-                            bg={inputBg}
-                            borderColor={borderColor}
-                            _focus={{ borderColor: 'blue.400', bg: 'white' }}
-                            size="sm"
-                            w="200px"
-                          >
-                            <option value="all">All Workflows</option>
-                            {funnelsList.map(funnel => (
-                              <option key={funnel._id || funnel.id} value={funnel._id || funnel.id}>
-                                {funnel.name || 'Unnamed Funnel'}
-                              </option>
-                            ))}
-                          </Select>
-                          <Button
-                            leftIcon={<FiPlus />}
-                            onClick={onStageModalOpen}
-                            variant="outline"
-                            size="sm"
-                            colorScheme="blue"
-                            borderRadius="7px"
-                          >
-                            Add Stage
-                          </Button>
-                        </HStack>
-                      </HStack>
-                    </CardBody>
-                  </Card>
-                  
-                  {/* Kanban Board for Selected Funnel or All Stages */}
-                  <Box overflowX="auto" pb={4}>
-                    <SimpleGrid 
-                      columns={{ base: 1, md: customStages.length > 0 ? Math.min(customStages.length, 6) : 4 }} 
-                      spacing={4}
-                      minW="max-content"
-                    >
-                      {(customStages.length > 0 ? customStages : [
-                        { id: 'Pending', name: 'Pending', order: 0, color: 'yellow' },
-                        { id: 'In Progress', name: 'In Progress', order: 1, color: 'blue' },
-                        { id: 'Completed', name: 'Completed', order: 2, color: 'green' },
-                        { id: 'Overdue', name: 'Overdue', order: 3, color: 'red' }
-                      ]).sort((a, b) => a.order - b.order).map((stage) => {
-                        const stageId = stage.id;
-                        const tasks = kanbanData[stageId] || [];
-                        const isDragOver = dragOverStage === stageId;
-                        
-                        return (
-                          <Card
-                            key={stageId}
-                            id={`stage-${stageId}`}
-                            bg={cardBg}
-                            boxShadow="md"
-                            border="2px solid"
-                            borderColor={isDragOver ? `${stage.color}.400` : borderColor}
-                            minH="400px"
-                            minW="280px"
-                            onDragOver={(e) => handleDragOver(e, stageId)}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => handleDrop(e, stageId)}
-                            transition="all 0.2s"
-                            cursor="default"
-                            onClick={() => handleStageClick(stage)}
-                            {...(isDragOver && {
-                              bgGradient: `linear(to-b, ${stage.color}.50, ${stage.color}.100)`
-                            })}
-                          >
-                            <CardHeader 
-                              bg={`${stage.color}.50`} 
-                              borderRadius="md" 
-                              py={3}
-                              cursor="pointer"
-                              onClick={() => handleStageClick(stage)}
-                              _hover={{ bg: `${stage.color}.100` }}
-                              transition="all 0.2s"
+                            <Button
+                              leftIcon={<FiPlus />}
+                              onClick={onStageModalOpen}
+                              variant="outline"
+                              size="sm"
+                              colorScheme="blue"
+                              borderRadius="7px"
                             >
-                              <HStack justify="space-between">
-                                <VStack align="start" spacing={0}>
-                                  <Heading size="sm" color={textColor} fontWeight="600">
-                                    {stage.name}
-                                  </Heading>
-                                  {stage.isFunnelStage && (
-                                    <Text fontSize="xs" color={`${stage.color}.600`} fontWeight="500">
-                                      Funnel Stage
-                                    </Text>
-                                  )}
-                                </VStack>
-                                <VStack spacing={1} align="end">
-                                  <Badge colorScheme={stage.color} fontSize="sm" px={2} py={1}>
-                                    {tasks?.length || 0}
-                                  </Badge>
-                                  <HStack spacing={1}>
-                                    <IconButton
-                                      icon={<FiArrowUp />}
-                                      size="xs"
-                                      variant="ghost"
-                                      colorScheme={stage.color}
-                                      onClick={() => handleReorderStage(stageId, 'up')}
-                                      isDisabled={stage.order === 0}
-                                      aria-label="Move stage up"
-                                    />
-                                    <IconButton
-                                      icon={<FiArrowDown />}
-                                      size="xs"
-                                      variant="ghost"
-                                      colorScheme={stage.color}
-                                      onClick={() => handleReorderStage(stageId, 'down')}
-                                      isDisabled={stage.order === (customStages.length - 1)}
-                                      aria-label="Move stage down"
-                                    />
-                                  </HStack>
-                                </VStack>
-                              </HStack>
-                            </CardHeader>
-                            <CardBody py={3}>
-                              <VStack spacing={2} align="stretch">
-                                {tasks && tasks.length > 0 ? (
-                                  tasks.map((task, index) => (
-                                    <Card
-                                      key={task._id || index}
-                                      draggable
-                                      onDragStart={(e) => handleDragStart(e, task)}
-                                      onDragEnd={handleDragEnd}
-                                      bg={cardBg}
-                                      boxShadow="sm"
-                                      border="1px solid"
-                                      borderColor={borderColor}
-                                      cursor="grab"
-                                      _hover={{ boxShadow: 'md', transform: 'translateY(-1px)', cursor: 'grab' }}
-                                      _active={{ cursor: 'grabbing' }}
-                                      transition="all 0.2s"
-                                      onClick={() => handleTaskCardClick(task)}
-                                      size="sm"
-                                    >
-                                      <CardBody p={3}>
-                                        <VStack align="stretch" spacing={2}>
-                                          {/* Task Header */}
-                                          <HStack justify="space-between" align="start" spacing={2}>
-                                            <Text 
-                                              fontWeight="600" 
-                                              color={textColor} 
-                                              fontSize="sm"
-                                              cursor="pointer"
-                                              _hover={{ color: 'blue.500' }}
-=======
-                      <Text fontWeight="600" color="blue.800" fontSize="lg">Tasks - Work To Be Done</Text>
-                      <Text color="blue.600" fontSize="sm">Manage and track work that needs to be completed. Drag tasks between stages to update their status.</Text>
-                    </VStack>
-                  </HStack>
-                </Box>
-                <SimpleGrid 
-                  columns={{ base: 1, md: customStages.length > 0 ? Math.min(customStages.length, 6) : 4 }} 
-                  spacing={4}
-                >
-                  {(customStages.length > 0 ? customStages : [
-                    { id: 'Pending', name: 'Pending', order: 0, color: 'yellow' },
-                    { id: 'In Progress', name: 'In Progress', order: 1, color: 'blue' },
-                    { id: 'Completed', name: 'Completed', order: 2, color: 'green' },
-                    { id: 'Overdue', name: 'Overdue', order: 3, color: 'red' }
-                  ]).sort((a, b) => a.order - b.order).map((stage) => {
-                    const stageId = stage.id;
-                    const tasks = kanbanData[stageId] || [];
-                    const isDragOver = dragOverStage === stageId;
-                    
-                    return (
-                      <Card
-                        key={stageId}
-                        bg={cardBg}
-                        boxShadow="md"
-                        border="2px solid"
-                        borderColor={isDragOver ? `${stage.color}.400` : borderColor}
-                        minH="500px"
-                        onDragOver={(e) => handleDragOver(e, stageId)}
-                        onDragLeave={handleDragLeave}
-                        onDrop={(e) => handleDrop(e, stageId)}
-                        transition="all 0.2s"
-                        {...(isDragOver && {
-                          bgGradient: `linear(to-b, ${stage.color}.50, ${stage.color}.100)`
-                        })}
-                      >
-                        <CardHeader bg={`${stage.color}.50`} borderRadius="md">
-                          <HStack justify="space-between">
-                            <Heading size="sm" color={textColor}>
-                              {stage.name}
-                            </Heading>
-                            <Badge colorScheme={stage.color}>
-                              {tasks?.length || 0}
-                            </Badge>
+                              Add Stage
+                            </Button>
                           </HStack>
-                        </CardHeader>
-                        <CardBody>
-                          <VStack spacing={3} align="stretch">
-                            {tasks && tasks.length > 0 ? (
-                              tasks.map((task, index) => (
-                                <Card
-                                  key={task._id || index}
-                                  draggable
-                                  onDragStart={(e) => handleDragStart(e, task)}
-                                  onDragEnd={handleDragEnd}
-                                  bg={cardBg}
-                                  boxShadow="sm"
-                                  border="1px solid"
-                                  borderColor={borderColor}
-                                  cursor="grab"
-                                  _hover={{ boxShadow: 'md', transform: 'translateY(-2px)', cursor: 'grab' }}
-                                  _active={{ cursor: 'grabbing' }}
-                                  transition="all 0.2s"
-                                  onClick={() => handleTaskCardClick(task)}
-                                >
-                                <CardBody p={4}>
-                                  <VStack align="stretch" spacing={3}>
-                                    {/* Header with task name and menu */}
-                                    <HStack justify="space-between" align="start">
-                                      <VStack align="start" spacing={1} flex={1}>
-                                        <Text 
-                                          fontWeight="bold" 
-                                          color={textColor} 
-                                          fontSize="md"
-                                          cursor="pointer"
-                                          _hover={{ color: 'blue.500' }}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleTaskCardClick(task);
-                                          }}
-                                        >
-                                          {task.name}
-                                        </Text>
-                                        {task.description && (
-                                          <Text fontSize="xs" color={mutedTextColor} noOfLines={2}>
-                                            {task.description}
-                                          </Text>
-                                        )}
-                                      </VStack>
-                                      <Menu>
-                                        <MenuButton
-                                          as={IconButton}
-                                          icon={<FiMoreVertical />}
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={(e) => e.stopPropagation()}
-                                        />
-                                        <MenuList>
-                                          <MenuItem 
-                                            icon={<FiEye />}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleTaskCardClick(task);
-                                            }}
-                                          >
-                                            View Details
-                                          </MenuItem>
-                                          <MenuItem icon={<FiEdit />}>Edit Task</MenuItem>
-                                          <MenuDivider />
-                                          {customStages.length > 0 && customStages.filter(s => s.id !== stageId).map((otherStage) => (
-                                            <MenuItem 
-                                              key={otherStage.id}
-                                              icon={<FiCheckSquare />}
->>>>>>> f459a6714fbe9079ad00e0d3a3492d7e32dc26c5
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleTaskCardClick(task);
-                                              }}
-                                              noOfLines={2}
-                                              flex={1}
-                                            >
-                                              {task.name}
-                                            </Text>
-                                            <Menu>
-                                              <MenuButton
-                                                as={IconButton}
-                                                icon={<FiMoreVertical />}
-                                                variant="ghost"
-                                                size="xs"
-                                                onClick={(e) => e.stopPropagation()}
-                                              />
-                                              <MenuList fontSize="sm">
-                                                <MenuItem 
-                                                  icon={<FiEye />}
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleTaskCardClick(task);
-                                                  }}
-                                                >
-                                                  View Details
-                                                </MenuItem>
-                                                <MenuItem icon={<FiEdit />}>Edit Task</MenuItem>
-                                                <MenuDivider />
-                                                {customStages.length > 0 && customStages.filter(s => s.id !== stageId).map((otherStage) => (
+                        </HStack>
+                      </CardBody>
+                    </Card>
+                  )}
+                  
+                  {/* Kanban Board - Only show when workflow is selected */}
+                  {selectedFunnel ? (
+                    <Box overflowX="auto" pb={4}>
+                      <SimpleGrid 
+                        columns={{ base: 1, md: customStages.length > 0 ? Math.min(customStages.length, 6) : 4 }} 
+                        spacing={4}
+                        minW="max-content"
+                      >
+                        {(customStages.length > 0 ? customStages : [
+                          { id: 'Pending', name: 'Pending', order: 0, color: 'yellow' },
+                          { id: 'In Progress', name: 'In Progress', order: 1, color: 'blue' },
+                          { id: 'Completed', name: 'Completed', order: 2, color: 'green' },
+                          { id: 'Overdue', name: 'Overdue', order: 3, color: 'red' }
+                        ]).sort((a, b) => a.order - b.order).map((stage) => {
+                          const stageId = stage.id;
+                          const tasks = kanbanData[stageId] || [];
+                          const isDragOver = dragOverStage === stageId;
+                          
+                          return (
+                            <Card
+                              key={stageId}
+                              id={`stage-${stageId}`}
+                              bg={cardBg}
+                              boxShadow="md"
+                              border="2px solid"
+                              borderColor={isDragOver ? `${stage.color}.400` : borderColor}
+                              minH="400px"
+                              minW="280px"
+                              onDragOver={(e) => handleDragOver(e, stageId)}
+                              onDragLeave={handleDragLeave}
+                              onDrop={(e) => handleDrop(e, stageId)}
+                              transition="all 0.2s"
+                              cursor="default"
+                              onClick={() => handleStageClick(stage)}
+                              {...(isDragOver && {
+                                bgGradient: `linear(to-b, ${stage.color}.50, ${stage.color}.100)`
+                              })}
+                            >
+                              <CardHeader 
+                                bg={`${stage.color}.50`} 
+                                borderRadius="md" 
+                                py={3}
+                                cursor="pointer"
+                                onClick={() => handleStageClick(stage)}
+                                _hover={{ bg: `${stage.color}.100` }}
+                                transition="all 0.2s"
+                                borderBottom="1px solid"
+                                borderColor={`${stage.color}.200`}
+                              >
+                                <HStack justify="space-between">
+                                  <VStack align="start" spacing={0}>
+                                    <Heading size="sm" color="gray.800" fontWeight="600">
+                                      {stage.name}
+                                    </Heading>
+                                    {stage.isFunnelStage && (
+                                      <Text fontSize="xs" color={`${stage.color}.600`} fontWeight="500">
+                                        Funnel Stage
+                                      </Text>
+                                    )}
+                                  </VStack>
+                                  <VStack spacing={1} align="end">
+                                    <Badge 
+                                      colorScheme={stage.color} 
+                                      fontSize="sm" 
+                                      px={2} 
+                                      py={1}
+                                      borderRadius="md"
+                                    >
+                                      {tasks?.length || 0}
+                                    </Badge>
+                                    <HStack spacing={1}>
+                                      <IconButton
+                                        icon={<FiArrowUp />}
+                                        size="xs"
+                                        variant="ghost"
+                                        colorScheme={stage.color}
+                                        onClick={() => handleReorderStage(stageId, 'up')}
+                                        isDisabled={stage.order === 0}
+                                        aria-label="Move stage up"
+                                      />
+                                      <IconButton
+                                        icon={<FiArrowDown />}
+                                        size="xs"
+                                        variant="ghost"
+                                        colorScheme={stage.color}
+                                        onClick={() => handleReorderStage(stageId, 'down')}
+                                        isDisabled={stage.order === (customStages.length - 1)}
+                                        aria-label="Move stage down"
+                                      />
+                                    </HStack>
+                                  </VStack>
+                                </HStack>
+                              </CardHeader>
+                              <CardBody py={3}>
+                                <VStack spacing={2} align="stretch">
+                                  {tasks && tasks.length > 0 ? (
+                                    tasks.map((task, index) => (
+                                      <Card
+                                        key={task._id || index}
+                                        draggable
+                                        onDragStart={(e) => handleDragStart(e, task)}
+                                        onDragEnd={handleDragEnd}
+                                        bg="white"
+                                        boxShadow="sm"
+                                        border="1px solid"
+                                        borderColor="gray.200"
+                                        cursor="grab"
+                                        _hover={{ boxShadow: 'md', transform: 'translateY(-1px)', cursor: 'grab', borderColor: 'blue.300' }}
+                                        _active={{ cursor: 'grabbing' }}
+                                        transition="all 0.2s"
+                                        onClick={() => handleTaskCardClick(task)}
+                                        size="sm"
+                                      >
+                                        <CardBody p={3}>
+                                          <VStack align="stretch" spacing={2}>
+                                            {/* Task Header */}
+                                            <HStack justify="space-between" align="start" spacing={2}>
+                                              <Text 
+                                                fontWeight="600" 
+                                                color="gray.800" 
+                                                fontSize="sm"
+                                                cursor="pointer"
+                                                _hover={{ color: 'blue.600' }}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleTaskCardClick(task);
+                                                }}
+                                              >
+                                                {task.name}
+                                              </Text>
+                                              <Menu>
+                                                <MenuButton
+                                                  as={IconButton}
+                                                  icon={<FiMoreVertical />}
+                                                  variant="ghost"
+                                                  size="xs"
+                                                  onClick={(e) => e.stopPropagation()}
+                                                />
+                                                <MenuList fontSize="sm">
                                                   <MenuItem 
-                                                    key={otherStage.id}
-                                                    icon={<FiCheckSquare />}
+                                                    icon={<FiEye />}
                                                     onClick={(e) => {
                                                       e.stopPropagation();
-                                                      handleMoveTask(task._id, otherStage.name, otherStage.id);
+                                                      handleTaskCardClick(task);
                                                     }}
                                                   >
-                                                    Move to {otherStage.name}
+                                                    View Details
                                                   </MenuItem>
-                                                ))}
-                                                <MenuDivider />
-                                                <MenuItem icon={<FiTrash2 />} color="red.500">Delete Task</MenuItem>
-                                              </MenuList>
-                                            </Menu>
-                                          </HStack>
-                                          
-                                          {/* Task Priority and Metadata */}
-                                          <HStack justify="space-between" flexWrap="wrap" spacing={2}>
-                                            <Badge colorScheme={getPriorityColor(task.priority)} size="xs" px={2} py={1}>
-                                              {task.priority}
-                                            </Badge>
-                                            {task.estimatedHours && (
+                                                  <MenuItem icon={<FiEdit />}>Edit Task</MenuItem>
+                                                  <MenuDivider />
+                                                  {customStages.length > 0 && customStages.filter(s => s.id !== stageId).map((otherStage) => (
+                                                    <MenuItem 
+                                                      key={otherStage.id}
+                                                      icon={<FiCheckSquare />}
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleMoveTask(task._id, otherStage.name, otherStage.id);
+                                                      }}
+                                                    >
+                                                      Move to {otherStage.name}
+                                                    </MenuItem>
+                                                  ))}
+                                                  <MenuDivider />
+                                                  <MenuItem icon={<FiTrash2 />} color="red.500">Delete Task</MenuItem>
+                                                </MenuList>
+                                              </Menu>
+                                            </HStack>
+                                            
+                                            {/* Task Priority and Metadata */}
+                                            <HStack justify="space-between" flexWrap="wrap" spacing={2}>
+                                              <Badge 
+                                                colorScheme={getPriorityColor(task.priority)} 
+                                                size="xs" 
+                                                px={2} 
+                                                py={1}
+                                                borderRadius="md"
+                                              >
+                                                {task.priority}
+                                              </Badge>
+                                              {task.estimatedHours && (
+                                                <HStack spacing={1}>
+                                                  <Icon as={FiClock} boxSize={3} color="gray.500" />
+                                                  <Text fontSize="xs" color="gray.600">
+                                                    {task.estimatedHours}h
+                                                  </Text>
+                                                </HStack>
+                                              )}
+                                            </HStack>
+                                            
+                                            {/* Due Date */}
+                                            {task.dueDate && (
                                               <HStack spacing={1}>
-                                                <Icon as={FiClock} boxSize={3} color={mutedTextColor} />
-                                                <Text fontSize="xs" color={mutedTextColor}>
-                                                  {task.estimatedHours}h
+                                                <Icon as={FiCalendar} boxSize={3} color="gray.500" />
+                                                <Text fontSize="xs" color="gray.600">
+                                                  {formatDate(task.dueDate)}
+                                                </Text>
+                                                {new Date(task.dueDate) < new Date() && task.status !== 'Completed' && (
+                                                  <Badge colorScheme="red" size="xs" borderRadius="md">Overdue</Badge>
+                                                )}
+                                              </HStack>
+                                            )}
+                                            
+                                            {/* Assigned Person */}
+                                            {task.assignedTo && (
+                                              <HStack spacing={2}>
+                                                <Avatar 
+                                                  size="xs" 
+                                                  name={task.assignedTo.name || task.assignedTo.firstName || 'Unassigned'} 
+                                                  bg="blue.500"
+                                                />
+                                                <Text fontSize="xs" color="gray.600" noOfLines={1}>
+                                                  {task.assignedTo.name || `${task.assignedTo.firstName || ''} ${task.assignedTo.lastName || ''}`.trim() || 'Unassigned'}
                                                 </Text>
                                               </HStack>
                                             )}
-                                          </HStack>
-                                          
-                                          {/* Due Date */}
-                                          {task.dueDate && (
-                                            <HStack spacing={1}>
-                                              <Icon as={FiCalendar} boxSize={3} color={mutedTextColor} />
-                                              <Text fontSize="xs" color={mutedTextColor}>
-                                                {formatDate(task.dueDate)}
-                                              </Text>
-                                              {new Date(task.dueDate) < new Date() && task.status !== 'Completed' && (
-                                                <Badge colorScheme="red" size="xs">Overdue</Badge>
-                                              )}
-                                            </HStack>
-                                          )}
-                                          
-                                          {/* Assigned Person */}
-                                          {task.assignedTo && (
-                                            <HStack spacing={2}>
-                                              <Avatar 
-                                                size="xs" 
-                                                name={task.assignedTo.name || task.assignedTo.firstName || 'Unassigned'} 
-                                              />
-                                              <Text fontSize="xs" color={mutedTextColor} noOfLines={1}>
-                                                {task.assignedTo.name || `${task.assignedTo.firstName || ''} ${task.assignedTo.lastName || ''}`.trim() || 'Unassigned'}
-                                              </Text>
-                                            </HStack>
-                                          )}
-                                          
-                                          {/* Related Lead */}
-                                          {task.relatedLead && (
-                                            <HStack spacing={1}>
-                                              <Icon as={FiUser} boxSize={3} color={mutedTextColor} />
-                                              <Text fontSize="xs" color={mutedTextColor} noOfLines={1}>
-                                                {task.relatedLead?.name || task.relatedLead?.email || 'N/A'}
-                                              </Text>
-                                            </HStack>
-                                          )}
-                                        </VStack>
-                                      </CardBody>
-                                    </Card>
-                                  ))
-                                ) : (
-                                  <Center py={6}>
-                                    <VStack spacing={2}>
-                                      <Icon as={FiCheckSquare} boxSize={8} color={mutedTextColor} />
-                                      <Text color={mutedTextColor} fontSize="sm" textAlign="center">
-                                        No tasks in {stage.name}
-                                      </Text>
-                                      <Text fontSize="xs" color="gray.400">
-                                        Drag tasks here or create new ones
-                                      </Text>
-                                    </VStack>
-                                  </Center>
-                                )}
-                              </VStack>
-                            </CardBody>
-                          </Card>
-                        );
-                      })}
-                    </SimpleGrid>
-                  </Box>
+                                            
+                                            {/* Related Lead */}
+                                            {task.relatedLead && (
+                                              <HStack spacing={1}>
+                                                <Icon as={FiUser} boxSize={3} color="gray.500" />
+                                                <Text fontSize="xs" color="gray.600" noOfLines={1}>
+                                                  {task.relatedLead?.name || task.relatedLead?.email || 'N/A'}
+                                                </Text>
+                                              </HStack>
+                                            )}
+                                          </VStack>
+                                        </CardBody>
+                                      </Card>
+                                    ))
+                                  ) : (
+                                    <Center py={6}>
+                                      <VStack spacing={2}>
+                                        <Icon as={FiCheckSquare} boxSize={8} color={mutedTextColor} />
+                                        <Text color={mutedTextColor} fontSize="sm" textAlign="center">
+                                          No tasks in {stage.name}
+                                        </Text>
+                                        <Text fontSize="xs" color="gray.400">
+                                          Drag tasks here or create new ones
+                                        </Text>
+                                      </VStack>
+                                    </Center>
+                                  )}
+                                </VStack>
+                              </CardBody>
+                            </Card>
+                          );
+                        })}
+                      </SimpleGrid>
+                    </Box>
+                  ) : (
+                    /* Show workflow selection when no workflow is selected */
+                    <Center py={12}>
+                      <VStack spacing={6}>
+                        <Icon as={FiCheckSquare} boxSize={16} color="gray.300" />
+                        <VStack spacing={2} align="center">
+                          <Text fontSize="xl" fontWeight="600" color="gray.600">
+                            Select a Workflow to View
+                          </Text>
+                          <Text fontSize="md" color="gray.400" textAlign="center">
+                            Go to "All Workflows" tab and click on any workflow to view its kanban board
+                          </Text>
+                        </VStack>
+                        <Button
+                          colorScheme="blue"
+                          size="lg"
+                          onClick={() => setActiveTabIndex(0)}
+                          leftIcon={<FiArrowLeft />}
+                        >
+                          Browse All Workflows
+                        </Button>
+                      </VStack>
+                    </Center>
+                  )}
                 </VStack>
               </TabPanel>
               
-              {/* Activity Feed Tab - Activities (Past Events) */}
+              {/* Activities Tab - Past Events */}
               <TabPanel px={0}>
-                <Box mb={4} p={4} bg="green.50" borderRadius="md" border="1px" borderColor="green.200">
+                <Box mb={4} p={4} bg="linear-gradient(135deg, rgba(251, 146, 60, 0.05) 0%, rgba(245, 158, 11, 0.05) 100%)" borderRadius="md" border="1px" borderColor="orange.200">
                   <HStack spacing={3}>
-                    <Box as={FiActivity} color="green.600" boxSize={5} />
+                    <Box as={FiActivity} color="orange.600" boxSize={5} />
                     <VStack align="start" spacing={1}>
-                      <Text fontWeight="600" color="green.800" fontSize="lg">Activities - Past Events</Text>
-                      <Text color="green.600" fontSize="sm">View activities and events that have already happened. Track what was completed and when.</Text>
+                      <Text fontWeight="700" color="orange.800" fontSize="lg">Activities</Text>
+                      <Text color="orange.600" fontSize="sm">View activities and events that have already happened. Track what was completed and when.</Text>
                     </VStack>
                   </HStack>
                 </Box>
@@ -2210,13 +2241,13 @@ const TasksAndActivities = () => {
                 </Card>
               </TabPanel>
               
-              {/* Ongoing Activities Tab - Live Operational Snapshot */}
+              {/* Ongoing Tab - Live Work */}
               <TabPanel px={0}>
-                <Box mb={4} p={4} bg="purple.50" borderRadius="md" border="1px" borderColor="purple.200">
+                <Box mb={4} p={4} bg="linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%)" borderRadius="md" border="1px" borderColor="purple.200">
                   <HStack spacing={3}>
                     <Box as={FiPlay} color="purple.600" boxSize={5} />
                     <VStack align="start" spacing={1}>
-                      <Text fontWeight="600" color="purple.800" fontSize="lg">Ongoing - Live Operational Snapshot</Text>
+                      <Text fontWeight="700" color="purple.800" fontSize="lg">Ongoing</Text>
                       <Text color="purple.600" fontSize="sm">Real-time view of currently active work and live operations. See what's happening right now.</Text>
                     </VStack>
                   </HStack>
@@ -2328,12 +2359,12 @@ const TasksAndActivities = () => {
               
               {/* Staff Tasks Tab */}
               <TabPanel px={0}>
-                <Box mb={4} p={4} bg="orange.50" borderRadius="md" border="1px" borderColor="orange.200">
+                <Box mb={4} p={4} bg="linear-gradient(135deg, rgba(20, 184, 166, 0.05) 0%, rgba(6, 182, 212, 0.05) 100%)" borderRadius="md" border="1px" borderColor="teal.200">
                   <HStack spacing={3}>
-                    <Box as={FiUsers} color="orange.600" boxSize={5} />
+                    <Box as={FiUsers} color="teal.600" boxSize={5} />
                     <VStack align="start" spacing={1}>
-                      <Text fontWeight="600" color="orange.800" fontSize="lg">Staff Tasks - Team Work Distribution</Text>
-                      <Text color="orange.600" fontSize="sm">View and manage tasks assigned to team members. Monitor workload and progress across staff.</Text>
+                      <Text fontWeight="700" color="teal.800" fontSize="lg">Staff Tasks</Text>
+                      <Text color="teal.600" fontSize="sm">View and manage tasks assigned to team members. Monitor workload and progress across staff.</Text>
                     </VStack>
                   </HStack>
                 </Box>
@@ -2471,7 +2502,7 @@ const TasksAndActivities = () => {
                   </CardBody>
                 </Card>
               </TabPanel>
-            </TabPanels>
+                                      </TabPanels>
           </Tabs>
           
           {/* Create Task Modal */}
@@ -3170,7 +3201,7 @@ const TasksAndActivities = () => {
             </ModalContent>
           </Modal>
 
-        </VStack>
+          </VStack>
       </Box>
     </Box>
   );

@@ -11,6 +11,10 @@ const adminRequestSchema = new mongoose.Schema({
         required: true,
         enum: ['level_change', 'sponsor_change', 'team_rank_change', 'president_team_rank_change']
     },
+    currentData: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
     requestedData: {
         type: mongoose.Schema.Types.Mixed,
         required: true

@@ -249,7 +249,10 @@ const authorizeCoach = (...roles) => {
 
         // Ownership check: Only apply to coaches, not admins
         // Admins can view any coach's data, coaches can only view their own
-        if (req.role === 'coach' && req.coachId && req.params.coachId && req.coachId.toString() !== req.params.coachId.toString()) {
+        // Skip ownership check for coach-hierarchy routes as they have their own authorization logic
+        const isHierarchyRoute = req.originalUrl.includes('/coach-hierarchy/');
+        if (req.role === 'coach' && req.coachId && req.params.coachId && 
+            req.coachId.toString() !== req.params.coachId.toString() && !isHierarchyRoute) {
             return res.status(403).json({
                 success: false,
                 message: `Forbidden: You are not authorized to access this resource for Coach ID ${req.params.coachId}.`
@@ -257,7 +260,9 @@ const authorizeCoach = (...roles) => {
         }
 
         // Additional ownership check for sponsorId parameter (used in downline routes)
-        if (req.role === 'coach' && req.coachId && req.params.sponsorId && req.coachId.toString() !== req.params.sponsorId.toString()) {
+        // Skip this check for coach-hierarchy routes as they have their own authorization logic
+        if (req.role === 'coach' && req.coachId && req.params.sponsorId && 
+            req.coachId.toString() !== req.params.sponsorId.toString() && !isHierarchyRoute) {
             return res.status(403).json({
                 success: false,
                 message: `Forbidden: You are not authorized to access downline data for Coach ID ${req.params.sponsorId}.`
