@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { loginSuccess, testAction } from '../redux/authSlice';
@@ -7,7 +7,6 @@ import swal from 'sweetalert';
 import {
   Box,
   Button,
-  Container,
   FormControl,
   FormLabel,
   Input,
@@ -32,7 +31,23 @@ import {
   ScaleFade,
   SlideFade,
   IconButton,
+  Image,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure,
+  Divider,
+  Progress,
 } from '@chakra-ui/react';
+import {
+  CheckCircleIcon,
+  WarningIcon,
+  InfoIcon,
+  CloseIcon,
+} from '@chakra-ui/icons';
 import {
   FaEnvelope,
   FaLock,
@@ -45,16 +60,111 @@ import {
   FaUserShield,
 } from 'react-icons/fa';
 import { motion } from 'framer-motion';
+import loginHeroJpg from '../login.jpg';
 
-const MotionBox = motion(Box);
-const MotionCard = motion(Card);
 
 import { API_BASE_URL as BASE_API_URL } from '../config/apiConfig';
+
+// Custom toast hook matching calendar style
+const useCustomToast = () => {
+  const toast = useToast();
+
+  return useCallback((message, status = 'info') => {
+    const statusConfig = {
+      success: {
+        title: 'Success',
+        bg: 'white',
+        borderColor: 'green.200',
+        iconColor: 'green.500',
+        titleColor: 'green.700',
+        textColor: 'gray.700',
+        icon: CheckCircleIcon
+      },
+      error: {
+        title: 'Error',
+        bg: 'white',
+        borderColor: 'red.200',
+        iconColor: 'red.500',
+        titleColor: 'red.700',
+        textColor: 'gray.700',
+        icon: WarningIcon
+      },
+      warning: {
+        title: 'Warning',
+        bg: 'white',
+        borderColor: 'orange.200',
+        iconColor: 'orange.500',
+        titleColor: 'orange.700',
+        textColor: 'gray.700',
+        icon: WarningIcon
+      },
+      info: {
+        title: 'Info',
+        bg: 'white',
+        borderColor: 'blue.200',
+        iconColor: 'blue.500',
+        titleColor: 'blue.700',
+        textColor: 'gray.700',
+        icon: InfoIcon
+      }
+    };
+
+    const config = statusConfig[status] || statusConfig.info;
+    const IconComponent = config.icon;
+
+    toast({
+      duration: 4000,
+      isClosable: true,
+      position: 'top-right',
+      render: ({ onClose }) => (
+        <Box
+          bg={config.bg}
+          border="1px solid"
+          borderColor={config.borderColor}
+          borderRadius="7px"
+          boxShadow="0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
+          p={4}
+          display="flex"
+          alignItems="flex-start"
+          gap={3}
+          minW="320px"
+          maxW="400px"
+        >
+          <Box
+            as={IconComponent}
+            color={config.iconColor}
+            boxSize={5}
+            mt={0.5}
+            flexShrink={0}
+          />
+          <VStack align="start" spacing={1} flex={1}>
+            <Text fontSize="sm" fontWeight="600" color={config.titleColor}>
+              {config.title}
+            </Text>
+            <Text fontSize="sm" color={config.textColor} lineHeight="1.5">
+              {message}
+            </Text>
+          </VStack>
+          <IconButton
+            aria-label="Close"
+            icon={<CloseIcon />}
+            size="xs"
+            variant="ghost"
+            color="gray.400"
+            onClick={onClose}
+            _hover={{ color: 'gray.600', bg: 'gray.50' }}
+            borderRadius="7px"
+          />
+        </Box>
+      ),
+    });
+  }, [toast]);
+};
 
 const Login = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const toast = useToast();
+  const toast = useCustomToast();
 
   const [input, setInput] = useState({
     email: '',
@@ -64,6 +174,18 @@ const Login = () => {
   const [showOtpForm, setShowOtpForm] = useState(false);
   const [otp, setOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Forgot password modal state
+  const { isOpen: isForgotPasswordOpen, onOpen: onForgotPasswordOpen, onClose: onForgotPasswordClose } = useDisclosure();
+  const [forgotPasswordStep, setForgotPasswordStep] = useState('email'); // 'email' | 'otp' | 'newPassword' | 'success'
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [forgotPasswordOtp, setForgotPasswordOtp] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -104,13 +226,7 @@ const Login = () => {
       console.log('📧 OTP Response data:', data);
 
       if (response.ok && data.success) {
-        toast({
-          title: 'OTP Sent Successfully',
-          description: 'Verification code has been sent to your email address.',
-          status: 'success',
-          duration: 4000,
-          isClosable: true,
-        });
+        toast('Verification code has been sent to your email address.', 'success');
         setShowOtpForm(true);
         setOtp('');
       } else {
@@ -126,13 +242,7 @@ const Login = () => {
           errorMessage = 'Access denied. This account may already be verified.';
         }
         
-        toast({
-          title: 'Error Sending OTP',
-          description: errorMessage,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
+        toast(errorMessage, 'error');
         
         console.error('📧 OTP Error:', {
           status: response.status,
@@ -142,13 +252,7 @@ const Login = () => {
       }
     } catch (error) {
       console.error('📧 OTP resend error:', error);
-      toast({
-        title: 'Connection Error',
-        description: 'Network connection failed. Please check your connection and try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      toast('Network connection failed. Please check your connection and try again.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -159,13 +263,7 @@ const Login = () => {
     e.preventDefault();
     
     if (!otp || otp.length !== 6) {
-      toast({
-        title: 'Invalid OTP',
-        description: 'Please enter the complete 6-digit verification code.',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true,
-      });
+      toast('Please enter the complete 6-digit verification code.', 'warning');
       return;
     }
     
@@ -181,13 +279,7 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        toast({
-          title: 'Email Verified Successfully',
-          description: 'Redirecting to your dashboard...',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
+        toast('Redirecting to your dashboard...', 'success');
         
         const { user, token } = data;
 
@@ -225,23 +317,11 @@ const Login = () => {
           navigate('/dashboard');
         }
       } else {
-        toast({
-          title: 'Verification Failed',
-          description: data.message || 'Invalid OTP. Please try again.',
-          status: 'error',
-          duration: 4000,
-          isClosable: true,
-        });
+        toast(data.message || 'Invalid OTP. Please try again.', 'error');
       }
     } catch (error) {
       console.error('OTP verification error:', error);
-      toast({
-        title: 'Connection Error',
-        description: 'Unable to verify OTP. Please check your connection.',
-        status: 'error',
-        duration: 4000,
-        isClosable: true,
-      });
+      toast('Unable to verify OTP. Please check your connection.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -251,13 +331,7 @@ const Login = () => {
     e.preventDefault();
 
     if (!input.email || !input.password) {
-      toast({
-        title: 'Required Fields Missing',
-        description: 'Please enter both email address and password.',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true,
-      });
+      toast('Please enter both email address and password.', 'warning');
       return;
     }
 
@@ -346,13 +420,7 @@ const Login = () => {
           // Staff ko bhi coach ke redux mein store karo
           dispatch(loginSuccess({ user, token }));
           
-          toast({
-            title: `Welcome Back, ${user.name || 'Staff Member'}`,
-            description: 'Redirecting to dashboard...',
-            status: 'success',
-            duration: 3000,
-            isClosable: true,
-          });
+          toast(`Welcome back, ${user.name || 'Staff Member'}! Redirecting to dashboard...`, 'success');
           
           // Staff ko coach ke dashboard pe redirect karo
           navigate('/dashboard');
@@ -365,13 +433,7 @@ const Login = () => {
           
           dispatch(loginSuccess({ user, token }));
           
-          toast({
-            title: `Welcome Back, ${user.name || 'User'}`,
-            description: 'Redirecting to your dashboard...',
-            status: 'success',
-            duration: 3000,
-            isClosable: true,
-          });
+          toast(`Welcome back, ${user.name || 'User'}! Redirecting to your dashboard...`, 'success');
           
           navigate('/dashboard');
         }
@@ -436,387 +498,902 @@ const Login = () => {
             message: errorMessage
           });
           
-          toast({
-            title: 'Authentication Failed',
-            description: errorMessage,
-            status: 'error',
-            duration: 5000,
-            isClosable: true,
-          });
+          toast(errorMessage, 'error');
         }
       }
     } catch (error) {
       console.error('🔐 Login error (catch):', error);
-      toast({
-        title: 'Connection Error',
-        description: 'Unable to connect to the server. Please check your internet connection and try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      toast('Unable to connect to the server. Please check your internet connection and try again.', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <Box minH="100vh" bgGradient="linear(to-br, blue.900, blue.700)" py={{ base: 10, md: 14 }} px={{ base: 4, md: 8 }}>
-      <Container maxW="7xl" px={0}>
-        <Flex
-          direction={{ base: 'column', lg: 'row' }}
-          align="stretch"
-          justify="space-between"
-          minH={{ lg: '85vh' }}
-          bg="transparent"
-          gap={{ base: 10, lg: 0 }}
-        >
-          <MotionBox
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            flex={{ base: 'none', lg: 1 }}
-            pr={{ lg: 16 }}
-            pb={{ base: 4, lg: 0 }}
-          >
-            <VStack spacing={6} align="flex-start" color="whiteAlpha.900" h="full" justify="center">
-              <ScaleFade initialScale={0.95} in={true}>
-                <Flex
-                  w={{ base: '70px', md: '90px' }}
-                  h={{ base: '70px', md: '90px' }}
-                  borderRadius="full"
-                  bg="whiteAlpha.200"
-                  border="1px solid"
-                  borderColor="whiteAlpha.500"
-                  boxShadow="0 20px 55px rgba(7,13,30,0.4)"
-                  align="center"
-                  justify="center"
-                >
-                  <Icon as={FaBuilding} boxSize={10} color="white" />
-                </Flex>
-              </ScaleFade>
-              <Heading size="2xl" fontWeight="800" letterSpacing="-0.04em" lineHeight="1.1">
-                {showOtpForm ? 'Verify Your Identity' : 'Sign in to FunnelsEye'}
-              </Heading>
-              <Text fontSize="lg" color="whiteAlpha.800" maxW="lg">
-                {showOtpForm
-                  ? `We’ve sent a secure verification code to ${input.email}. Enter it below to continue.`
-                  : 'Professional-first experience for coaches and staff. Use your work credentials to get started.'}
-              </Text>
-              <HStack spacing={4} color="whiteAlpha.900" fontWeight="600">
-                <Icon as={FaUserShield} />
-                <Text>Enterprise-grade security</Text>
-              </HStack>
-            </VStack>
-          </MotionBox>
+  // Forgot Password Handlers
+  const handleOpenForgotPassword = () => {
+    setForgotPasswordStep('email');
+    setForgotPasswordEmail(input.email || '');
+    setForgotPasswordOtp('');
+    setResetToken('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+    onForgotPasswordOpen();
+  };
 
-          <MotionCard
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.45 }}
-            flex={{ base: 'none', lg: 1 }}
-            bg="white"
-            borderRadius="0"
-            border="1px solid"
-            borderColor="blue.100"
-            boxShadow="0 35px 60px rgba(15,23,42,0.35)"
+  const handleCloseForgotPassword = () => {
+    if (!forgotPasswordLoading) {
+      onForgotPasswordClose();
+      setForgotPasswordStep('email');
+      setForgotPasswordEmail('');
+      setForgotPasswordOtp('');
+      setResetToken('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    }
+  };
+
+  const handleSendResetOtp = async () => {
+    if (!forgotPasswordEmail || !forgotPasswordEmail.includes('@')) {
+      toast('Please enter a valid email address.', 'warning');
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    try {
+      const response = await fetch(`${BASE_API_URL}/api/auth/forgot-password-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotPasswordEmail }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast('Password reset OTP sent to your email.', 'success');
+        setForgotPasswordStep('otp');
+      } else {
+        toast(data.message || 'Failed to send OTP. Please try again.', 'error');
+      }
+    } catch (error) {
+      console.error('Forgot password OTP error:', error);
+      toast('Network error. Please check your connection.', 'error');
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  const handleVerifyResetOtp = async () => {
+    if (!forgotPasswordOtp || forgotPasswordOtp.length !== 6) {
+      toast('Please enter the complete 6-digit OTP.', 'warning');
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    try {
+      const response = await fetch(`${BASE_API_URL}/api/auth/verify-password-reset-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotPasswordEmail, otp: forgotPasswordOtp }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast('OTP verified successfully.', 'success');
+        setResetToken(data.resetToken);
+        setForgotPasswordStep('newPassword');
+      } else {
+        toast(data.message || 'Invalid OTP. Please try again.', 'error');
+      }
+    } catch (error) {
+      console.error('Verify reset OTP error:', error);
+      toast('Network error. Please check your connection.', 'error');
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast('Password must be at least 6 characters long.', 'warning');
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      toast('Passwords do not match.', 'error');
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    try {
+      const response = await fetch(`${BASE_API_URL}/api/auth/reset-password-with-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resetToken: resetToken,
+          newPassword: newPassword,
+          confirmPassword: confirmNewPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast('Password reset successfully! You can now login.', 'success');
+        setForgotPasswordStep('success');
+      } else {
+        toast(data.message || 'Failed to reset password. Please try again.', 'error');
+      }
+    } catch (error) {
+      console.error('Reset password error:', error);
+      toast('Network error. Please check your connection.', 'error');
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  const getStepProgress = () => {
+    switch (forgotPasswordStep) {
+      case 'email': return 25;
+      case 'otp': return 50;
+      case 'newPassword': return 75;
+      case 'success': return 100;
+      default: return 0;
+    }
+  };
+
+  return (
+    <Box minH="100vh" bg="#eef2ff" py={0} px={0}>
+      <Flex
+        direction={{ base: 'column', md: 'row' }}
+        bg="white"
+        borderRadius={0}
+        overflow="hidden"
+        boxShadow="none"
+        border="none"
+        minH="100vh"
+        mx="auto"
+        w="100%"
+      >
+          <Box
+            w={{ base: '100%', md: '50%' }}
+            p={{ base: 8, md: 12 }}
             display="flex"
-            alignItems="stretch"
+            flexDirection="column"
+            justifyContent="center"
+            bgGradient="linear(to-b, #ffffff, #f5f7fb)"
+            position="relative"
+            overflow="hidden"
           >
-            <CardBody p={{ base: 8, md: 12 }}>
-              {showOtpForm ? (
-                // OTP Verification Form
-                <SlideFade in={showOtpForm} offsetY="20px">
-                  <VStack as="form" onSubmit={handleVerifyOTP} spacing={8}>
-                    <Box textAlign="center" w="full">
-                      <Flex
-                        w="60px"
-                        h="60px"
-                        borderRadius="full"
-                        bg="blue.50"
-                        mb={6}
-                        mx="auto"
-                        align="center"
-                        justify="center"
-                      >
-                        <Icon as={FaCheckCircle} boxSize={6} color="blue.600" />
-                      </Flex>
-                      
-                      <Text fontSize="lg" fontWeight="600" color="blue.800" mb={8}>
-                        Enter 6-Digit Verification Code
-                      </Text>
-                      
-                      <HStack spacing={4} justify="center" mb={2}>
-                        <PinInput
-                          otp
-                          size="lg"
-                          value={otp}
-                          onChange={setOtp}
-                          placeholder="0"
+            <Box position="absolute" top="-60px" left="-40px" w="200px" h="200px" bg="purple.100" opacity="0.18" filter="blur(10px)" borderRadius="full" />
+            <Box position="absolute" top="35%" right="-80px" w="240px" h="240px" bg="blue.100" opacity="0.16" filter="blur(12px)" borderRadius="full" />
+            <Box position="absolute" bottom="-80px" left="25%" w="220px" h="220px" bg="teal.50" opacity="0.16" filter="blur(14px)" borderRadius="full" />
+            <VStack spacing={8} align="stretch" w="full" maxW="520px" mx="auto" justify="center" flex="1">
+              <Heading size="lg" fontWeight="800" letterSpacing="-0.04em" color="#0f172a" lineHeight="1.2">
+                {showOtpForm ? 'Verify your identity' : 'Welcome Back to FunnelsEye'}
+              </Heading>
+
+              <Box>
+                {showOtpForm ? (
+                  <SlideFade in={showOtpForm} offsetY="12px">
+                    <VStack as="form" onSubmit={handleVerifyOTP} spacing={8}>
+                      <Box textAlign="center" w="full">
+                        <Flex
+                          w="60px"
+                          h="60px"
+                          borderRadius="full"
+                          bg="purple.50"
+                          mb={6}
+                          mx="auto"
+                          align="center"
+                          justify="center"
                         >
-                          {[...Array(6)].map((_, index) => (
-                            <PinInputField 
-                              key={index}
-                              borderRadius="lg" 
-                              borderColor="blue.100"
-                              border="2px solid"
-                              _hover={{ borderColor: "blue.300" }}
-                              _focus={{
-                                borderColor: "blue.600",
-                                boxShadow: "0 0 0 3px rgba(147, 197, 253, 0.7)"
-                              }}
-                              fontSize="xl"
-                              fontWeight="600"
-                              color="blue.800"
-                              bg="white"
-                              h="60px"
-                              w="60px"
-                            />
-                          ))}
-                        </PinInput>
-                      </HStack>
-                      
-                      <Text fontSize="sm" color="gray.500" mb={8}>
-                        Enter the 6-digit code sent to your email address
-                      </Text>
-                    </Box>
+                          <Icon as={FaCheckCircle} boxSize={6} color="purple.600" />
+                        </Flex>
+                        
+                        <Text fontSize="lg" fontWeight="600" color="#312e81" mb={8}>
+                          Enter 6-Digit Verification Code
+                        </Text>
+                        
+                        <HStack spacing={4} justify="center" mb={2}>
+                          <PinInput
+                            otp
+                            size="lg"
+                            value={otp}
+                            onChange={setOtp}
+                            placeholder="0"
+                          >
+                            {[...Array(6)].map((_, index) => (
+                              <PinInputField 
+                                key={index}
+                                borderRadius="md" 
+                                borderColor="purple.100"
+                                border="2px solid"
+                                _hover={{ borderColor: "purple.300" }}
+                                _focus={{
+                                  borderColor: "purple.600",
+                                  boxShadow: "0 0 0 3px rgba(129, 140, 248, 0.6)"
+                                }}
+                                fontSize="xl"
+                                fontWeight="600"
+                                color="#312e81"
+                                bg="white"
+                                h="60px"
+                                w="60px"
+                              />
+                            ))}
+                          </PinInput>
+                        </HStack>
+                        
+                        <Text fontSize="sm" color="gray.500" mb={8}>
+                          Enter the 6-digit code sent to your email address
+                        </Text>
+                      </Box>
+
+                      <Button
+                        type="submit"
+                        size="lg"
+                        w="full"
+                        bg="#4f46e5"
+                        color="white"
+                        _hover={{
+                          bg: "#4338ca",
+                          transform: "translateY(-1px)",
+                          boxShadow: "0 15px 30px rgba(79, 70, 229, 0.35)"
+                        }}
+                        _active={{ transform: "translateY(0)" }}
+                        isLoading={isLoading}
+                        loadingText="Verifying..."
+                        borderRadius="md"
+                        fontSize="md"
+                        fontWeight="600"
+                        h="50px"
+                        transition="all 0.2s ease"
+                        boxShadow="0 2px 10px rgba(0,0,0,0.1)"
+                      >
+                        Verify & Continue
+                      </Button>
+
+                      <VStack spacing={4}>
+                        <Button
+                          variant="ghost"
+                          colorScheme="purple"
+                          onClick={() => handleRequestOTP(input.email)}
+                          isDisabled={isLoading}
+                          _hover={{ bg: "purple.50" }}
+                          borderRadius="md"
+                          fontWeight="500"
+                        >
+                          Resend Verification Code
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          leftIcon={<FaArrowLeft />}
+                          onClick={() => {
+                            setShowOtpForm(false);
+                            setOtp('');
+                          }}
+                          color="#4338ca"
+                          _hover={{ color: "#312e81", bg: "purple.50" }}
+                          borderRadius="md"
+                          fontWeight="500"
+                        >
+                          Back to Sign In
+                        </Button>
+                      </VStack>
+                    </VStack>
+                  </SlideFade>
+                ) : (
+                  <VStack as="form" onSubmit={handleLogin} spacing={6}>
+                    <FormControl>
+                      <FormLabel 
+                        fontSize="sm" 
+                        fontWeight="400" 
+                        color="#0f172a"
+                        mb={3}
+                        textTransform="uppercase"
+                        letterSpacing="0.05em"
+                      >
+                        Email Address
+                      </FormLabel>
+                      <InputGroup size="lg">
+                        <InputLeftElement h="50px">
+                          <Icon as={FaEnvelope} color="#6b7280" />
+                        </InputLeftElement>
+                        <Input
+                          type="email"
+                          name="email"
+                          value={input.email}
+                          onChange={handleInputChange}
+                          placeholder="Enter your email address"
+                          borderRadius="md"
+                          border="1px solid"
+                          borderColor="gray.200"
+                          _hover={{ borderColor: "#a5b4fc" }}
+                          _focus={{
+                            borderColor: "#4f46e5",
+                            boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.35)"
+                          }}
+                          bg="white"
+                          fontSize="md"
+                          fontWeight="300"
+                          h="50px"
+                          required
+                        />
+                      </InputGroup>
+                    </FormControl>
+
+                    <FormControl>
+                      <Flex justify="space-between" align="center" mb={3}>
+                        <FormLabel 
+                          fontSize="sm" 
+                          fontWeight="400" 
+                          color="#0f172a"
+                          mb={0}
+                          textTransform="uppercase"
+                          letterSpacing="0.05em"
+                        >
+                          Password
+                        </FormLabel>
+                        <Text 
+                          as="button"
+                          type="button"
+                          onClick={handleOpenForgotPassword}
+                          fontSize="sm" 
+                          color="brand.600" 
+                          fontWeight="500"
+                          _hover={{ color: "brand.700", textDecoration: "underline" }}
+                          cursor="pointer"
+                        >
+                          Forgot Password?
+                        </Text>
+                      </Flex>
+                      <InputGroup size="lg">
+                        <InputLeftElement h="50px">
+                          <Icon as={FaLock} color="#6b7280" />
+                        </InputLeftElement>
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          name="password"
+                          value={input.password}
+                          onChange={handleInputChange}
+                          placeholder="Enter your password"
+                          borderRadius="md"
+                          border="1px solid"
+                          borderColor="gray.200"
+                          _hover={{ borderColor: "#a5b4fc" }}
+                          _focus={{
+                            borderColor: "#4f46e5",
+                            boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.35)"
+                          }}
+                          bg="white"
+                          fontSize="md"
+                          fontWeight="300"
+                          h="50px"
+                          required
+                        />
+                        <InputRightElement h="50px">
+                          <IconButton
+                            variant="ghost"
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            icon={<Icon as={showPassword ? FaEyeSlash : FaEye} />}
+                            onClick={() => setShowPassword(!showPassword)}
+                            color="brand.600"
+                            _hover={{ color: "brand.700", bg: "transparent" }}
+                            size="sm"
+                          />
+                        </InputRightElement>
+                      </InputGroup>
+                    </FormControl>
+
+                    <Flex w="full" justify="space-between" align="center" py={1}>
+                      <Checkbox 
+                        colorScheme="brand" 
+                        size="md"
+                        fontWeight="500"
+                        color="brand.600"
+                      >
+                        Remember me
+                      </Checkbox>
+                    </Flex>
 
                     <Button
                       type="submit"
                       size="lg"
                       w="full"
-                      bg="blue.600"
+                      bg="brand.600"
                       color="white"
                       _hover={{
-                        bg: "blue.500",
+                        bg: "brand.700",
                         transform: "translateY(-1px)",
-                        boxShadow: "0 15px 30px rgba(37, 99, 235, 0.35)"
+                        boxShadow: "0 15px 30px rgba(2, 132, 199, 0.35)"
                       }}
                       _active={{ transform: "translateY(0)" }}
                       isLoading={isLoading}
-                      loadingText="Verifying..."
-                      borderRadius="lg"
+                      borderRadius="md"
                       fontSize="md"
                       fontWeight="600"
                       h="50px"
                       transition="all 0.2s ease"
                       boxShadow="0 2px 10px rgba(0,0,0,0.1)"
                     >
-                      Verify & Continue
+                      {isLoading ? (
+                        <HStack>
+                          <Spinner size="sm" />
+                          <Text>Signing In...</Text>
+                        </HStack>
+                      ) : (
+                        'Log in'
+                      )}
                     </Button>
 
-                    <VStack spacing={4}>
-                      <Button
-                        variant="ghost"
-                        colorScheme="blue"
-                        onClick={() => handleRequestOTP(input.email)}
-                        isDisabled={isLoading}
-                        _hover={{ bg: "blue.50" }}
-                        borderRadius="lg"
-                        fontWeight="500"
-                      >
-                        Resend Verification Code
-                      </Button>
-                      
-                      <Button
-                        variant="ghost"
-                        leftIcon={<FaArrowLeft />}
-                        onClick={() => {
-                          setShowOtpForm(false);
-                          setOtp('');
-                        }}
-                        color="blue.600"
-                        _hover={{ color: "blue.800", bg: "blue.50" }}
-                        borderRadius="lg"
-                        fontWeight="500"
-                      >
-                        Back to Sign In
-                      </Button>
-                    </VStack>
+                    <Box textAlign="center" pt={4}>
+                      <Text color="gray.600" fontWeight="500">
+                        Don't have an account?{' '}
+                        <Text 
+                          as={Link} 
+                          to="/signup"
+                          color="brand.600" 
+                          fontWeight="600"
+                          _hover={{ textDecoration: "underline", color: "brand.700" }}
+                        >
+                          Register here
+                        </Text>
+                      </Text>
+                    </Box>
                   </VStack>
-                </SlideFade>
-              ) : (
-                // Main Login Form
-                <VStack as="form" onSubmit={handleLogin} spacing={6}>
-                  {/* Email Field */}
-                  <FormControl>
-                    <FormLabel 
-                      fontSize="sm" 
-                      fontWeight="600" 
-                      color="blue.800"
-                      mb={3}
-                      textTransform="uppercase"
-                      letterSpacing="0.05em"
-                    >
-                      Email Address
-                    </FormLabel>
-                    <InputGroup size="lg">
-                      <InputLeftElement h="50px">
-                        <Icon as={FaEnvelope} color="blue.400" />
-                      </InputLeftElement>
-                      <Input
-                        type="email"
-                        name="email"
-                        value={input.email}
-                        onChange={handleInputChange}
-                        placeholder="Enter your email address"
-                        borderRadius="lg"
-                        border="2px solid"
-                        borderColor="blue.100"
-                        _hover={{ borderColor: "blue.300" }}
-                        _focus={{
-                          borderColor: "blue.600",
-                          boxShadow: "0 0 0 3px rgba(147, 197, 253, 0.7)"
-                        }}
-                        bg="white"
-                        fontSize="md"
-                        fontWeight="500"
-                        h="50px"
-                        required
-                      />
-                    </InputGroup>
-                  </FormControl>
+                )}
+              </Box>
+            </VStack>
 
-                  {/* Password Field */}
-                  <FormControl>
-                    <Flex justify="space-between" align="center" mb={3}>
-                      <FormLabel 
-                        fontSize="sm" 
-                        fontWeight="600" 
-                        color="blue.800"
-                        mb={0}
-                        textTransform="uppercase"
-                        letterSpacing="0.05em"
-                      >
-                        Password
-                      </FormLabel>
-                      <Text 
-                        as={Link} 
-                        to="/reset-password"
-                        fontSize="sm" 
-                        color="blue.600" 
-                        fontWeight="500"
-                        _hover={{ color: "blue.300", textDecoration: "underline" }}
-                      >
-                        Forgot Password?
-                      </Text>
-                    </Flex>
-                    <InputGroup size="lg">
-                      <InputLeftElement h="50px">
-                        <Icon as={FaLock} color="blue.400" />
-                      </InputLeftElement>
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        name="password"
-                        value={input.password}
-                        onChange={handleInputChange}
-                        placeholder="Enter your password"
-                        borderRadius="lg"
-                        border="2px solid"
-                        borderColor="blue.100"
-                        _hover={{ borderColor: "blue.300" }}
-                        _focus={{
-                          borderColor: "blue.600",
-                          boxShadow: "0 0 0 3px rgba(147, 197, 253, 0.7)"
-                        }}
-                        bg="white"
-                        fontSize="md"
-                        fontWeight="500"
-                        h="50px"
-                        required
-                      />
-                      <InputRightElement h="50px">
-                        <IconButton
-                          variant="ghost"
-                          aria-label={showPassword ? "Hide password" : "Show password"}
-                          icon={<Icon as={showPassword ? FaEyeSlash : FaEye} />}
-                          onClick={() => setShowPassword(!showPassword)}
-                          color="blue.500"
-                          _hover={{ color: "blue.700", bg: "transparent" }}
-                          size="sm"
-                        />
-                      </InputRightElement>
-                    </InputGroup>
-                  </FormControl>
+          </Box>
 
-                  {/* Remember Me */}
-                  <Flex w="full" justify="flex-start" align="center" py={2}>
-                    <Checkbox 
-                      colorScheme="blue" 
-                      size="md"
-                      fontWeight="500"
-                      color="blue.700"
-                    >
-                      Keep me signed in
-                    </Checkbox>
-                  </Flex>
+          <Box
+            w={{ base: '100%', md: '50%' }}
+            minH={{ base: '260px', md: 'auto' }}
+            bgImage={`url(${loginHeroJpg})`}
+            bgSize="cover"
+            bgPos="center"
+            position="relative"
+          >
+          </Box>
+      </Flex>
 
-                  {/* Login Button */}
-                  <Button
-                    type="submit"
-                    size="lg"
-                    w="full"
-                    bg="blue.600"
-                    color="white"
-                    _hover={{
-                      bg: "blue.500",
-                      transform: "translateY(-1px)",
-                      boxShadow: "0 15px 30px rgba(37, 99, 235, 0.35)"
-                    }}
-                    _active={{ transform: "translateY(0)" }}
-                    isLoading={isLoading}
-                    borderRadius="lg"
-                    fontSize="md"
-                    fontWeight="600"
-                    h="50px"
-                    transition="all 0.2s ease"
-                    boxShadow="0 2px 10px rgba(0,0,0,0.1)"
+      {/* Forgot Password Modal */}
+      <Modal 
+        isOpen={isForgotPasswordOpen} 
+        onClose={handleCloseForgotPassword} 
+        isCentered
+        size="md"
+        closeOnOverlayClick={false}
+        closeOnEsc={false}
+      >
+        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
+        <ModalContent 
+          borderRadius="16px" 
+          mx={4}
+          overflow="hidden"
+          boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+        >
+          {/* Progress Bar */}
+          <Progress 
+            value={getStepProgress()} 
+            size="xs" 
+            colorScheme="purple"
+            bg="gray.100"
+            borderRadius="0"
+          />
+          
+          <ModalHeader 
+            pt={6} 
+            pb={2} 
+            px={6}
+            borderBottom="none"
+          >
+            <VStack align="start" spacing={1}>
+              <Heading size="md" fontWeight="700" color="#0f172a">
+                {forgotPasswordStep === 'email' && 'Reset Your Password'}
+                {forgotPasswordStep === 'otp' && 'Verify Your Identity'}
+                {forgotPasswordStep === 'newPassword' && 'Create New Password'}
+                {forgotPasswordStep === 'success' && 'Password Reset Complete'}
+              </Heading>
+              <Text fontSize="sm" color="gray.500" fontWeight="400">
+                {forgotPasswordStep === 'email' && 'Enter your email to receive a verification code'}
+                {forgotPasswordStep === 'otp' && 'Enter the 6-digit code sent to your email'}
+                {forgotPasswordStep === 'newPassword' && 'Choose a strong password for your account'}
+                {forgotPasswordStep === 'success' && 'You can now login with your new password'}
+              </Text>
+            </VStack>
+          </ModalHeader>
+          
+          <ModalCloseButton 
+            isDisabled={forgotPasswordLoading} 
+            top={4} 
+            right={4}
+            borderRadius="full"
+            _hover={{ bg: 'gray.100' }}
+          />
+          
+          <ModalBody px={6} pb={6} pt={4}>
+            {/* Step 1: Email Entry */}
+            {forgotPasswordStep === 'email' && (
+              <VStack spacing={5}>
+                <Flex
+                  w="64px"
+                  h="64px"
+                  borderRadius="full"
+                  bg="purple.50"
+                  align="center"
+                  justify="center"
+                >
+                  <Icon as={FaEnvelope} boxSize={6} color="purple.600" />
+                </Flex>
+                
+                <FormControl>
+                  <FormLabel 
+                    fontSize="sm" 
+                    fontWeight="500" 
+                    color="gray.600"
+                    mb={2}
                   >
-                    {isLoading ? (
-                      <HStack>
-                        <Spinner size="sm" />
-                        <Text>Signing In...</Text>
-                      </HStack>
-                    ) : (
-                      'Sign In Securely'
-                    )}
-                  </Button>
+                    Email Address
+                  </FormLabel>
+                  <InputGroup size="lg">
+                    <InputLeftElement h="50px">
+                      <Icon as={FaEnvelope} color="gray.400" />
+                    </InputLeftElement>
+                    <Input
+                      type="email"
+                      value={forgotPasswordEmail}
+                      onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                      placeholder="Enter your email address"
+                      borderRadius="md"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: "purple.200" }}
+                      _focus={{
+                        borderColor: "#4f46e5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.15)"
+                      }}
+                      bg="white"
+                      fontSize="md"
+                      h="50px"
+                    />
+                  </InputGroup>
+                </FormControl>
 
-                  {/* Sign Up Link */}
-                  <Box textAlign="center" pt={6}>
-                    <Text color="gray.600" fontWeight="500">
-                      Don't have an account?{' '}
-                      <Text 
-                        as={Link} 
-                        to="/signup"
-                        color="blue.600" 
+                <Button
+                  w="full"
+                  size="lg"
+                  bg="#4f46e5"
+                  color="white"
+                  _hover={{
+                    bg: "#4338ca",
+                    transform: "translateY(-1px)",
+                    boxShadow: "0 10px 25px rgba(79, 70, 229, 0.25)"
+                  }}
+                  _active={{ transform: "translateY(0)" }}
+                  isLoading={forgotPasswordLoading}
+                  loadingText="Sending..."
+                  onClick={handleSendResetOtp}
+                  borderRadius="md"
+                  fontSize="md"
+                  fontWeight="600"
+                  h="50px"
+                  transition="all 0.2s ease"
+                >
+                  Send Verification Code
+                </Button>
+                
+                <Text fontSize="sm" color="gray.500" textAlign="center">
+                  Remember your password?{' '}
+                  <Text 
+                    as="button" 
+                    type="button"
+                    color="#4f46e5" 
+                    fontWeight="500"
+                    onClick={handleCloseForgotPassword}
+                    _hover={{ textDecoration: 'underline' }}
+                  >
+                    Back to login
+                  </Text>
+                </Text>
+              </VStack>
+            )}
+
+            {/* Step 2: OTP Verification */}
+            {forgotPasswordStep === 'otp' && (
+              <VStack spacing={5}>
+                <Flex
+                  w="64px"
+                  h="64px"
+                  borderRadius="full"
+                  bg="purple.50"
+                  align="center"
+                  justify="center"
+                >
+                  <Icon as={FaShieldAlt} boxSize={6} color="purple.600" />
+                </Flex>
+                
+                <Text fontSize="sm" color="gray.600" textAlign="center">
+                  We sent a verification code to{' '}
+                  <Text as="span" fontWeight="600" color="#0f172a">
+                    {forgotPasswordEmail}
+                  </Text>
+                </Text>
+
+                <HStack spacing={3} justify="center">
+                  <PinInput
+                    otp
+                    size="lg"
+                    value={forgotPasswordOtp}
+                    onChange={setForgotPasswordOtp}
+                    placeholder="0"
+                  >
+                    {[...Array(6)].map((_, index) => (
+                      <PinInputField 
+                        key={index}
+                        borderRadius="md" 
+                        borderColor="gray.200"
+                        border="2px solid"
+                        _hover={{ borderColor: "purple.200" }}
+                        _focus={{
+                          borderColor: "#4f46e5",
+                          boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.15)"
+                        }}
+                        fontSize="xl"
                         fontWeight="600"
-                        _hover={{ textDecoration: "underline" }}
-                      >
-                        Create Account
-                      </Text>
-                    </Text>
-                  </Box>
-                </VStack>
-              )}
-            </CardBody>
-          </MotionCard>
-        </Flex>
-        {/* Footer */}
-        <Box textAlign="center" mt={10}>
-          <Text fontSize="xs" color="gray.200" lineHeight="relaxed">
-            By continuing, you agree to our{' '}
-            <Text as={Link} to="/terms" color="white" fontWeight="500" _hover={{ textDecoration: "underline" }}>
-              Terms of Service
-            </Text>
-            {' '}and{' '}
-            <Text as={Link} to="/privacy" color="white" fontWeight="500" _hover={{ textDecoration: "underline" }}>
-              Privacy Policy
-            </Text>
-          </Text>
-        </Box>
-      </Container>
+                        color="#0f172a"
+                        bg="white"
+                        h="56px"
+                        w="48px"
+                      />
+                    ))}
+                  </PinInput>
+                </HStack>
 
-      {/* Custom SweetAlert Styles */}
+                <Button
+                  w="full"
+                  size="lg"
+                  bg="#4f46e5"
+                  color="white"
+                  _hover={{
+                    bg: "#4338ca",
+                    transform: "translateY(-1px)",
+                    boxShadow: "0 10px 25px rgba(79, 70, 229, 0.25)"
+                  }}
+                  _active={{ transform: "translateY(0)" }}
+                  isLoading={forgotPasswordLoading}
+                  loadingText="Verifying..."
+                  onClick={handleVerifyResetOtp}
+                  borderRadius="md"
+                  fontSize="md"
+                  fontWeight="600"
+                  h="50px"
+                  transition="all 0.2s ease"
+                >
+                  Verify Code
+                </Button>
+
+                <HStack spacing={1} justify="center">
+                  <Text fontSize="sm" color="gray.500">
+                    Didn't receive the code?
+                  </Text>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    color="#4f46e5"
+                    fontWeight="500"
+                    onClick={handleSendResetOtp}
+                    isDisabled={forgotPasswordLoading}
+                    _hover={{ textDecoration: 'underline' }}
+                  >
+                    Resend
+                  </Button>
+                </HStack>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<FaArrowLeft />}
+                  onClick={() => setForgotPasswordStep('email')}
+                  color="gray.500"
+                  _hover={{ color: "#4f46e5", bg: "purple.50" }}
+                  isDisabled={forgotPasswordLoading}
+                >
+                  Change email
+                </Button>
+              </VStack>
+            )}
+
+            {/* Step 3: New Password */}
+            {forgotPasswordStep === 'newPassword' && (
+              <VStack spacing={5}>
+                <Flex
+                  w="64px"
+                  h="64px"
+                  borderRadius="full"
+                  bg="purple.50"
+                  align="center"
+                  justify="center"
+                >
+                  <Icon as={FaLock} boxSize={6} color="purple.600" />
+                </Flex>
+
+                <FormControl>
+                  <FormLabel 
+                    fontSize="sm" 
+                    fontWeight="500" 
+                    color="gray.600"
+                    mb={2}
+                  >
+                    New Password
+                  </FormLabel>
+                  <InputGroup size="lg">
+                    <InputLeftElement h="50px">
+                      <Icon as={FaLock} color="gray.400" />
+                    </InputLeftElement>
+                    <Input
+                      type={showNewPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      borderRadius="md"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: "purple.200" }}
+                      _focus={{
+                        borderColor: "#4f46e5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.15)"
+                      }}
+                      bg="white"
+                      fontSize="md"
+                      h="50px"
+                    />
+                    <InputRightElement h="50px">
+                      <IconButton
+                        variant="ghost"
+                        aria-label={showNewPassword ? "Hide password" : "Show password"}
+                        icon={<Icon as={showNewPassword ? FaEyeSlash : FaEye} />}
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        color="gray.400"
+                        _hover={{ color: "gray.600", bg: "transparent" }}
+                        size="sm"
+                      />
+                    </InputRightElement>
+                  </InputGroup>
+                </FormControl>
+
+                <FormControl>
+                  <FormLabel 
+                    fontSize="sm" 
+                    fontWeight="500" 
+                    color="gray.600"
+                    mb={2}
+                  >
+                    Confirm New Password
+                  </FormLabel>
+                  <InputGroup size="lg">
+                    <InputLeftElement h="50px">
+                      <Icon as={FaLock} color="gray.400" />
+                    </InputLeftElement>
+                    <Input
+                      type={showConfirmNewPassword ? "text" : "password"}
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      borderRadius="md"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: "purple.200" }}
+                      _focus={{
+                        borderColor: "#4f46e5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.15)"
+                      }}
+                      bg="white"
+                      fontSize="md"
+                      h="50px"
+                    />
+                    <InputRightElement h="50px">
+                      <IconButton
+                        variant="ghost"
+                        aria-label={showConfirmNewPassword ? "Hide password" : "Show password"}
+                        icon={<Icon as={showConfirmNewPassword ? FaEyeSlash : FaEye} />}
+                        onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                        color="gray.400"
+                        _hover={{ color: "gray.600", bg: "transparent" }}
+                        size="sm"
+                      />
+                    </InputRightElement>
+                  </InputGroup>
+                  {newPassword && newPassword.length < 6 && (
+                    <Text fontSize="xs" color="red.500" mt={1}>
+                      Password must be at least 6 characters
+                    </Text>
+                  )}
+                  {confirmNewPassword && newPassword !== confirmNewPassword && (
+                    <Text fontSize="xs" color="red.500" mt={1}>
+                      Passwords do not match
+                    </Text>
+                  )}
+                </FormControl>
+
+                <Button
+                  w="full"
+                  size="lg"
+                  bg="#4f46e5"
+                  color="white"
+                  _hover={{
+                    bg: "#4338ca",
+                    transform: "translateY(-1px)",
+                    boxShadow: "0 10px 25px rgba(79, 70, 229, 0.25)"
+                  }}
+                  _active={{ transform: "translateY(0)" }}
+                  isLoading={forgotPasswordLoading}
+                  loadingText="Resetting..."
+                  onClick={handleResetPassword}
+                  borderRadius="md"
+                  fontSize="md"
+                  fontWeight="600"
+                  h="50px"
+                  transition="all 0.2s ease"
+                  isDisabled={!newPassword || newPassword.length < 6 || newPassword !== confirmNewPassword}
+                >
+                  Reset Password
+                </Button>
+              </VStack>
+            )}
+
+            {/* Step 4: Success */}
+            {forgotPasswordStep === 'success' && (
+              <VStack spacing={6} py={4}>
+                <Flex
+                  w="80px"
+                  h="80px"
+                  borderRadius="full"
+                  bg="green.50"
+                  align="center"
+                  justify="center"
+                >
+                  <Icon as={FaCheckCircle} boxSize={10} color="green.500" />
+                </Flex>
+                
+                <VStack spacing={2}>
+                  <Heading size="md" fontWeight="700" color="#0f172a" textAlign="center">
+                    Password Reset Successful!
+                  </Heading>
+                  <Text fontSize="sm" color="gray.500" textAlign="center">
+                    Your password has been changed successfully. You can now login with your new password.
+                  </Text>
+                </VStack>
+
+                <Button
+                  w="full"
+                  size="lg"
+                  bg="#4f46e5"
+                  color="white"
+                  _hover={{
+                    bg: "#4338ca",
+                    transform: "translateY(-1px)",
+                    boxShadow: "0 10px 25px rgba(79, 70, 229, 0.25)"
+                  }}
+                  _active={{ transform: "translateY(0)" }}
+                  onClick={handleCloseForgotPassword}
+                  borderRadius="md"
+                  fontSize="md"
+                  fontWeight="600"
+                  h="50px"
+                  transition="all 0.2s ease"
+                >
+                  Back to Login
+                </Button>
+              </VStack>
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
       <style jsx global>{`
         .swal-button--confirm {
           background-color: #1a202c !important;

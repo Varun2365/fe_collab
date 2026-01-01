@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 
+// Import services
+const centralWhatsAppService = require('../services/centralWhatsAppService');
+
 // Import controllers
 const centralMessagingController = require('../controllers/centralMessagingController');
 const centralMessagingTemplateController = require('../controllers/centralMessagingTemplateController');
@@ -339,7 +342,63 @@ router.post('/bulk',
     centralMessagingController.sendBulkMessages
 );
 
-// ===== CREDITS MANAGEMENT =====
+// ===== COACH CREDITS MANAGEMENT =====
+
+// @route   GET /api/central-messaging/v1/coach/credits/balance
+// @desc    Get coach's credit balance from user schema
+// @access  Private (Coach)
+router.get('/coach/credits/balance',
+    protect,
+    authorizeCoach('coach'),
+    require('../controllers/coachCreditsController').getCreditBalance
+);
+
+// @route   GET /api/central-messaging/v1/coach/credits/check
+// @desc    Check if coach can send messages
+// @access  Private (Coach)
+router.get('/coach/credits/check',
+    protect,
+    authorizeCoach('coach'),
+    require('../controllers/coachCreditsController').checkCanSendMessage
+);
+
+// @route   POST /api/central-messaging/v1/coach/credits/deduct
+// @desc    Deduct credits after successful message send
+// @access  Private (Coach)
+router.post('/coach/credits/deduct',
+    protect,
+    authorizeCoach('coach'),
+    require('../controllers/coachCreditsController').deductCredits
+);
+
+// @route   POST /api/central-messaging/v1/coach/credits/purchase
+// @desc    Purchase credits with Razorpay
+// @access  Private (Coach)
+router.post('/coach/credits/purchase',
+    protect,
+    authorizeCoach('coach'),
+    require('../controllers/coachCreditsController').purchaseCredits
+);
+
+// @route   POST /api/central-messaging/v1/coach/credits/verify-payment
+// @desc    Verify credit purchase payment
+// @access  Private (Coach)
+router.post('/coach/credits/verify-payment',
+    protect,
+    authorizeCoach('coach'),
+    require('../controllers/coachCreditsController').verifyCreditPayment
+);
+
+// @route   GET /api/central-messaging/v1/coach/credits/transactions
+// @desc    Get credit transaction history
+// @access  Private (Coach)
+router.get('/coach/credits/transactions',
+    protect,
+    authorizeCoach('coach'),
+    require('../controllers/coachCreditsController').getCreditTransactions
+);
+
+// ===== LEGACY CREDITS MANAGEMENT =====
 
 // @route   GET /api/central-messaging/v1/credits/balance
 // @desc    Get credit balance
@@ -726,6 +785,75 @@ router.get('/settings-overview',
 // ===== COACH WHATSAPP ROUTES =====
 // All coach routes use protect middleware (coach authentication)
 
+// @route   GET /api/central-messaging/v1/coach/whatsapp-templates
+// @desc    Get All WhatsApp Templates for Coach (LIVE from Meta API using stored tokens)
+// @access  Private (Coach)
+router.get('/coach/whatsapp-templates',
+    protect,
+    async (req, res) => {
+        try {
+            console.log('🔄 [COACH_TEMPLATES] Fetching WhatsApp templates LIVE from Meta API...');
+            
+            // Fetch templates LIVE from Meta API using stored tokens
+            const result = await centralWhatsAppService.getTemplatesFromMeta();
+            
+            // Filter for approved templates only for coaches
+            const approvedTemplates = (result.templates || [])
+                .filter(t => t.status === 'APPROVED');
+            
+            console.log('✅ [COACH_TEMPLATES] Found', approvedTemplates.length, 'approved templates from Meta');
+            
+            res.json({
+                success: true,
+                data: {
+                    templates: approvedTemplates,
+                    count: approvedTemplates.length,
+                    summary: result.summary
+                }
+            });
+        } catch (error) {
+            console.error('❌ [COACH_TEMPLATES] Error:', error.message);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to get templates from Meta API',
+                error: error.message
+            });
+        }
+    }
+);
+
+// @route   GET /api/central-messaging/v1/coach/whatsapp-templates/all
+// @desc    Get ALL WhatsApp Templates for Coach (including pending/rejected - for visibility)
+// @access  Private (Coach)
+router.get('/coach/whatsapp-templates/all',
+    protect,
+    async (req, res) => {
+        try {
+            console.log('🔄 [COACH_TEMPLATES] Fetching ALL WhatsApp templates from Meta API...');
+            
+            const result = await centralWhatsAppService.getTemplatesFromMeta();
+            
+            console.log('✅ [COACH_TEMPLATES] Found', result.templates?.length || 0, 'total templates');
+            
+            res.json({
+                success: true,
+                data: {
+                    templates: result.templates || [],
+                    count: result.templates?.length || 0,
+                    summary: result.summary
+                }
+            });
+        } catch (error) {
+            console.error('❌ [COACH_TEMPLATES] Error:', error.message);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to get templates from Meta API',
+                error: error.message
+            });
+        }
+    }
+);
+
 // @route   GET /api/central-messaging/v1/templates
 // @desc    Get Available Templates (Coach)
 // @access  Private (Coach)
@@ -960,6 +1088,36 @@ router.get('/coach/settings/effective',
     protect,
     authorizeCoach('coach'),
     whatsappCoachSettingsController.getCoachEffectiveSettings
+);
+
+// @route   GET /api/central-messaging/v1/coach/email/config
+// @desc    Get coach's email configuration status
+// @access  Private (Coach)
+router.get('/coach/email/config',
+    protect,
+    authorizeCoach('coach'),
+    async (req, res) => {
+        try {
+            // For now, just return a basic email config status
+            // In a real implementation, this would check coach-specific email settings
+            res.status(200).json({
+                success: true,
+                data: {
+                    emailSettings: {
+                        isConfigured: true,
+                        provider: 'system',
+                        canSend: true
+                    }
+                }
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to get email config',
+                error: error.message
+            });
+        }
+    }
 );
 
 // @route   POST /api/central-messaging/v1/coach/settings/test-ai

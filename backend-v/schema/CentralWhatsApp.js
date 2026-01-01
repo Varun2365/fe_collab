@@ -169,9 +169,26 @@ centralWhatsAppSchema.methods.getActiveTemplates = function() {
 
 // Method to get template by name
 centralWhatsAppSchema.methods.getTemplateByName = function(templateName) {
-    return this.templates.find(template => 
-        template.templateName === templateName && template.status === 'APPROVED'
-    );
+    if (!templateName) return null;
+    const searchName = templateName.toLowerCase().trim();
+    
+    // Search by templateName or name (case-insensitive)
+    return this.templates.find(template => {
+        const tName = (template.templateName || template.name || '').toLowerCase().trim();
+        return tName === searchName && template.status === 'APPROVED';
+    });
+};
+
+// Method to get template by name (including non-approved for admin)
+centralWhatsAppSchema.methods.getTemplateByNameAny = function(templateName) {
+    if (!templateName) return null;
+    const searchName = templateName.toLowerCase().trim();
+    
+    // Search by templateName or name (case-insensitive)
+    return this.templates.find(template => {
+        const tName = (template.templateName || template.name || '').toLowerCase().trim();
+        return tName === searchName;
+    });
 };
 
 // Method to add contact

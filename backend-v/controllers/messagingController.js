@@ -313,20 +313,38 @@ exports.sendBulkMessages = asyncHandler(async (req, res) => {
 exports.sendAdminMessage = asyncHandler(async (req, res) => {
     try {
         console.log('🔄 [MESSAGING] sendAdminMessage - Starting...');
+        console.log('📦 [MESSAGING] Request body:', JSON.stringify(req.body, null, 2));
         
         const adminId = req.admin.id;
         const { 
             to, 
             message, 
             templateId, 
+            templateName: reqTemplateName, // Template name from request (e.g., "hello_world")
             template, // Template object with name and language
             templateParameters = {},
-            type = 'text',
+            parameters = [], // Alternative parameter format (array)
+            type: requestType,
             mediaUrl,
+            mediaType,
             caption,
             leadId,
             coachId // Optional: specify which coach this message is for
         } = req.body;
+        
+        // Determine message type based on what's provided
+        let type = requestType;
+        if (!type) {
+            if (reqTemplateName || templateId) {
+                type = 'template';
+            } else if (mediaUrl) {
+                type = 'media';
+            } else {
+                type = 'text';
+            }
+        }
+        
+        console.log(`📝 [MESSAGING] Determined message type: ${type}`);
         
         // Validate required fields
         if (!to) {
@@ -343,54 +361,71 @@ exports.sendAdminMessage = asyncHandler(async (req, res) => {
             });
         }
         
-        if (type === 'template' && !templateId) {
+        if (type === 'template' && !templateId && !reqTemplateName) {
             return res.status(400).json({
                 success: false,
-                message: 'Template ID is required for template messages'
+                message: 'Template ID or template name is required for template messages'
             });
         }
         
         let messageContent = message;
-        let templateName = null;
+        let templateName = reqTemplateName || null;
         
         // Handle template messages
-        if (type === 'template' && templateId) {
-            // Check if templateId is a valid MongoDB ObjectId
-            // If not, it's likely a Meta template ID (e.g., "1934990210683335")
-            const isValidObjectId = mongoose.Types.ObjectId.isValid(templateId);
-            
-            if (isValidObjectId) {
-                // MongoDB template - look it up and render
-                const template = await MessageTemplate.findById(templateId);
-                if (!template) {
-                    return res.status(404).json({
-                        success: false,
-                        message: 'Template not found'
-                    });
-                }
+        if (type === 'template') {
+            if (templateId) {
+                // Check if templateId is a valid MongoDB ObjectId
+                // If not, it's likely a Meta template ID (e.g., "1934990210683335")
+                const isValidObjectId = mongoose.Types.ObjectId.isValid(templateId);
                 
-                // Get lead data for template parameters
-                let leadData = {};
-                if (leadId) {
-                    const lead = await Lead.findById(leadId);
-                    if (lead) {
-                        leadData = templateService.extractLeadData(lead);
+                if (isValidObjectId) {
+                    // MongoDB template - look it up and render
+                    const template = await MessageTemplate.findById(templateId);
+                    if (!template) {
+                        return res.status(404).json({
+                            success: false,
+                            message: 'Template not found'
+                        });
                     }
+                    
+                    // Get lead data for template parameters
+                    let leadData = {};
+                    if (leadId) {
+                        const lead = await Lead.findById(leadId);
+                        if (lead) {
+                            leadData = templateService.extractLeadData(lead);
+                        }
+                    }
+                    
+                    // Merge template parameters with lead data
+                    const allParameters = { ...leadData, ...templateParameters };
+                    
+                    // Render template
+                    const renderedTemplate = template.renderTemplate(allParameters);
+                    messageContent = renderedTemplate.body;
+                    templateName = template.name;
+                } else {
+                    // Meta template ID - pass it through to be handled by centralWhatsAppService
+                    // Don't try to look it up in MongoDB
+                    templateName = null; // Will be looked up by Meta template ID
                 }
-                
-                // Merge template parameters with lead data
-                const allParameters = { ...leadData, ...templateParameters };
-                
-                // Render template
-                const renderedTemplate = template.renderTemplate(allParameters);
-                messageContent = renderedTemplate.body;
-                templateName = template.name;
-            } else {
-                // Meta template ID - pass it through to be handled by centralWhatsAppService
-                // Don't try to look it up in MongoDB
-                templateName = null; // Will be looked up by Meta template ID
+            } else if (reqTemplateName) {
+                // Template name provided directly (e.g., "hello_world")
+                // This will be sent as a Meta template via centralWhatsAppService
+                console.log(`📝 [MESSAGING] Using template name directly: ${reqTemplateName}`);
+                templateName = reqTemplateName;
             }
         }
+        
+        // Prepare parameters - handle both object and array formats
+        let finalParameters = parameters;
+        if (!Array.isArray(parameters) && templateParameters) {
+            finalParameters = Array.isArray(templateParameters) 
+                ? templateParameters 
+                : Object.values(templateParameters || {});
+        }
+        
+        console.log(`📝 [MESSAGING] Final parameters:`, finalParameters);
         
         // Queue message via message queue service instead of sending directly
         const messageData = {
@@ -402,11 +437,14 @@ exports.sendAdminMessage = asyncHandler(async (req, res) => {
             template: template, // Template object with name and language from request body
             templateName: templateName,
             templateParameters: templateParameters,
-            parameters: Array.isArray(templateParameters) ? templateParameters : Object.values(templateParameters || {}),
+            parameters: finalParameters,
             mediaUrl: mediaUrl,
+            mediaType: mediaType,
             caption: caption,
             coachId: adminId // For admin messages, pass adminId as coachId
         };
+        
+        console.log(`📝 [MESSAGING] Message data to queue:`, JSON.stringify(messageData, null, 2));
         
         const queued = await messageQueueService.queueWhatsAppMessage(messageData);
         
