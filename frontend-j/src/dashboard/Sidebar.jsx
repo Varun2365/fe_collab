@@ -41,6 +41,7 @@ import {
   FiPieChart,
   FiHeart,
   FiMove,
+  FiRepeat,
 } from 'react-icons/fi';
 import { IoPeopleOutline } from 'react-icons/io5';
 
@@ -184,6 +185,7 @@ const Sidebar = () => {
       items: [
         { icon: FiTarget, label: 'Marketing & Ads', path: '/ads', badge: null, type: 'single' },
         { icon: FiZap, label: 'Automations', path: '/automation', badge: null, type: 'single' },
+        { icon: FiRepeat, label: 'Automation Rules', path: 'automation-rules', badge: null, type: 'single' },
         { icon: FiFileText, label: 'Courses & Content', path: '/courses', badge: null, type: 'single' },
       ]
     },

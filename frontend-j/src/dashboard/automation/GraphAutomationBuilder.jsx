@@ -4375,4 +4375,3 @@ const ActionConfigFields = ({ actionType, config, onChange, builderResources, tr
 };
 
 export default GraphAutomationBuilder;
-

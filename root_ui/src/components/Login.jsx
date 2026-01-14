@@ -1,9 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { loginSuccess, testAction } from '../redux/authSlice';
-import { fetchUserPermissions } from '../utils/fetchUserPermissions';
-import swal from 'sweetalert';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -56,14 +52,10 @@ import {
   FaCheckCircle,
   FaEye,
   FaEyeSlash,
-  FaBuilding,
-  FaUserShield,
 } from 'react-icons/fa';
 import { motion } from 'framer-motion';
-import loginHeroJpg from '../login.jpg';
-
-
-import { API_BASE_URL as BASE_API_URL } from '../config/apiConfig';
+import { API_BASE_URL } from '../config/apiConfig';
+import Swal from 'sweetalert';
 
 // Custom toast hook matching calendar style
 const useCustomToast = () => {
@@ -163,7 +155,7 @@ const useCustomToast = () => {
 
 const Login = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const [searchParams] = useSearchParams();
   const toast = useCustomToast();
 
   const [input, setInput] = useState({
@@ -177,7 +169,7 @@ const Login = () => {
 
   // Forgot password modal state
   const { isOpen: isForgotPasswordOpen, onOpen: onForgotPasswordOpen, onClose: onForgotPasswordClose } = useDisclosure();
-  const [forgotPasswordStep, setForgotPasswordStep] = useState('email'); // 'email' | 'otp' | 'newPassword' | 'success'
+  const [forgotPasswordStep, setForgotPasswordStep] = useState('email');
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [forgotPasswordOtp, setForgotPasswordOtp] = useState('');
   const [resetToken, setResetToken] = useState('');
@@ -197,8 +189,8 @@ const Login = () => {
     setIsLoading(true);
     try {
       console.log('📧 Requesting OTP for email:', email);
-      
-      const response = await fetch(`${BASE_API_URL}/api/auth/resend-otp`, {
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/resend-otp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -207,19 +199,18 @@ const Login = () => {
       });
 
       console.log('📧 OTP Response status:', response.status);
-      
-      // Handle non-JSON error responses
+
       let data;
       const contentType = response.headers.get('content-type');
-      
+
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
       } else {
         const textResponse = await response.text();
         console.error('📧 Non-JSON response:', textResponse);
-        data = { 
-          success: false, 
-          message: 'Server returned an invalid response. Please contact support.' 
+        data = {
+          success: false,
+          message: 'Server returned an invalid response. Please contact support.'
         };
       }
 
@@ -230,9 +221,8 @@ const Login = () => {
         setShowOtpForm(true);
         setOtp('');
       } else {
-        // Handle specific error cases
         let errorMessage = data.message || 'Failed to send OTP. Please try again.';
-        
+
         if (response.status === 500) {
           errorMessage = 'Server error occurred. Please try again later or contact support.';
           console.error('📧 500 Error details:', data);
@@ -241,9 +231,9 @@ const Login = () => {
         } else if (response.status === 403) {
           errorMessage = 'Access denied. This account may already be verified.';
         }
-        
+
         toast(errorMessage, 'error');
-        
+
         console.error('📧 OTP Error:', {
           status: response.status,
           message: errorMessage,
@@ -261,16 +251,16 @@ const Login = () => {
   // Function to handle the final OTP verification
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
-    
+
     if (!otp || otp.length !== 6) {
       toast('Please enter the complete 6-digit verification code.', 'warning');
       return;
     }
-    
+
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${BASE_API_URL}/api/auth/verify-otp`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: input.email, otp: otp })
@@ -280,42 +270,19 @@ const Login = () => {
 
       if (response.ok && data.success) {
         toast('Redirecting to your dashboard...', 'success');
-        
+
         const { user, token } = data;
 
-        if (user.role === 'staff') {
-          // Staff login - data goes to coach's redux (authSlice.jsx) same as coach
-          console.log('🔐 Staff login - Dispatching loginSuccess with:', { user, token });
-          console.log('🔐 Staff role:', user.role);
-          console.log('🔐 Staff data:', user);
-          console.log('🔐 Token:', token);
-          
-          // Staff ko bhi coach ke redux mein store karo
-          dispatch(loginSuccess({ user, token }));
-          
-          // Fetch permissions if not present (for staff)
-          if (user.role === 'staff' && (!user.permissions || user.permissions.length === 0)) {
-            setTimeout(() => fetchUserPermissions(), 500);
-          }
-          
-          // Staff ko coach ke dashboard pe redirect karo
-          navigate('/dashboard');
-        } else {
-          // Coach/Admin login - data goes to redux/authSlice.jsx
-          console.log('🔐 Coach/Admin login - Dispatching loginSuccess with:', { user, token });
-          console.log('🔐 User role:', user.role);
-          console.log('🔐 User data:', user);
-          console.log('🔐 Token:', token);
-          
-          dispatch(loginSuccess({ user, token }));
-          
-          // Fetch permissions if not present (for staff)
-          if (user.role === 'staff' && (!user.permissions || user.permissions.length === 0)) {
-            setTimeout(() => fetchUserPermissions(), 500);
-          }
-          
-          navigate('/dashboard');
-        }
+        // Store token in localStorage for future use
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+
+        // Redirect to dashboard with token
+        const dashboardUrl = process.env.NODE_ENV === 'production'
+          ? `https://dashboard.funnelseye.com?token=${token}`
+          : `http://localhost:5000?token=${token}`;
+
+        window.location.href = dashboardUrl;
       } else {
         toast(data.message || 'Invalid OTP. Please try again.', 'error');
       }
@@ -339,8 +306,8 @@ const Login = () => {
 
     try {
       console.log('🔐 Attempting login for:', input.email);
-      
-      const response = await fetch(`${BASE_API_URL}/api/auth/login`, {
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -352,27 +319,25 @@ const Login = () => {
       });
 
       console.log('🔐 Login response status:', response.status);
-      
-      // Handle non-JSON error responses
+
       let data;
       const contentType = response.headers.get('content-type');
-      
+
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
       } else {
         const textResponse = await response.text();
         console.error('🔐 Non-JSON response:', textResponse);
-        
-        // If it's a 403 error without JSON, handle specially
+
         if (response.status === 403) {
-          data = { 
-            success: false, 
-            message: 'Email verification required. Please verify your email to continue.' 
+          data = {
+            success: false,
+            message: 'Email verification required. Please verify your email to continue.'
           };
         } else {
-          data = { 
-            success: false, 
-            message: 'Server returned an invalid response. Please try again later.' 
+          data = {
+            success: false,
+            message: 'Server returned an invalid response. Please try again later.'
           };
         }
       }
@@ -383,7 +348,7 @@ const Login = () => {
         const { user, token } = data;
 
         if (!user.isVerified) {
-          const result = await swal({
+          const result = await Swal({
             title: 'Email Verification Required',
             text: 'Your email address needs to be verified. Would you like us to send a verification code?',
             icon: 'warning',
@@ -410,66 +375,49 @@ const Login = () => {
           return;
         }
 
-        if (user.role === 'staff') {
-          // Staff login - data goes to coach's redux (authSlice.jsx) same as coach
-          console.log('🔐 Staff login - Dispatching loginSuccess with:', { user, token });
-          console.log('🔐 Staff role:', user.role);
-          console.log('🔐 Staff data:', user);
-          console.log('🔐 Token:', token);
-          
-          // Staff ko bhi coach ke redux mein store karo
-          dispatch(loginSuccess({ user, token }));
-          
-          toast(`Welcome back, ${user.name || 'Staff Member'}! Redirecting to dashboard...`, 'success');
-          
-          // Staff ko coach ke dashboard pe redirect karo
-          navigate('/dashboard');
-        } else {
-          // Coach/Admin login - data goes to redux/authSlice.jsx
-          console.log('🔐 Coach/Admin login - Dispatching loginSuccess with:', { user, token });
-          console.log('🔐 User role:', user.role);
-          console.log('🔐 User data:', user);
-          console.log('🔐 Token:', token);
-          
-          dispatch(loginSuccess({ user, token }));
-          
-          toast(`Welcome back, ${user.name || 'User'}! Redirecting to your dashboard...`, 'success');
-          
-          navigate('/dashboard');
-        }
+        // Store token in localStorage for future use
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+
+        toast(`Welcome back, ${user.name || 'User'}! Redirecting to dashboard...`, 'success');
+
+        // Redirect to dashboard with token
+        const dashboardUrl = process.env.NODE_ENV === 'production'
+          ? `https://dashboard.funnelseye.com?token=${token}`
+          : `http://localhost:5000?token=${token}`;
+
+        window.location.href = dashboardUrl;
 
       } else {
-        // Handle error responses
         console.log('🔐 Login failed:', response.status, data);
-        
-        // Check if it's a verification issue (403 or message contains verify keywords)
-        const isVerificationIssue = 
-          response.status === 403 || 
+
+        const isVerificationIssue =
+          response.status === 403 ||
           (data.message && (
             data.message.toLowerCase().includes('verify') ||
             data.message.toLowerCase().includes('verification') ||
             data.message.toLowerCase().includes('not verified')
           ));
-        
+
         if (isVerificationIssue) {
           console.log('🔐 Verification issue detected, prompting for OTP');
-          
-          const result = await swal({
+
+          const result = await Swal({
             title: 'Email Verification Required',
             text: data.message || 'Your email address needs to be verified. Would you like us to send a verification code?',
             icon: 'warning',
             buttons: {
-              cancel: { 
-                text: 'Cancel', 
-                value: false, 
+              cancel: {
+                text: 'Cancel',
+                value: false,
                 visible: true,
-                className: 'swal-button--cancel' 
+                className: 'swal-button--cancel',
               },
-              confirm: { 
-                text: 'Send Code', 
-                value: true, 
+              confirm: {
+                text: 'Send Code',
+                value: true,
                 visible: true,
-                className: 'swal-button--confirm' 
+                className: 'swal-button--confirm',
               },
             },
             dangerMode: false,
@@ -482,9 +430,8 @@ const Login = () => {
             console.log('🔐 User cancelled OTP request');
           }
         } else {
-          // Not a verification issue, show error
           let errorMessage = data.message || 'Invalid email address or password.';
-          
+
           if (response.status === 401) {
             errorMessage = 'Invalid email or password. Please check your credentials and try again.';
           } else if (response.status === 404) {
@@ -492,12 +439,12 @@ const Login = () => {
           } else if (response.status === 500) {
             errorMessage = 'Server error occurred. Please try again later.';
           }
-          
+
           console.error('🔐 Authentication error:', {
             status: response.status,
             message: errorMessage
           });
-          
+
           toast(errorMessage, 'error');
         }
       }
@@ -540,7 +487,7 @@ const Login = () => {
 
     setForgotPasswordLoading(true);
     try {
-      const response = await fetch(`${BASE_API_URL}/api/auth/forgot-password-otp`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotPasswordEmail }),
@@ -570,7 +517,7 @@ const Login = () => {
 
     setForgotPasswordLoading(true);
     try {
-      const response = await fetch(`${BASE_API_URL}/api/auth/verify-password-reset-otp`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-password-reset-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotPasswordEmail, otp: forgotPasswordOtp }),
@@ -606,7 +553,7 @@ const Login = () => {
 
     setForgotPasswordLoading(true);
     try {
-      const response = await fetch(`${BASE_API_URL}/api/auth/reset-password-with-otp`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password-with-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -665,8 +612,8 @@ const Login = () => {
             position="relative"
             overflow="hidden"
           >
-            <Box position="absolute" top="-60px" left="-40px" w="200px" h="200px" bg="purple.100" opacity="0.18" filter="blur(10px)" borderRadius="full" />
-            <Box position="absolute" top="35%" right="-80px" w="240px" h="240px" bg="blue.100" opacity="0.16" filter="blur(12px)" borderRadius="full" />
+            <Box position="absolute" top="-60px" left="-40px" w="200px" h="200px" bg="blue.100" opacity="0.18" filter="blur(10px)" borderRadius="full" />
+            <Box position="absolute" top="35%" right="-80px" w="240px" h="240px" bg="purple.100" opacity="0.16" filter="blur(12px)" borderRadius="full" />
             <Box position="absolute" bottom="-80px" left="25%" w="220px" h="220px" bg="teal.50" opacity="0.16" filter="blur(14px)" borderRadius="full" />
             <VStack spacing={8} align="stretch" w="full" maxW="520px" mx="auto" justify="center" flex="1">
               <Heading size="lg" fontWeight="800" letterSpacing="-0.04em" color="#0f172a" lineHeight="1.2">
@@ -690,11 +637,11 @@ const Login = () => {
                         >
                           <Icon as={FaCheckCircle} boxSize={6} color="#4f46e5" />
                         </Flex>
-                        
+
                         <Text fontSize="lg" fontWeight="600" color="#312e81" mb={8}>
                           Enter 6-Digit Verification Code
                         </Text>
-                        
+
                         <HStack spacing={4} justify="center" mb={2}>
                           <PinInput
                             otp
@@ -704,7 +651,7 @@ const Login = () => {
                             placeholder="0"
                           >
                             {[...Array(6)].map((_, index) => (
-                              <PinInputField
+                            <PinInputField
                                 key={index}
                                 borderRadius="md"
                                 borderColor="blue.100"
@@ -724,7 +671,7 @@ const Login = () => {
                             ))}
                           </PinInput>
                         </HStack>
-                        
+
                         <Text fontSize="sm" color="gray.500" mb={8}>
                           Enter the 6-digit code sent to your email address
                         </Text>
@@ -787,9 +734,9 @@ const Login = () => {
                 ) : (
                   <VStack as="form" onSubmit={handleLogin} spacing={6}>
                     <FormControl>
-                      <FormLabel 
-                        fontSize="sm" 
-                        fontWeight="400" 
+                      <FormLabel
+                        fontSize="sm"
+                        fontWeight="400"
                         color="#0f172a"
                         mb={3}
                         textTransform="uppercase"
@@ -826,9 +773,9 @@ const Login = () => {
 
                     <FormControl>
                       <Flex justify="space-between" align="center" mb={3}>
-                        <FormLabel 
-                          fontSize="sm" 
-                          fontWeight="400" 
+                        <FormLabel
+                          fontSize="sm"
+                          fontWeight="400"
                           color="#0f172a"
                           mb={0}
                           textTransform="uppercase"
@@ -836,12 +783,12 @@ const Login = () => {
                         >
                           Password
                         </FormLabel>
-                        <Text 
+                        <Text
                           as="button"
                           type="button"
                           onClick={handleOpenForgotPassword}
-                          fontSize="sm" 
-                          color="brand.600" 
+                          fontSize="sm"
+                          color="brand.600"
                           fontWeight="500"
                           _hover={{ color: "brand.700", textDecoration: "underline" }}
                           cursor="pointer"
@@ -888,8 +835,8 @@ const Login = () => {
                     </FormControl>
 
                     <Flex w="full" justify="space-between" align="center" py={1}>
-                      <Checkbox 
-                        colorScheme="brand" 
+                      <Checkbox
+                        colorScheme="brand"
                         size="md"
                         fontWeight="500"
                         color="brand.600"
@@ -931,15 +878,17 @@ const Login = () => {
                     <Box textAlign="center" pt={4}>
                       <Text color="gray.600" fontWeight="500">
                         Don't have an account?{' '}
-                        <Text 
-                          as={Link} 
+                        <Link
                           to="/signup"
-                          color="brand.600" 
-                          fontWeight="600"
-                          _hover={{ textDecoration: "underline", color: "brand.700" }}
+                          style={{
+                            color: '#0284c7',
+                            fontWeight: '600',
+                            textDecoration: 'none'
+                          }}
+                          _hover={{ textDecoration: "underline", color: "#0369a1" }}
                         >
                           Register here
-                        </Text>
+                        </Link>
                       </Text>
                     </Box>
                   </VStack>
@@ -952,7 +901,7 @@ const Login = () => {
           <Box
             w={{ base: '100%', md: '50%' }}
             minH={{ base: '260px', md: 'auto' }}
-            bgImage={`url(${loginHeroJpg})`}
+            bgImage={`url('/login-bg.jpg')`}
             bgSize="cover"
             bgPos="center"
             position="relative"
@@ -961,17 +910,17 @@ const Login = () => {
       </Flex>
 
       {/* Forgot Password Modal */}
-      <Modal 
-        isOpen={isForgotPasswordOpen} 
-        onClose={handleCloseForgotPassword} 
+      <Modal
+        isOpen={isForgotPasswordOpen}
+        onClose={handleCloseForgotPassword}
         isCentered
         size="md"
         closeOnOverlayClick={false}
         closeOnEsc={false}
       >
         <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
-        <ModalContent 
-          borderRadius="16px" 
+        <ModalContent
+          borderRadius="16px"
           mx={4}
           overflow="hidden"
           boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.25)"
@@ -988,10 +937,10 @@ const Login = () => {
               },
             }}
           />
-          
-          <ModalHeader 
-            pt={6} 
-            pb={2} 
+
+          <ModalHeader
+            pt={6}
+            pb={2}
             px={6}
             borderBottom="none"
           >
@@ -1010,15 +959,15 @@ const Login = () => {
               </Text>
             </VStack>
           </ModalHeader>
-          
-          <ModalCloseButton 
-            isDisabled={forgotPasswordLoading} 
-            top={4} 
+
+          <ModalCloseButton
+            isDisabled={forgotPasswordLoading}
+            top={4}
             right={4}
             borderRadius="full"
             _hover={{ bg: 'gray.100' }}
           />
-          
+
           <ModalBody px={6} pb={6} pt={4}>
             {/* Step 1: Email Entry */}
             {forgotPasswordStep === 'email' && (
@@ -1033,11 +982,11 @@ const Login = () => {
                 >
                   <Icon as={FaEnvelope} boxSize={6} color="#4f46e5" />
                 </Flex>
-                
+
                 <FormControl>
-                  <FormLabel 
-                    fontSize="sm" 
-                    fontWeight="500" 
+                  <FormLabel
+                    fontSize="sm"
+                    fontWeight="500"
                     color="gray.600"
                     mb={2}
                   >
@@ -1089,13 +1038,13 @@ const Login = () => {
                 >
                   Send Verification Code
                 </Button>
-                
+
                 <Text fontSize="sm" color="gray.500" textAlign="center">
                   Remember your password?{' '}
-                  <Text 
-                    as="button" 
+                  <Text
+                    as="button"
                     type="button"
-                    color="#4f46e5" 
+                    color="#4f46e5"
                     fontWeight="500"
                     onClick={handleCloseForgotPassword}
                     _hover={{ textDecoration: 'underline' }}
@@ -1119,7 +1068,7 @@ const Login = () => {
                 >
                   <Icon as={FaShieldAlt} boxSize={6} color="#4f46e5" />
                 </Flex>
-                
+
                 <Text fontSize="sm" color="gray.600" textAlign="center">
                   We sent a verification code to{' '}
                   <Text as="span" fontWeight="600" color="#0f172a">
@@ -1226,9 +1175,9 @@ const Login = () => {
                 </Flex>
 
                 <FormControl>
-                  <FormLabel 
-                    fontSize="sm" 
-                    fontWeight="500" 
+                  <FormLabel
+                    fontSize="sm"
+                    fontWeight="500"
                     color="gray.600"
                     mb={2}
                   >
@@ -1360,9 +1309,9 @@ const Login = () => {
                   align="center"
                   justify="center"
                 >
-                  <Icon as={FaCheckCircle} boxSize={10} color="green.500" />
+                  <Icon as={CheckCircleIcon} boxSize={10} color="green.500" />
                 </Flex>
-                
+
                 <VStack spacing={2}>
                   <Heading size="md" fontWeight="700" color="#0f172a" textAlign="center">
                     Password Reset Successful!
@@ -1397,46 +1346,6 @@ const Login = () => {
           </ModalBody>
         </ModalContent>
       </Modal>
-
-      <style jsx global>{`
-        .swal-button--confirm {
-          background-color: #1a202c !important;
-          border: none !important;
-          border-radius: 8px !important;
-          padding: 12px 24px !important;
-          font-weight: 600 !important;
-          font-size: 14px !important;
-        }
-        .swal-button--confirm:hover {
-          background-color: #2d3748 !important;
-          transform: translateY(-1px) !important;
-        }
-        .swal-button--cancel {
-          background-color: #e2e8f0 !important;
-          color: #4a5568 !important;
-          border: none !important;
-          border-radius: 8px !important;
-          padding: 12px 24px !important;
-          font-weight: 600 !important;
-          font-size: 14px !important;
-        }
-        .swal-button--cancel:hover {
-          background-color: #cbd5e0 !important;
-          transform: translateY(-1px) !important;
-        }
-        .swal-modal {
-          border-radius: 16px !important;
-          border: none !important;
-          box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
-        }
-        .swal-title {
-          color: #1a202c !important;
-          font-weight: 600 !important;
-        }
-        .swal-text {
-          color: #4a5568 !important;
-        }
-      `}</style>
     </Box>
   );
 };

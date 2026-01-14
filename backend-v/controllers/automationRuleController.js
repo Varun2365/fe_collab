@@ -11,13 +11,13 @@ const AutomationRule = require('../schema/AutomationRule');
  */
 exports.createRule = async (req, res) => {
     try {
-        const { 
-            name, 
-            coachId, 
-            triggerEvent, 
-            triggerConditions, 
+        const {
+            name,
+            coachId,
+            triggerEvent,
+            triggerConditions,
             triggerConditionLogic,
-            actions, 
+            actions,
             description,
             isActive,
             // Graph-based workflow fields
@@ -127,14 +127,9 @@ exports.createRule = async (req, res) => {
             ruleData.nodes = nodes || [];
             ruleData.edges = edges || [];
             ruleData.viewport = viewport || { x: 0, y: 0, zoom: 1 };
-            
-            // Extract trigger event from trigger node for backward compatibility
-            const triggerNode = nodes.find(n => n.type === 'trigger');
-            if (triggerNode) {
-                ruleData.triggerEvent = triggerNode.nodeType;
-                ruleData.triggerConditions = triggerNode.data?.conditions || [];
-                ruleData.triggerConditionLogic = triggerNode.data?.conditionLogic || 'AND';
-            }
+
+            // For graph workflows, don't set triggerEvent since it's not required
+            // The trigger information is stored in the nodes themselves
         } else {
             // Legacy workflow
             ruleData.triggerEvent = triggerEvent;
