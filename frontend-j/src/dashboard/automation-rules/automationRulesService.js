@@ -122,7 +122,7 @@ class AutomationRulesService {
    */
   async deleteSequence(sequenceId) {
     try {
-      const response = await axios.delete(`${API_ENDPOINT}/automations-v2/sequences/${sequenceId}`, {
+      const response = await axios.delete(`${API_ENDPOINT}/automation-rules/${sequenceId}`, {
         headers: this.getHeaders()
       });
       return response.data;

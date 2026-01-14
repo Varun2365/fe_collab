@@ -38,6 +38,7 @@ import {
   IconButton,
   FormControl,
   FormLabel,
+  Checkbox,
   Textarea,
   NumberInput,
   NumberInputField,
@@ -48,6 +49,7 @@ import {
   useToast,
   Code,
   SimpleGrid,
+  Switch,
   Drawer,
   DrawerBody,
   DrawerFooter,
@@ -71,6 +73,11 @@ import {
   TabPanel,
   InputGroup,
   InputLeftElement,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  MenuDivider,
   AlertDialog,
   AlertDialogOverlay,
   AlertDialogContent,
@@ -86,6 +93,7 @@ import {
   PopoverHeader,
   PopoverArrow,
 } from '@chakra-ui/react';
+import { ChevronDownIcon } from '@chakra-ui/icons';
 import {
   FiPlay,
   FiPause,
@@ -138,22 +146,24 @@ const TriggerNode = ({ data, selected }) => {
       shadow={selected ? 'lg' : 'md'}
     >
       <CardBody p={3}>
-        <VStack spacing={2} align="center">
-          <Box p={2} bg="green.100" borderRadius="full">
+        <HStack spacing={3} align="center">
+          <Box p={2} bg="green.100" borderRadius="full" flexShrink={0}>
             <FiZap size={16} color="#38A169" />
           </Box>
-          <Text fontSize="sm" fontWeight="600" color="green.800" textAlign="center">
-            {data.label}
-          </Text>
-          {data.description && (
-            <Text fontSize="xs" color="green.600" textAlign="center">
-              {data.description}
+          <VStack spacing={0.5} align="start" flex={1} minW={0}>
+            <Text fontSize="sm" fontWeight="600" color="green.800" noOfLines={1}>
+              {data.label}
             </Text>
-          )}
-        </VStack>
+            {data.description && (
+              <Text fontSize="xs" color="green.600" noOfLines={1}>
+                {data.description}
+              </Text>
+            )}
+          </VStack>
+        </HStack>
         <Handle
           type="source"
-          position={Position.Bottom}
+          position={Position.Right}
           style={{
             background: '#38A169',
             width: '8px',
@@ -176,22 +186,24 @@ const ActionNode = ({ data, selected }) => {
       shadow={selected ? 'lg' : 'md'}
     >
       <CardBody p={3}>
-        <VStack spacing={2} align="center">
-          <Box p={2} bg="blue.100" borderRadius="full">
+        <HStack spacing={3} align="center">
+          <Box p={2} bg="blue.100" borderRadius="full" flexShrink={0}>
             {data.icon || <FiSettings size={16} color="#3182CE" />}
           </Box>
-          <Text fontSize="sm" fontWeight="600" color="blue.800" textAlign="center">
-            {data.label}
-          </Text>
-          {data.description && (
-            <Text fontSize="xs" color="blue.600" textAlign="center">
-              {data.description}
+          <VStack spacing={0.5} align="start" flex={1} minW={0}>
+            <Text fontSize="sm" fontWeight="600" color="blue.800" noOfLines={1}>
+              {data.label}
             </Text>
-          )}
-        </VStack>
+            {data.description && (
+              <Text fontSize="xs" color="blue.600" noOfLines={1}>
+                {data.description}
+              </Text>
+            )}
+          </VStack>
+        </HStack>
         <Handle
           type="target"
-          position={Position.Top}
+          position={Position.Left}
           style={{
             background: '#3182CE',
             width: '8px',
@@ -201,7 +213,7 @@ const ActionNode = ({ data, selected }) => {
         />
         <Handle
           type="source"
-          position={Position.Bottom}
+          position={Position.Right}
           style={{
             background: '#3182CE',
             width: '8px',
@@ -224,20 +236,22 @@ const DelayNode = ({ data, selected }) => {
       shadow={selected ? 'lg' : 'md'}
     >
       <CardBody p={3}>
-        <VStack spacing={2} align="center">
-          <Box p={2} bg="orange.100" borderRadius="full">
+        <HStack spacing={3} align="center">
+          <Box p={2} bg="orange.100" borderRadius="full" flexShrink={0}>
             <FiClock size={16} color="#DD6B20" />
           </Box>
-          <Text fontSize="sm" fontWeight="600" color="orange.800" textAlign="center">
-            Delay
-          </Text>
-          <Text fontSize="xs" color="orange.600" textAlign="center">
-            {data.delayMinutes || 0} minutes
-          </Text>
-        </VStack>
+          <VStack spacing={0.5} align="start" flex={1} minW={0}>
+            <Text fontSize="sm" fontWeight="600" color="orange.800" noOfLines={1}>
+              Delay
+            </Text>
+            <Text fontSize="xs" color="orange.600" noOfLines={1}>
+              {data.delayMinutes || 0} minutes
+            </Text>
+          </VStack>
+        </HStack>
         <Handle
           type="target"
-          position={Position.Top}
+          position={Position.Left}
           style={{
             background: '#DD6B20',
             width: '8px',
@@ -247,7 +261,7 @@ const DelayNode = ({ data, selected }) => {
         />
         <Handle
           type="source"
-          position={Position.Bottom}
+          position={Position.Right}
           style={{
             background: '#DD6B20',
             width: '8px',
@@ -261,6 +275,104 @@ const DelayNode = ({ data, selected }) => {
 };
 
 const ConditionNode = ({ data, selected }) => {
+  // Generate dynamic handles based on condition type and configuration
+  const getConditionHandles = () => {
+    const handles = [];
+
+    // Input handle (always present)
+    handles.push(
+      <Handle
+        key="input"
+        type="target"
+        position={Position.Left}
+        style={{
+          background: '#805AD5',
+          width: '8px',
+          height: '8px',
+          border: '2px solid white'
+        }}
+      />
+    );
+
+    if (data.conditionType === 'Message Validation') {
+      // YES/NO handles for Message Validation, plus optional No Reply handle
+      handles.push(
+        <Handle
+          key="yes"
+          type="source"
+          position={Position.Bottom}
+          id="true"
+          style={{
+            background: '#38A169',
+            width: '8px',
+            height: '8px',
+            border: '2px solid white'
+          }}
+        />,
+        <Handle
+          key="no"
+          type="source"
+          position={Position.Top}
+          id="false"
+          style={{
+            background: '#E53E3E',
+            width: '8px',
+            height: '8px',
+            border: '2px solid white'
+          }}
+        />
+      );
+
+      // Add No Reply handle if enabled
+      if (data.config?.waitForReply && data.config?.noReplyPath) {
+        handles.push(
+          <Handle
+            key="no-reply"
+            type="source"
+            position={Position.Right}
+            id="no-reply"
+            style={{
+              background: '#ED8936',
+              width: '8px',
+              height: '8px',
+              border: '2px solid white'
+            }}
+          />
+        );
+      }
+    } else {
+      // Default TRUE/FALSE handles for other conditions
+      handles.push(
+        <Handle
+          key="false"
+          type="source"
+          position={Position.Top}
+          id="false"
+          style={{
+            background: '#E53E3E',
+            width: '6px',
+            height: '6px',
+            border: '2px solid white'
+          }}
+        />,
+        <Handle
+          key="true"
+          type="source"
+          position={Position.Bottom}
+          id="true"
+          style={{
+            background: '#38A169',
+            width: '6px',
+            height: '6px',
+            border: '2px solid white'
+          }}
+        />
+      );
+    }
+
+    return handles;
+  };
+
   return (
     <Card
       bg="purple.50"
@@ -270,59 +382,25 @@ const ConditionNode = ({ data, selected }) => {
       shadow={selected ? 'lg' : 'md'}
     >
       <CardBody p={3}>
-        <VStack spacing={2} align="center">
-          <Box p={2} bg="purple.100" borderRadius="full">
+        <HStack spacing={3} align="center">
+          <Box p={2} bg="purple.100" borderRadius="full" flexShrink={0}>
             <FiFilter size={16} color="#805AD5" />
           </Box>
-          <Text fontSize="sm" fontWeight="600" color="purple.800" textAlign="center">
-            Condition
-          </Text>
-          <Text fontSize="xs" color="purple.600" textAlign="center">
-            {data.conditionType || 'Custom'}
-          </Text>
-        </VStack>
-        <Handle
-          type="target"
-          position={Position.Top}
-          style={{
-            background: '#805AD5',
-            width: '8px',
-            height: '8px',
-            border: '2px solid white'
-          }}
-        />
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          style={{
-            background: '#805AD5',
-            width: '8px',
-            height: '8px',
-            border: '2px solid white'
-          }}
-        />
-        <Handle
-          type="source"
-          position={Position.Left}
-          id="false"
-          style={{
-            background: '#E53E3E',
-            width: '6px',
-            height: '6px',
-            border: '2px solid white'
-          }}
-        />
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="true"
-          style={{
-            background: '#38A169',
-            width: '6px',
-            height: '6px',
-            border: '2px solid white'
-          }}
-        />
+          <VStack spacing={0.5} align="start" flex={1} minW={0}>
+            <Text fontSize="sm" fontWeight="600" color="purple.800" noOfLines={1}>
+              {data.conditionType === 'Message Validation' ? 'Message Check' : 'Condition'}
+            </Text>
+            <Text fontSize="xs" color="purple.600" noOfLines={1}>
+              {data.conditionType === 'Message Validation'
+                ? data.config?.waitForReply
+                  ? `Wait ${data.config?.waitMinutes || 60}min → ${data.config?.noReplyPath ? 'YES/NO/No Reply' : 'YES/NO'}`
+                  : `${data.config?.keywords?.split(',')[0] || 'keywords'} → YES/NO`
+                : (data.conditionType || 'Custom')
+              }
+            </Text>
+          </VStack>
+        </HStack>
+        {getConditionHandles()}
       </CardBody>
     </Card>
   );
@@ -381,8 +459,204 @@ const getActionIcon = (actionValue) => {
   return FiPlay;
 };
 
+// Searchable Menu Component for dropdowns with search functionality
+const SearchableMenu = ({ value, onChange, placeholder, children, buttonProps = {}, menuProps = {} }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredChildren = React.Children.map(children, (child) => {
+    if (!searchTerm || !child.props.children) return child;
+
+    const text = child.props.children.toString().toLowerCase();
+    const search = searchTerm.toLowerCase();
+
+    if (text.includes(search)) return child;
+    return null;
+  }).filter(Boolean);
+
+  return (
+    <Menu {...menuProps}>
+      <MenuButton
+        as={Button}
+        rightIcon={<ChevronDownIcon />}
+        variant="outline"
+        bg="white"
+        borderColor="gray.200"
+        _hover={{ borderColor: 'gray.300' }}
+        _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+        borderRadius="md"
+        textAlign="left"
+        justifyContent="space-between"
+        w="full"
+        {...buttonProps}
+      >
+        {value ? children.find(child => child.props.value === value)?.props.children || value : placeholder}
+      </MenuButton>
+      <MenuList maxH="300px" overflowY="auto">
+        <Box px={3} py={2}>
+          <InputGroup size="sm">
+            <InputLeftElement>
+              <FiSearch size={14} />
+            </InputLeftElement>
+            <Input
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              bg="gray.50"
+              border="none"
+              _focus={{ boxShadow: 'none' }}
+            />
+          </InputGroup>
+        </Box>
+        <MenuDivider />
+        {filteredChildren.length > 0 ? (
+          filteredChildren.map((child, index) => (
+            <MenuItem
+              key={child.props.value || index}
+              onClick={() => {
+                onChange({ target: { value: child.props.value } });
+                setSearchTerm('');
+              }}
+              bg={value === child.props.value ? 'blue.50' : 'transparent'}
+              _hover={{ bg: 'gray.50' }}
+            >
+              {child.props.children}
+            </MenuItem>
+          ))
+        ) : (
+          <MenuItem isDisabled>No options found</MenuItem>
+        )}
+      </MenuList>
+    </Menu>
+  );
+};
+
+// Variable Input Component for dynamic variable insertion
+const VariableInput = ({ fieldName, label, value, onChange, placeholder, type = 'input', rows = 4, helperText, ...props }) => {
+  const [activeVariableField, setActiveVariableField] = useState(null);
+  const isTextarea = type === 'textarea';
+  const InputComponent = isTextarea ? Textarea : Input;
+
+  // Available variables for automation rules
+  const availableVariables = [
+    { key: '{{lead.name}}', label: 'Lead Name', category: 'Lead Info' },
+    { key: '{{lead.email}}', label: 'Lead Email', category: 'Lead Info' },
+    { key: '{{lead.phone}}', label: 'Lead Phone', category: 'Lead Info' },
+    { key: '{{lead.source}}', label: 'Lead Source', category: 'Lead Info' },
+    { key: '{{lead.temperature}}', label: 'Lead Temperature', category: 'Lead Info' },
+    { key: '{{lead.score}}', label: 'Lead Score', category: 'Lead Info' },
+    { key: '{{lead.status}}', label: 'Lead Status', category: 'Lead Info' },
+    { key: '{{lead.created_at}}', label: 'Lead Created Date', category: 'Lead Info' },
+    { key: '{{lead.updated_at}}', label: 'Lead Updated Date', category: 'Lead Info' },
+    { key: '{{coach.name}}', label: 'Coach Name', category: 'Coach Info' },
+    { key: '{{coach.email}}', label: 'Coach Email', category: 'Coach Info' },
+    { key: '{{current_date}}', label: 'Current Date', category: 'System' },
+    { key: '{{current_time}}', label: 'Current Time', category: 'System' },
+  ];
+
+  const insertVariable = (variable) => {
+    const currentValue = value || '';
+    const input = document.getElementById(`variable-input-${fieldName}`);
+    if (input) {
+      const start = input.selectionStart || 0;
+      const end = input.selectionEnd || 0;
+      const newValue = currentValue.substring(0, start) + variable + currentValue.substring(end);
+      onChange(newValue);
+      setTimeout(() => {
+        input.focus();
+        const newPos = start + variable.length;
+        input.setSelectionRange(newPos, newPos);
+      }, 0);
+    } else {
+      onChange(currentValue + variable);
+    }
+    setActiveVariableField(null);
+  };
+
+  const groupedVariables = availableVariables.reduce((acc, variable) => {
+    if (!acc[variable.category]) {
+      acc[variable.category] = [];
+    }
+    acc[variable.category].push(variable);
+    return acc;
+  }, {});
+
+  return (
+    <FormControl>
+      <HStack spacing={2} align="center" mb={2}>
+        <FormLabel fontSize="sm" fontWeight="600" color="gray.700" mb={0} flex={1}>
+          {label}
+        </FormLabel>
+        <Popover
+          isOpen={activeVariableField === fieldName}
+          onOpen={() => setActiveVariableField(fieldName)}
+          onClose={() => setActiveVariableField(null)}
+          placement="left"
+          closeOnBlur={true}
+        >
+          <PopoverTrigger>
+            <Button size="xs" colorScheme="blue" variant="outline" leftIcon={<FiZap size={12} />}>
+              Variables
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent w="300px">
+            <PopoverArrow />
+            <PopoverHeader fontSize="sm" fontWeight="600">Insert Variables</PopoverHeader>
+            <PopoverBody p={0}>
+              <VStack spacing={0} align="stretch" maxH="300px" overflowY="auto">
+                {Object.entries(groupedVariables).map(([category, variables]) => (
+                  <Box key={category}>
+                    <Text fontSize="xs" fontWeight="600" color="gray.500" textTransform="uppercase" p={2} bg="gray.50">
+                      {category}
+                    </Text>
+                    <VStack spacing={0} align="stretch">
+                      {variables.map((variable) => (
+                        <Button
+                          key={variable.key}
+                          size="sm"
+                          variant="ghost"
+                          justifyContent="flex-start"
+                          onClick={() => insertVariable(variable.key)}
+                          _hover={{ bg: 'blue.50' }}
+                          borderRadius={0}
+                        >
+                          <VStack spacing={0} align="start" flex={1}>
+                            <Text fontSize="xs" fontWeight="500">{variable.label}</Text>
+                            <Text fontSize="xs" color="gray.500" fontFamily="mono">{variable.key}</Text>
+                          </VStack>
+                        </Button>
+                      ))}
+                    </VStack>
+                  </Box>
+                ))}
+              </VStack>
+            </PopoverBody>
+          </PopoverContent>
+        </Popover>
+      </HStack>
+      <InputComponent
+        id={`variable-input-${fieldName}`}
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        bg="white"
+        borderColor="gray.200"
+        _hover={{ borderColor: 'gray.300' }}
+        _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+        borderRadius="md"
+        {...(isTextarea ? { rows } : {})}
+        {...props}
+      />
+      {helperText && (
+        <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+          {helperText}
+        </FormHelperText>
+      )}
+    </FormControl>
+  );
+};
+
 // Node Configuration Form Component
-const NodeConfigForm = ({ node, onSave, onCancel }) => {
+const NodeConfigForm = ({ node, onSave, onCancel, onDelete }) => {
   const [config, setConfig] = useState(node.data || {});
   const toast = useToast();
 
@@ -503,96 +777,724 @@ const NodeConfigForm = ({ node, onSave, onCancel }) => {
         );
 
       case 'action':
+        const renderActionConfig = () => {
+          const actionType = config.nodeType;
+
+          switch (actionType) {
+            case 'send_whatsapp_message':
+            case 'send_sms_message':
+              return (
+                <VStack spacing={5} align="stretch">
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Message Template
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.templateId || ''}
+                      onChange={(e) => setConfig({ ...config, templateId: e.target.value })}
+                      placeholder="Select template (optional)"
+                    >
+                      <MenuItem value="">Custom Message</MenuItem>
+                      <MenuDivider />
+                      {/* Template options would be populated from API */}
+                      <MenuItem value="welcome">Welcome Message</MenuItem>
+                      <MenuItem value="followup">Follow-up Message</MenuItem>
+                      <MenuItem value="reminder">Reminder Message</MenuItem>
+                      <MenuItem value="confirmation">Confirmation Message</MenuItem>
+                      <MenuItem value="thankyou">Thank You Message</MenuItem>
+                    </SearchableMenu>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Using a template ensures compliance with messaging platform requirements
+                    </FormHelperText>
+                  </FormControl>
+
+                  {!config.templateId && (
+                    <VariableInput
+                      fieldName="message"
+                      label="Message Content"
+                      value={config.message || ''}
+                      onChange={(value) => setConfig({ ...config, message: value })}
+                      placeholder={`Enter your ${actionType === 'send_whatsapp_message' ? 'WhatsApp' : 'SMS'} message. Use variables for dynamic values`}
+                      type="textarea"
+                      rows={4}
+                      helperText={`This message will be sent via ${actionType === 'send_whatsapp_message' ? 'WhatsApp' : 'SMS'}`}
+                    />
+                  )}
+
+                  <SimpleGrid columns={2} spacing={4}>
+                    <FormControl>
+                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                        Send Immediately
+                      </FormLabel>
+                      <Switch
+                        isChecked={config.sendImmediately !== false}
+                        onChange={(e) => setConfig({ ...config, sendImmediately: e.target.checked })}
+                        colorScheme="blue"
+                      />
+                      <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                        Send now or schedule for later
+                      </FormHelperText>
+                    </FormControl>
+
+                    {!config.sendImmediately && (
+                      <FormControl>
+                        <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                          Delay (minutes)
+                        </FormLabel>
+                        <NumberInput
+                          value={config.delayMinutes || 0}
+                          onChange={(value) => setConfig({ ...config, delayMinutes: parseInt(value) || 0 })}
+                          min={0}
+                          max={1440}
+                        >
+                          <NumberInputField
+                            bg="white"
+                            borderColor="gray.200"
+                            _hover={{ borderColor: 'gray.300' }}
+                            _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                            borderRadius="md"
+                          />
+                        </NumberInput>
+                      </FormControl>
+                    )}
+                  </SimpleGrid>
+                </VStack>
+              );
+
+            case 'send_email_message':
+              return (
+                <VStack spacing={5} align="stretch">
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Email Template
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.templateId || ''}
+                      onChange={(e) => setConfig({ ...config, templateId: e.target.value })}
+                      placeholder="Select template (optional)"
+                    >
+                      <MenuItem value="">Custom Email</MenuItem>
+                      <MenuDivider />
+                      <MenuItem value="welcome">Welcome Email</MenuItem>
+                      <MenuItem value="newsletter">Newsletter</MenuItem>
+                      <MenuItem value="followup">Follow-up Email</MenuItem>
+                      <MenuItem value="confirmation">Confirmation Email</MenuItem>
+                      <MenuItem value="thankyou">Thank You Email</MenuItem>
+                      <MenuItem value="promotion">Promotional Email</MenuItem>
+                      <MenuItem value="announcement">Announcement Email</MenuItem>
+                    </SearchableMenu>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Templates ensure consistent branding and formatting
+                    </FormHelperText>
+                  </FormControl>
+
+                  {!config.templateId && (
+                    <>
+                      <VariableInput
+                        fieldName="subject"
+                        label="Email Subject"
+                        value={config.subject || ''}
+                        onChange={(value) => setConfig({ ...config, subject: value })}
+                        placeholder="Enter email subject line"
+                        helperText="Subject line should be clear and engaging"
+                      />
+
+                      <VariableInput
+                        fieldName="emailBody"
+                        label="Email Content"
+                        value={config.emailBody || ''}
+                        onChange={(value) => setConfig({ ...config, emailBody: value })}
+                        placeholder="Enter your email content. Use variables for dynamic values"
+                        type="textarea"
+                        rows={6}
+                        helperText="HTML formatting is supported"
+                      />
+                    </>
+                  )}
+
+                  <SimpleGrid columns={2} spacing={4}>
+                    <FormControl>
+                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                        Send Immediately
+                      </FormLabel>
+                      <Switch
+                        isChecked={config.sendImmediately !== false}
+                        onChange={(e) => setConfig({ ...config, sendImmediately: e.target.checked })}
+                        colorScheme="blue"
+                      />
+                    </FormControl>
+
+                    {!config.sendImmediately && (
+                      <FormControl>
+                        <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                          Delay (minutes)
+                        </FormLabel>
+                        <NumberInput
+                          value={config.delayMinutes || 0}
+                          onChange={(value) => setConfig({ ...config, delayMinutes: parseInt(value) || 0 })}
+                          min={0}
+                          max={1440}
+                        >
+                          <NumberInputField
+                            bg="white"
+                            borderColor="gray.200"
+                            _hover={{ borderColor: 'gray.300' }}
+                            _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                            borderRadius="md"
+                          />
+                        </NumberInput>
+                      </FormControl>
+                    )}
+                  </SimpleGrid>
+                </VStack>
+              );
+
+            case 'create_task':
+              return (
+                <VStack spacing={5} align="stretch">
+                  <VariableInput
+                    fieldName="taskName"
+                    label="Task Name"
+                    value={config.taskName || ''}
+                    onChange={(value) => setConfig({ ...config, taskName: value })}
+                    placeholder="e.g., Follow up with {{lead.name}}"
+                    helperText="A clear, descriptive name for the task"
+                  />
+
+                  <VariableInput
+                    fieldName="taskDescription"
+                    label="Task Description"
+                    value={config.taskDescription || ''}
+                    onChange={(value) => setConfig({ ...config, taskDescription: value })}
+                    placeholder="Detailed description of what needs to be done"
+                    type="textarea"
+                    rows={4}
+                    helperText="Provide context and any specific instructions"
+                  />
+
+                  <SimpleGrid columns={2} spacing={4}>
+                    <FormControl>
+                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                        Priority
+                      </FormLabel>
+                      <SearchableMenu
+                        value={config.priority || 'MEDIUM'}
+                        onChange={(e) => setConfig({ ...config, priority: e.target.value })}
+                        placeholder="Select priority"
+                      >
+                        <MenuItem value="LOW">Low</MenuItem>
+                        <MenuItem value="MEDIUM">Medium</MenuItem>
+                        <MenuItem value="HIGH">High</MenuItem>
+                        <MenuItem value="URGENT">Urgent</MenuItem>
+                      </SearchableMenu>
+                    </FormControl>
+
+                    <FormControl>
+                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                        Stage
+                      </FormLabel>
+                      <SearchableMenu
+                        value={config.stage || 'LEAD_GENERATION'}
+                        onChange={(e) => setConfig({ ...config, stage: e.target.value })}
+                        placeholder="Select sales stage"
+                      >
+                        <MenuItem value="LEAD_GENERATION">Lead Generation</MenuItem>
+                        <MenuItem value="LEAD_QUALIFICATION">Lead Qualification</MenuItem>
+                        <MenuItem value="PROPOSAL">Proposal</MenuItem>
+                        <MenuItem value="CLOSING">Closing</MenuItem>
+                        <MenuItem value="ONBOARDING">Onboarding</MenuItem>
+                        <MenuItem value="FOLLOW_UP">Follow Up</MenuItem>
+                        <MenuItem value="CUSTOMER_SUCCESS">Customer Success</MenuItem>
+                      </SearchableMenu>
+                    </FormControl>
+                  </SimpleGrid>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Assign To
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.assignedTo || ''}
+                      onChange={(e) => setConfig({ ...config, assignedTo: e.target.value })}
+                      placeholder="Select staff (optional, defaults to coach)"
+                    >
+                      <MenuItem value="">Coach (Me)</MenuItem>
+                      <MenuDivider />
+                      {/* Staff options would be populated from API */}
+                      <MenuItem value="staff1">John Doe</MenuItem>
+                      <MenuItem value="staff2">Jane Smith</MenuItem>
+                      <MenuItem value="staff3">Mike Johnson</MenuItem>
+                      <MenuItem value="staff4">Sarah Wilson</MenuItem>
+                    </SearchableMenu>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Due Date Offset (days)
+                    </FormLabel>
+                    <NumberInput
+                      value={config.dueDateOffset || 7}
+                      onChange={(value) => setConfig({ ...config, dueDateOffset: parseInt(value) || 7 })}
+                      min={0}
+                      max={365}
+                    >
+                      <NumberInputField
+                        bg="white"
+                        borderColor="gray.200"
+                        _hover={{ borderColor: 'gray.300' }}
+                        _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                        borderRadius="md"
+                      />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Days from now when this task should be completed
+                    </FormHelperText>
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'update_lead_score':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Score
+                    </FormLabel>
+                    <NumberInput
+                      value={config.score || 0}
+                      onChange={(value) => setConfig({ ...config, score: parseInt(value) || 0 })}
+                      min={0}
+                      max={100}
+                    >
+                      <NumberInputField
+                        bg="white"
+                        borderColor="gray.200"
+                        _hover={{ borderColor: 'gray.300' }}
+                        _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                        borderRadius="md"
+                      />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Lead score from 0-100 (higher = more qualified)
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Reason
+                    </FormLabel>
+                    <Input
+                      value={config.reason || ''}
+                      onChange={(e) => setConfig({ ...config, reason: e.target.value })}
+                      placeholder="Reason for score update"
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Optional note explaining why the score was changed
+                    </FormHelperText>
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'add_lead_tag':
+            case 'remove_lead_tag':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Tag Name
+                    </FormLabel>
+                    <Input
+                      value={config.tagName || ''}
+                      onChange={(e) => setConfig({ ...config, tagName: e.target.value })}
+                      placeholder="Enter tag name"
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      {actionType === 'add_lead_tag' ? 'Tag to add to the lead' : 'Tag to remove from the lead'}
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Create Tag if Not Exists
+                    </FormLabel>
+                    <Switch
+                      isChecked={config.createIfNotExists !== false}
+                      onChange={(e) => setConfig({ ...config, createIfNotExists: e.target.checked })}
+                      colorScheme="blue"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Automatically create the tag if it doesn't already exist
+                    </FormHelperText>
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'add_note_to_lead':
+              return (
+                <VStack spacing={5} align="stretch">
+                  <VariableInput
+                    fieldName="noteContent"
+                    label="Note Content"
+                    value={config.noteContent || ''}
+                    onChange={(value) => setConfig({ ...config, noteContent: value })}
+                    placeholder="Enter note content. Use variables for dynamic values"
+                    type="textarea"
+                    rows={6}
+                    helperText="This note will be added to the lead's activity timeline"
+                  />
+
+                  <SimpleGrid columns={2} spacing={4}>
+                    <FormControl>
+                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                        Note Type
+                      </FormLabel>
+                      <SearchableMenu
+                        value={config.noteType || 'general'}
+                        onChange={(e) => setConfig({ ...config, noteType: e.target.value })}
+                        placeholder="Select note type"
+                      >
+                        <MenuItem value="general">General</MenuItem>
+                        <MenuItem value="call">Call</MenuItem>
+                        <MenuItem value="meeting">Meeting</MenuItem>
+                        <MenuItem value="followup">Follow-up</MenuItem>
+                        <MenuItem value="important">Important</MenuItem>
+                        <MenuItem value="reminder">Reminder</MenuItem>
+                        <MenuItem value="internal">Internal</MenuItem>
+                      </SearchableMenu>
+                    </FormControl>
+
+                    <FormControl>
+                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                        Visibility
+                      </FormLabel>
+                      <SearchableMenu
+                        value={config.visibility || 'all'}
+                        onChange={(e) => setConfig({ ...config, visibility: e.target.value })}
+                        placeholder="Select visibility"
+                      >
+                        <MenuItem value="all">All Staff</MenuItem>
+                        <MenuItem value="coach">Coach Only</MenuItem>
+                        <MenuItem value="assigned">Assigned Staff Only</MenuItem>
+                      </SearchableMenu>
+                    </FormControl>
+                  </SimpleGrid>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Priority
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.priority || 'normal'}
+                      onChange={(e) => setConfig({ ...config, priority: e.target.value })}
+                      placeholder="Select priority"
+                    >
+                      <MenuItem value="low">Low</MenuItem>
+                      <MenuItem value="normal">Normal</MenuItem>
+                      <MenuItem value="high">High</MenuItem>
+                      <MenuItem value="urgent">Urgent</MenuItem>
+                    </SearchableMenu>
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'create_zoom_meeting':
+              return (
+                <VStack spacing={5} align="stretch">
+                  <VariableInput
+                    fieldName="meetingTopic"
+                    label="Meeting Topic"
+                    value={config.meetingTopic || ''}
+                    onChange={(value) => setConfig({ ...config, meetingTopic: value })}
+                    placeholder="Enter meeting topic. Use variables for dynamic values"
+                    helperText="The title that will appear for the Zoom meeting"
+                  />
+
+                  <VariableInput
+                    fieldName="meetingDescription"
+                    label="Meeting Description"
+                    value={config.meetingDescription || ''}
+                    onChange={(value) => setConfig({ ...config, meetingDescription: value })}
+                    placeholder="Optional meeting description or agenda"
+                    type="textarea"
+                    rows={3}
+                    helperText="Additional details about the meeting"
+                  />
+
+                  <SimpleGrid columns={2} spacing={4}>
+                    <FormControl>
+                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                        Meeting Type
+                      </FormLabel>
+                      <SearchableMenu
+                        value={config.meetingType || 'instant'}
+                        onChange={(e) => setConfig({ ...config, meetingType: e.target.value })}
+                        placeholder="Select meeting type"
+                      >
+                        <MenuItem value="instant">Instant Meeting</MenuItem>
+                        <MenuItem value="scheduled">Scheduled Meeting</MenuItem>
+                      </SearchableMenu>
+                    </FormControl>
+
+                    <FormControl>
+                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                        Duration (minutes)
+                      </FormLabel>
+                      <NumberInput
+                        value={config.duration || 60}
+                        onChange={(value) => setConfig({ ...config, duration: parseInt(value) || 60 })}
+                        min={15}
+                        max={480}
+                      >
+                        <NumberInputField
+                          bg="white"
+                          borderColor="gray.200"
+                          _hover={{ borderColor: 'gray.300' }}
+                          _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                          borderRadius="md"
+                        />
+                        <NumberInputStepper>
+                          <NumberIncrementStepper />
+                          <NumberDecrementStepper />
+                        </NumberInputStepper>
+                      </NumberInput>
+                    </FormControl>
+                  </SimpleGrid>
+
+                  {config.meetingType === 'scheduled' && (
+                    <SimpleGrid columns={2} spacing={4}>
+                      <FormControl>
+                        <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                          Start Date
+                        </FormLabel>
+                        <Input
+                          type="date"
+                          value={config.startDate || ''}
+                          onChange={(e) => setConfig({ ...config, startDate: e.target.value })}
+                          bg="white"
+                          borderColor="gray.200"
+                          _hover={{ borderColor: 'gray.300' }}
+                          _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                          borderRadius="md"
+                        />
+                      </FormControl>
+
+                      <FormControl>
+                        <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                          Start Time
+                        </FormLabel>
+                        <Input
+                          type="time"
+                          value={config.startTime || ''}
+                          onChange={(e) => setConfig({ ...config, startTime: e.target.value })}
+                          bg="white"
+                          borderColor="gray.200"
+                          _hover={{ borderColor: 'gray.300' }}
+                          _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                          borderRadius="md"
+                        />
+                      </FormControl>
+                    </SimpleGrid>
+                  )}
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Timezone
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.timezone || 'UTC'}
+                      onChange={(e) => setConfig({ ...config, timezone: e.target.value })}
+                      placeholder="Select timezone"
+                    >
+                      <MenuItem value="UTC">UTC</MenuItem>
+                      <MenuItem value="America/New_York">Eastern Time</MenuItem>
+                      <MenuItem value="America/Chicago">Central Time</MenuItem>
+                      <MenuItem value="America/Denver">Mountain Time</MenuItem>
+                      <MenuItem value="America/Los_Angeles">Pacific Time</MenuItem>
+                      <MenuItem value="Europe/London">London</MenuItem>
+                      <MenuItem value="Europe/Paris">Paris</MenuItem>
+                      <MenuItem value="Asia/Tokyo">Tokyo</MenuItem>
+                      <MenuItem value="Asia/Dubai">Dubai</MenuItem>
+                      <MenuItem value="Australia/Sydney">Sydney</MenuItem>
+                    </SearchableMenu>
+                  </FormControl>
+
+                  <SimpleGrid columns={2} spacing={4}>
+                    <FormControl>
+                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                        Auto Record
+                      </FormLabel>
+                      <Switch
+                        isChecked={config.autoRecord !== false}
+                        onChange={(e) => setConfig({ ...config, autoRecord: e.target.checked })}
+                        colorScheme="blue"
+                      />
+                    </FormControl>
+
+                    <FormControl>
+                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                        Join Before Host
+                      </FormLabel>
+                      <Switch
+                        isChecked={config.joinBeforeHost !== false}
+                        onChange={(e) => setConfig({ ...config, joinBeforeHost: e.target.checked })}
+                        colorScheme="blue"
+                      />
+                    </FormControl>
+                  </SimpleGrid>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Password Protection
+                    </FormLabel>
+                    <Switch
+                      isChecked={config.passwordProtected !== false}
+                      onChange={(e) => setConfig({ ...config, passwordProtected: e.target.checked })}
+                      colorScheme="blue"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Require password for meeting access
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Alternative Hosts
+                    </FormLabel>
+                    <Input
+                      value={config.alternativeHosts || ''}
+                      onChange={(e) => setConfig({ ...config, alternativeHosts: e.target.value })}
+                      placeholder="Enter email addresses separated by commas"
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Additional hosts who can start and manage the meeting
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Send Meeting Invites
+                    </FormLabel>
+                    <Switch
+                      isChecked={config.sendInvites !== false}
+                      onChange={(e) => setConfig({ ...config, sendInvites: e.target.checked })}
+                      colorScheme="blue"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Automatically send calendar invites to participants
+                    </FormHelperText>
+                  </FormControl>
+                </VStack>
+              );
+
+            default:
+              return (
+                <VStack spacing={4} align="stretch">
+                  <Alert status="info">
+                    <AlertIcon />
+                    <Text fontSize="sm">
+                      Advanced configuration options for {actionType || 'this action'} will be available soon.
+                    </Text>
+                  </Alert>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Custom Label (Optional)
+                    </FormLabel>
+                    <Input
+                      value={config.label || ''}
+                      onChange={(e) => setConfig({ ...config, label: e.target.value })}
+                      placeholder="e.g., Send Welcome Message"
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                  </FormControl>
+                </VStack>
+              );
+          }
+        };
+
         return (
           <VStack spacing={4} align="stretch">
             <FormControl isRequired>
               <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
                 Action Type
               </FormLabel>
-              <Select
+              <SearchableMenu
                 value={config.nodeType || ''}
                 onChange={(e) => setConfig({ ...config, nodeType: e.target.value })}
                 placeholder="Select what action to perform"
-                bg="white"
-                borderColor="gray.200"
-                _hover={{ borderColor: 'gray.300' }}
-                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
-                borderRadius="md"
               >
                 {/* Lead Data & Funnel Actions */}
-                <optgroup label="Lead Data & Funnel Actions">
-                  <option value="update_lead_score">Update Lead Score</option>
-                  <option value="add_lead_tag">Add Lead Tag</option>
-                  <option value="remove_lead_tag">Remove Lead Tag</option>
-                  <option value="add_to_funnel">Add to Funnel</option>
-                  <option value="move_to_funnel_stage">Move to Funnel Stage</option>
-                  <option value="remove_from_funnel">Remove from Funnel</option>
-                  <option value="update_lead_field">Update Lead Field</option>
-                  <option value="update_lead_status">Update Lead Status</option>
-                  <option value="assign_lead_to_staff">Assign Lead to Staff</option>
-                  <option value="create_deal">Create Deal</option>
-                </optgroup>
-
+                <MenuItem value="update_lead_score">Update Lead Score</MenuItem>
+                <MenuItem value="add_lead_tag">Add Lead Tag</MenuItem>
+                <MenuItem value="remove_lead_tag">Remove Lead Tag</MenuItem>
+                <MenuItem value="add_to_funnel">Add to Funnel</MenuItem>
+                <MenuItem value="move_to_funnel_stage">Move to Funnel Stage</MenuItem>
+                <MenuItem value="remove_from_funnel">Remove from Funnel</MenuItem>
+                <MenuItem value="update_lead_field">Update Lead Field</MenuItem>
+                <MenuItem value="update_lead_status">Update Lead Status</MenuItem>
+                <MenuItem value="assign_lead_to_staff">Assign Lead to Staff</MenuItem>
+                <MenuItem value="create_deal">Create Deal</MenuItem>
+                <MenuDivider />
                 {/* Communication Actions */}
-                <optgroup label="Communication Actions">
-                  <option value="send_whatsapp_message">Send WhatsApp Message</option>
-                  <option value="send_email_message">Send Email Message</option>
-                  <option value="send_sms_message">Send SMS Message</option>
-                  <option value="send_internal_notification">Send Internal Notification</option>
-                  <option value="send_push_notification">Send Push Notification</option>
-                  <option value="schedule_drip_sequence">Schedule Drip Sequence</option>
-                </optgroup>
-
+                <MenuItem value="send_whatsapp_message">Send WhatsApp Message</MenuItem>
+                <MenuItem value="send_email_message">Send Email Message</MenuItem>
+                <MenuItem value="send_sms_message">Send SMS Message</MenuItem>
+                <MenuItem value="send_internal_notification">Send Internal Notification</MenuItem>
+                <MenuItem value="send_push_notification">Send Push Notification</MenuItem>
+                <MenuItem value="schedule_drip_sequence">Schedule Drip Sequence</MenuItem>
+                <MenuDivider />
                 {/* Task & Workflow Actions */}
-                <optgroup label="Task & Workflow Actions">
-                  <option value="create_task">Create Task</option>
-                  <option value="create_multiple_tasks">Create Multiple Tasks</option>
-                  <option value="create_calendar_event">Create Calendar Event</option>
-                  <option value="add_note_to_lead">Add Note to Lead</option>
-                  <option value="add_followup_date">Add Follow-up Date</option>
-                </optgroup>
-
+                <MenuItem value="create_task">Create Task</MenuItem>
+                <MenuItem value="create_multiple_tasks">Create Multiple Tasks</MenuItem>
+                <MenuItem value="create_calendar_event">Create Calendar Event</MenuItem>
+                <MenuItem value="add_note_to_lead">Add Note to Lead</MenuItem>
+                <MenuItem value="add_followup_date">Add Follow-up Date</MenuItem>
+                <MenuDivider />
                 {/* Zoom Integration Actions */}
-                <optgroup label="Zoom Integration Actions">
-                  <option value="create_zoom_meeting">Create Zoom Meeting</option>
-                </optgroup>
-
+                <MenuItem value="create_zoom_meeting">Create Zoom Meeting</MenuItem>
+                <MenuDivider />
                 {/* Payment Actions */}
-                <optgroup label="Payment Actions">
-                  <option value="create_invoice">Create Invoice</option>
-                  <option value="issue_refund">Issue Refund</option>
-                </optgroup>
-
+                <MenuItem value="create_invoice">Create Invoice</MenuItem>
+                <MenuItem value="issue_refund">Issue Refund</MenuItem>
+                <MenuDivider />
                 {/* System Actions */}
-                <optgroup label="System Actions">
-                  <option value="call_webhook">Call Webhook</option>
-                  <option value="trigger_another_automation">Trigger Another Automation</option>
-                  <option value="wait_delay">Wait Delay</option>
-                </optgroup>
-              </Select>
+                <MenuItem value="call_webhook">Call Webhook</MenuItem>
+                <MenuItem value="trigger_another_automation">Trigger Another Automation</MenuItem>
+                <MenuItem value="wait_delay">Wait Delay</MenuItem>
+              </SearchableMenu>
               <FormHelperText fontSize="xs" color="gray.500" mt={1}>
                 Choose what action to perform when the trigger fires
               </FormHelperText>
             </FormControl>
 
-            <FormControl>
-              <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
-                Custom Label (Optional)
-              </FormLabel>
-              <Input
-                value={config.label || ''}
-                onChange={(e) => setConfig({ ...config, label: e.target.value })}
-                placeholder="e.g., Send Welcome Message"
-                bg="white"
-                borderColor="gray.200"
-                _hover={{ borderColor: 'gray.300' }}
-                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
-                borderRadius="md"
-              />
-              <FormHelperText fontSize="xs" color="gray.500" mt={1}>
-                Leave empty to use default label, or enter a custom name for this action
-              </FormHelperText>
-            </FormControl>
+            {config.nodeType && renderActionConfig()}
           </VStack>
         );
 
@@ -703,23 +1605,40 @@ const NodeConfigForm = ({ node, onSave, onCancel }) => {
               <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
                 Condition Type
               </FormLabel>
-              <Select
+              <SearchableMenu
                 value={config.conditionType || 'Custom'}
                 onChange={(e) => setConfig({ ...config, conditionType: e.target.value })}
                 placeholder="Select condition type"
-                bg="white"
-                borderColor="gray.200"
-                _hover={{ borderColor: 'gray.300' }}
-                _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
-                borderRadius="md"
               >
-                <option value="Custom">Custom Condition</option>
-                <option value="Lead Score">Lead Score Check</option>
-                <option value="Tag Check">Tag Check</option>
-                <option value="Time Check">Time Check</option>
-                <option value="Field Check">Field Value Check</option>
-                <option value="Funnel Stage">Funnel Stage Check</option>
-              </Select>
+                <MenuItem value="Custom">Custom Condition</MenuItem>
+                <MenuDivider />
+                <MenuItem value="Lead Score">Lead Score Check</MenuItem>
+                <MenuItem value="Tag Check">Tag Check</MenuItem>
+                <MenuItem value="Field Check">Field Value Check</MenuItem>
+                <MenuItem value="Temperature Check">Temperature Check</MenuItem>
+                <MenuItem value="Source Check">Source Check</MenuItem>
+                <MenuItem value="Status Check">Status Check</MenuItem>
+                <MenuItem value="Email Check">Email Validation</MenuItem>
+                <MenuItem value="Phone Check">Phone Validation</MenuItem>
+                <MenuItem value="Message Validation">Message Content Validation</MenuItem>
+                <MenuDivider />
+                <MenuItem value="Time Check">Time Check</MenuItem>
+                <MenuItem value="Date Check">Date Check</MenuItem>
+                <MenuItem value="Day Check">Day of Week Check</MenuItem>
+                <MenuItem value="Age Check">Lead Age Check</MenuItem>
+                <MenuDivider />
+                <MenuItem value="Funnel Stage">Funnel Stage Check</MenuItem>
+                <MenuItem value="Funnel Progress">Funnel Progress Check</MenuItem>
+                <MenuItem value="Conversion Check">Conversion Check</MenuItem>
+                <MenuDivider />
+                <MenuItem value="Email Open">Email Open Check</MenuItem>
+                <MenuItem value="Email Click">Email Click Check</MenuItem>
+                <MenuItem value="WhatsApp Reply">WhatsApp Reply Check</MenuItem>
+                <MenuItem value="SMS Reply">SMS Reply Check</MenuItem>
+                <MenuDivider />
+                <MenuItem value="Multiple Conditions">Multiple Conditions</MenuItem>
+                <MenuItem value="Webhook Response">Webhook Response Check</MenuItem>
+              </SearchableMenu>
               <FormHelperText fontSize="xs" color="gray.500" mt={1}>
                 Choose what type of condition to evaluate
               </FormHelperText>
@@ -732,20 +1651,16 @@ const NodeConfigForm = ({ node, onSave, onCancel }) => {
                   <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
                     Score Comparison
                   </FormLabel>
-                  <Select
+                  <SearchableMenu
                     value={config.scoreOperator || 'greater_than'}
                     onChange={(e) => setConfig({ ...config, scoreOperator: e.target.value })}
-                    bg="white"
-                    borderColor="gray.200"
-                    _hover={{ borderColor: 'gray.300' }}
-                    _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
-                    borderRadius="md"
+                    placeholder="Select comparison"
                   >
-                    <option value="greater_than">Greater than</option>
-                    <option value="less_than">Less than</option>
-                    <option value="equals">Equals</option>
-                    <option value="not_equals">Not equals</option>
-                  </Select>
+                    <MenuItem value="greater_than">Greater than</MenuItem>
+                    <MenuItem value="less_than">Less than</MenuItem>
+                    <MenuItem value="equals">Equals</MenuItem>
+                    <MenuItem value="not_equals">Not equals</MenuItem>
+                  </SearchableMenu>
                 </FormControl>
                 <FormControl>
                   <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
@@ -800,43 +1715,55 @@ const NodeConfigForm = ({ node, onSave, onCancel }) => {
                   <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
                     Field Name
                   </FormLabel>
-                  <Select
+                  <SearchableMenu
                     value={config.fieldName || ''}
                     onChange={(e) => setConfig({ ...config, fieldName: e.target.value })}
                     placeholder="Select field to check"
-                    bg="white"
-                    borderColor="gray.200"
-                    _hover={{ borderColor: 'gray.300' }}
-                    _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
-                    borderRadius="md"
                   >
-                    <option value="status">Status</option>
-                    <option value="temperature">Temperature</option>
-                    <option value="source">Source</option>
-                    <option value="email">Email</option>
-                    <option value="phone">Phone</option>
-                  </Select>
+                    <MenuItem value="first_name">First Name</MenuItem>
+                    <MenuItem value="last_name">Last Name</MenuItem>
+                    <MenuItem value="email">Email</MenuItem>
+                    <MenuItem value="phone">Phone</MenuItem>
+                    <MenuItem value="company">Company</MenuItem>
+                    <MenuItem value="website">Website</MenuItem>
+                    <MenuDivider />
+                    <MenuItem value="status">Status</MenuItem>
+                    <MenuItem value="temperature">Temperature</MenuItem>
+                    <MenuItem value="score">Score</MenuItem>
+                    <MenuItem value="source">Source</MenuItem>
+                    <MenuItem value="campaign">Campaign</MenuItem>
+                    <MenuDivider />
+                    <MenuItem value="email_opt_in">Email Opt-in</MenuItem>
+                    <MenuItem value="sms_opt_in">SMS Opt-in</MenuItem>
+                    <MenuItem value="whatsapp_opt_in">WhatsApp Opt-in</MenuItem>
+                    <MenuItem value="preferred_contact">Preferred Contact Method</MenuItem>
+                    <MenuDivider />
+                    <MenuItem value="country">Country</MenuItem>
+                    <MenuItem value="state">State/Province</MenuItem>
+                    <MenuItem value="city">City</MenuItem>
+                    <MenuItem value="timezone">Timezone</MenuItem>
+                    <MenuDivider />
+                    <MenuItem value="custom_field_1">Custom Field 1</MenuItem>
+                    <MenuItem value="custom_field_2">Custom Field 2</MenuItem>
+                    <MenuItem value="custom_field_3">Custom Field 3</MenuItem>
+                  </SearchableMenu>
                 </FormControl>
                 <FormControl>
                   <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
                     Comparison Operator
                   </FormLabel>
-                  <Select
+                  <SearchableMenu
                     value={config.fieldOperator || 'equals'}
                     onChange={(e) => setConfig({ ...config, fieldOperator: e.target.value })}
-                    bg="white"
-                    borderColor="gray.200"
-                    _hover={{ borderColor: 'gray.300' }}
-                    _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
-                    borderRadius="md"
+                    placeholder="Select comparison operator"
                   >
-                    <option value="equals">Equals</option>
-                    <option value="not_equals">Not equals</option>
-                    <option value="contains">Contains</option>
-                    <option value="not_contains">Does not contain</option>
-                    <option value="is_empty">Is empty</option>
-                    <option value="is_not_empty">Is not empty</option>
-                  </Select>
+                    <MenuItem value="equals">Equals</MenuItem>
+                    <MenuItem value="not_equals">Not equals</MenuItem>
+                    <MenuItem value="contains">Contains</MenuItem>
+                    <MenuItem value="not_contains">Does not contain</MenuItem>
+                    <MenuItem value="is_empty">Is empty</MenuItem>
+                    <MenuItem value="is_not_empty">Is not empty</MenuItem>
+                  </SearchableMenu>
                 </FormControl>
                 {(config.fieldOperator !== 'is_empty' && config.fieldOperator !== 'is_not_empty') && (
                   <FormControl>
@@ -856,6 +1783,528 @@ const NodeConfigForm = ({ node, onSave, onCancel }) => {
                   </FormControl>
                 )}
               </VStack>
+            )}
+
+            {config.conditionType === 'Temperature Check' && (
+              <VStack spacing={3} align="stretch">
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                    Temperature Comparison
+                  </FormLabel>
+                  <SearchableMenu
+                    value={config.temperatureOperator || 'equals'}
+                    onChange={(e) => setConfig({ ...config, temperatureOperator: e.target.value })}
+                    placeholder="Select comparison"
+                  >
+                    <MenuItem value="equals">Equals</MenuItem>
+                    <MenuItem value="not_equals">Not equals</MenuItem>
+                    <MenuItem value="greater_than">Hotter than</MenuItem>
+                    <MenuItem value="less_than">Colder than</MenuItem>
+                  </SearchableMenu>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                    Temperature Level
+                  </FormLabel>
+                  <SearchableMenu
+                    value={config.temperatureValue || ''}
+                    onChange={(e) => setConfig({ ...config, temperatureValue: e.target.value })}
+                    placeholder="Select temperature level"
+                  >
+                    <MenuItem value="cold">Cold</MenuItem>
+                    <MenuItem value="warm">Warm</MenuItem>
+                    <MenuItem value="hot">Hot</MenuItem>
+                    <MenuItem value="very_hot">Very Hot</MenuItem>
+                  </SearchableMenu>
+                </FormControl>
+              </VStack>
+            )}
+
+            {config.conditionType === 'Source Check' && (
+              <VStack spacing={3} align="stretch">
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                    Source Comparison
+                  </FormLabel>
+                  <SearchableMenu
+                    value={config.sourceOperator || 'equals'}
+                    onChange={(e) => setConfig({ ...config, sourceOperator: e.target.value })}
+                    placeholder="Select comparison"
+                  >
+                    <MenuItem value="equals">Equals</MenuItem>
+                    <MenuItem value="not_equals">Not equals</MenuItem>
+                    <MenuItem value="contains">Contains</MenuItem>
+                    <MenuItem value="not_contains">Does not contain</MenuItem>
+                  </SearchableMenu>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                    Source Value
+                  </FormLabel>
+                  <Input
+                    value={config.sourceValue || ''}
+                    onChange={(e) => setConfig({ ...config, sourceValue: e.target.value })}
+                    placeholder="e.g., Facebook, Google Ads, Referral"
+                    bg="white"
+                    borderColor="gray.200"
+                    _hover={{ borderColor: 'gray.300' }}
+                    _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                    borderRadius="md"
+                  />
+                </FormControl>
+              </VStack>
+            )}
+
+            {config.conditionType === 'Status Check' && (
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                  Lead Status
+                </FormLabel>
+              <SearchableMenu
+                value={config.statusValue || ''}
+                onChange={(e) => setConfig({ ...config, statusValue: e.target.value })}
+                placeholder="Select lead status"
+              >
+                <MenuItem value="new">New</MenuItem>
+                <MenuItem value="contacted">Contacted</MenuItem>
+                <MenuItem value="qualified">Qualified</MenuItem>
+                <MenuItem value="proposal">Proposal</MenuItem>
+                <MenuItem value="negotiation">Negotiation</MenuItem>
+                <MenuItem value="closed_won">Closed Won</MenuItem>
+                <MenuItem value="closed_lost">Closed Lost</MenuItem>
+                <MenuItem value="nurture">Nurture</MenuItem>
+              </SearchableMenu>
+              </FormControl>
+            )}
+
+            {config.conditionType === 'Email Check' && (
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                  Email Validation Type
+                </FormLabel>
+                <SearchableMenu
+                  value={config.emailCheckType || 'has_valid'}
+                  onChange={(e) => setConfig({ ...config, emailCheckType: e.target.value })}
+                  placeholder="Select validation type"
+                >
+                  <MenuItem value="has_valid">Has valid email</MenuItem>
+                  <MenuItem value="has_invalid">Has invalid email</MenuItem>
+                  <MenuItem value="is_empty">Email is empty</MenuItem>
+                  <MenuItem value="contains_domain">Contains specific domain</MenuItem>
+                </SearchableMenu>
+                {config.emailCheckType === 'contains_domain' && (
+                  <FormControl mt={3}>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Domain
+                    </FormLabel>
+                    <Input
+                      value={config.domainValue || ''}
+                      onChange={(e) => setConfig({ ...config, domainValue: e.target.value })}
+                      placeholder="e.g., gmail.com, yahoo.com"
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                  </FormControl>
+                )}
+              </FormControl>
+            )}
+
+            {config.conditionType === 'Phone Check' && (
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                  Phone Validation Type
+                </FormLabel>
+                <SearchableMenu
+                  value={config.phoneCheckType || 'has_valid'}
+                  onChange={(e) => setConfig({ ...config, phoneCheckType: e.target.value })}
+                  placeholder="Select validation type"
+                >
+                  <MenuItem value="has_valid">Has valid phone</MenuItem>
+                  <MenuItem value="has_invalid">Has invalid phone</MenuItem>
+                  <MenuItem value="is_empty">Phone is empty</MenuItem>
+                  <MenuItem value="contains_country">Contains country code</MenuItem>
+                </SearchableMenu>
+                {config.phoneCheckType === 'contains_country' && (
+                  <FormControl mt={3}>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Country Code
+                    </FormLabel>
+                    <Input
+                      value={config.countryCode || ''}
+                      onChange={(e) => setConfig({ ...config, countryCode: e.target.value })}
+                      placeholder="e.g., +1, +91, +44"
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                  </FormControl>
+                )}
+              </FormControl>
+            )}
+
+            {config.conditionType === 'Message Validation' && (
+              <VStack spacing={4} align="stretch">
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                    Check Message For
+                  </FormLabel>
+                  <Input
+                    value={config.keywords || ''}
+                    onChange={(e) => setConfig({ ...config, keywords: e.target.value })}
+                    placeholder="yes, confirm, interested, accept"
+                    bg="white"
+                    borderColor="gray.200"
+                    _hover={{ borderColor: 'gray.300' }}
+                    _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                    borderRadius="md"
+                  />
+                  <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                    Comma-separated keywords that trigger YES path (case insensitive)
+                  </FormHelperText>
+                </FormControl>
+
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                    Message Source
+                  </FormLabel>
+                  <SearchableMenu
+                    value={config.messageSource || 'whatsapp'}
+                    onChange={(e) => setConfig({ ...config, messageSource: e.target.value })}
+                    placeholder="Select message source"
+                  >
+                    <MenuItem value="whatsapp">WhatsApp Messages</MenuItem>
+                    <MenuItem value="sms">SMS Messages</MenuItem>
+                    <MenuItem value="email">Email Replies</MenuItem>
+                    <MenuItem value="all">All Message Types</MenuItem>
+                  </SearchableMenu>
+                </FormControl>
+
+                <FormControl>
+                  <Checkbox
+                    isChecked={config.exactMatch || false}
+                    onChange={(e) => setConfig({ ...config, exactMatch: e.target.checked })}
+                    colorScheme="blue"
+                  >
+                    <Text fontSize="sm">Exact word match only (not partial matches)</Text>
+                  </Checkbox>
+                </FormControl>
+
+                <Divider />
+
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                    Reply Waiting
+                  </FormLabel>
+                  <VStack spacing={3} align="stretch">
+                    <Checkbox
+                      isChecked={config.waitForReply || false}
+                      onChange={(e) => setConfig({ ...config, waitForReply: e.target.checked })}
+                      colorScheme="blue"
+                    >
+                      <Text fontSize="sm" fontWeight="500">Wait for user reply before checking</Text>
+                    </Checkbox>
+
+                    {config.waitForReply && (
+                      <VStack spacing={3} align="stretch" pl={6} borderLeft="2px" borderColor="blue.200">
+                        <FormControl>
+                          <FormLabel fontSize="xs" color="gray.600">
+                            Wait Duration (minutes)
+                          </FormLabel>
+                          <NumberInput
+                            value={config.waitMinutes || 60}
+                            onChange={(value) => setConfig({ ...config, waitMinutes: parseInt(value) || 60 })}
+                            min={1}
+                            max={1440}
+                            size="sm"
+                          >
+                            <NumberInputField
+                              bg="white"
+                              borderColor="gray.200"
+                              _hover={{ borderColor: 'gray.300' }}
+                              _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                            />
+                          </NumberInput>
+                          <FormHelperText fontSize="xs" color="gray.500">
+                            How long to wait for a reply before timing out
+                          </FormHelperText>
+                        </FormControl>
+
+                        <FormControl>
+                          <Checkbox
+                            isChecked={config.noReplyPath || false}
+                            onChange={(e) => setConfig({ ...config, noReplyPath: e.target.checked })}
+                            colorScheme="orange"
+                            size="sm"
+                          >
+                            <Text fontSize="xs">Enable "No Reply" path</Text>
+                          </Checkbox>
+                          <FormHelperText fontSize="xs" color="gray.500">
+                            Add a third path for when users don't reply within the time limit
+                          </FormHelperText>
+                        </FormControl>
+                      </VStack>
+                    )}
+                  </VStack>
+                </FormControl>
+
+                <Alert status="info" borderRadius="md" bg="blue.50">
+                  <AlertIcon color="blue.500" />
+                  <Box>
+                    <Text fontSize="sm" fontWeight="600" color="blue.800">
+                      How It Works
+                    </Text>
+                    <VStack spacing={1} align="start" mt={2}>
+                      {config.waitForReply ? (
+                        <>
+                          <HStack spacing={2}>
+                            <Badge colorScheme="blue" variant="solid" size="sm">⏱️ Wait</Badge>
+                            <Text fontSize="xs" color="gray.700">Wait {config.waitMinutes || 60} minutes for reply</Text>
+                          </HStack>
+                          <HStack spacing={2}>
+                            <Badge colorScheme="green" variant="solid" size="sm">YES Path</Badge>
+                            <Text fontSize="xs" color="gray.700">Reply contains keywords</Text>
+                          </HStack>
+                          <HStack spacing={2}>
+                            <Badge colorScheme="red" variant="solid" size="sm">NO Path</Badge>
+                            <Text fontSize="xs" color="gray.700">Reply does NOT contain keywords</Text>
+                          </HStack>
+                          {config.noReplyPath && (
+                            <HStack spacing={2}>
+                              <Badge colorScheme="orange" variant="solid" size="sm">No Reply</Badge>
+                              <Text fontSize="xs" color="gray.700">No reply within time limit</Text>
+                            </HStack>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <HStack spacing={2}>
+                            <Badge colorScheme="green" variant="solid" size="sm">YES Path</Badge>
+                            <Text fontSize="xs" color="gray.700">Message contains keywords</Text>
+                          </HStack>
+                          <HStack spacing={2}>
+                            <Badge colorScheme="red" variant="solid" size="sm">NO Path</Badge>
+                            <Text fontSize="xs" color="gray.700">Message does NOT contain keywords</Text>
+                          </HStack>
+                        </>
+                      )}
+                    </VStack>
+                  </Box>
+                </Alert>
+              </VStack>
+            )}
+
+            {config.conditionType === 'Date Check' && (
+              <VStack spacing={3} align="stretch">
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                    Date Field
+                  </FormLabel>
+                  <SearchableMenu
+                    value={config.dateField || 'created_at'}
+                    onChange={(e) => setConfig({ ...config, dateField: e.target.value })}
+                    placeholder="Select date field"
+                  >
+                    <MenuItem value="created_at">Lead Created Date</MenuItem>
+                    <MenuItem value="updated_at">Lead Updated Date</MenuItem>
+                    <MenuItem value="last_contact">Last Contact Date</MenuItem>
+                    <MenuItem value="followup_date">Follow-up Date</MenuItem>
+                  </SearchableMenu>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                    Date Comparison
+                  </FormLabel>
+                  <SearchableMenu
+                    value={config.dateOperator || 'is_before'}
+                    onChange={(e) => setConfig({ ...config, dateOperator: e.target.value })}
+                    placeholder="Select comparison"
+                  >
+                    <MenuItem value="is_before">Is before</MenuItem>
+                    <MenuItem value="is_after">Is after</MenuItem>
+                    <MenuItem value="is_today">Is today</MenuItem>
+                    <MenuItem value="is_yesterday">Is yesterday</MenuItem>
+                    <MenuItem value="is_this_week">Is this week</MenuItem>
+                    <MenuItem value="is_this_month">Is this month</MenuItem>
+                  </SearchableMenu>
+                </FormControl>
+                {(config.dateOperator === 'is_before' || config.dateOperator === 'is_after') && (
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Days
+                    </FormLabel>
+                    <NumberInput
+                      value={config.daysValue || 7}
+                      onChange={(value) => setConfig({ ...config, daysValue: parseInt(value) || 7 })}
+                      min={1}
+                      max={365}
+                    >
+                      <NumberInputField
+                        bg="white"
+                        borderColor="gray.200"
+                        _hover={{ borderColor: 'gray.300' }}
+                        _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                        borderRadius="md"
+                      />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                  </FormControl>
+                )}
+              </VStack>
+            )}
+
+            {config.conditionType === 'Day Check' && (
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                  Day of Week
+                </FormLabel>
+              <SearchableMenu
+                value={config.dayOfWeek || ''}
+                onChange={(e) => setConfig({ ...config, dayOfWeek: e.target.value })}
+                placeholder="Select day"
+              >
+                <MenuItem value="monday">Monday</MenuItem>
+                <MenuItem value="tuesday">Tuesday</MenuItem>
+                <MenuItem value="wednesday">Wednesday</MenuItem>
+                <MenuItem value="thursday">Thursday</MenuItem>
+                <MenuItem value="friday">Friday</MenuItem>
+                <MenuItem value="saturday">Saturday</MenuItem>
+                <MenuItem value="sunday">Sunday</MenuItem>
+              </SearchableMenu>
+              </FormControl>
+            )}
+
+            {config.conditionType === 'Age Check' && (
+              <VStack spacing={3} align="stretch">
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                    Age Comparison
+                  </FormLabel>
+                  <SearchableMenu
+                    value={config.ageOperator || 'greater_than'}
+                    onChange={(e) => setConfig({ ...config, ageOperator: e.target.value })}
+                    placeholder="Select comparison"
+                  >
+                    <MenuItem value="greater_than">Older than</MenuItem>
+                    <MenuItem value="less_than">Newer than</MenuItem>
+                    <MenuItem value="equals">Exactly</MenuItem>
+                  </SearchableMenu>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                    Days Since Creation
+                  </FormLabel>
+                  <NumberInput
+                    value={config.ageDays || 30}
+                    onChange={(value) => setConfig({ ...config, ageDays: parseInt(value) || 30 })}
+                    min={1}
+                    max={3650}
+                  >
+                    <NumberInputField
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                </FormControl>
+              </VStack>
+            )}
+
+            {config.conditionType === 'Funnel Progress' && (
+              <VStack spacing={3} align="stretch">
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                    Progress Comparison
+                  </FormLabel>
+                  <SearchableMenu
+                    value={config.progressOperator || 'greater_than'}
+                    onChange={(e) => setConfig({ ...config, progressOperator: e.target.value })}
+                    placeholder="Select comparison"
+                  >
+                    <MenuItem value="greater_than">Greater than</MenuItem>
+                    <MenuItem value="less_than">Less than</MenuItem>
+                    <MenuItem value="equals">Equals</MenuItem>
+                  </SearchableMenu>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                    Progress Percentage (%)
+                  </FormLabel>
+                  <NumberInput
+                    value={config.progressValue || 50}
+                    onChange={(value) => setConfig({ ...config, progressValue: parseInt(value) || 50 })}
+                    min={0}
+                    max={100}
+                  >
+                    <NumberInputField
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                </FormControl>
+              </VStack>
+            )}
+
+            {config.conditionType === 'Conversion Check' && (
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                  Conversion Status
+                </FormLabel>
+                <SearchableMenu
+                  value={config.conversionStatus || 'converted'}
+                  onChange={(e) => setConfig({ ...config, conversionStatus: e.target.value })}
+                  placeholder="Select conversion status"
+                >
+                  <MenuItem value="converted">Has converted</MenuItem>
+                  <MenuItem value="not_converted">Has not converted</MenuItem>
+                  <MenuItem value="recently_converted">Converted recently</MenuItem>
+                </SearchableMenu>
+                {config.conversionStatus === 'recently_converted' && (
+                  <FormControl mt={3}>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Within Days
+                    </FormLabel>
+                    <NumberInput
+                      value={config.conversionDays || 7}
+                      onChange={(value) => setConfig({ ...config, conversionDays: parseInt(value) || 7 })}
+                      min={1}
+                      max={365}
+                    >
+                      <NumberInputField
+                        bg="white"
+                        borderColor="gray.200"
+                        _hover={{ borderColor: 'gray.300' }}
+                        _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                        borderRadius="md"
+                      />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                  </FormControl>
+                )}
+              </FormControl>
             )}
 
             <FormControl>
@@ -963,13 +2412,29 @@ const NodeConfigForm = ({ node, onSave, onCancel }) => {
     <VStack spacing={6} align="stretch">
       {renderConfigFields()}
 
-      <HStack spacing={3} justify="end">
-        <Button variant="ghost" size="sm" onClick={onCancel}>
-          Cancel
+      <HStack spacing={3} justify="space-between">
+        <Button
+          colorScheme="red"
+          variant="outline"
+          size="sm"
+          leftIcon={<FiTrash2 />}
+          onClick={() => {
+            if (window.confirm(`Are you sure you want to delete this ${node.type} node? This will also remove all connections to/from this node.`)) {
+              onDelete(node.id);
+              onCancel();
+            }
+          }}
+        >
+          Delete Node
         </Button>
-        <Button colorScheme="blue" size="sm" onClick={handleSave}>
-          Save Configuration
-        </Button>
+        <HStack spacing={3}>
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button colorScheme="blue" size="sm" onClick={handleSave}>
+            Save Configuration
+          </Button>
+        </HStack>
       </HStack>
     </VStack>
   );
@@ -1008,9 +2473,23 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
   // Drawer states
   const { isOpen: isNodePaletteOpen, onOpen: onNodePaletteOpen, onClose: onNodePaletteClose } = useDisclosure();
   const { isOpen: isNodeConfigOpen, onOpen: onNodeConfigOpen, onClose: onNodeConfigClose } = useDisclosure();
+
+  const handleNodeConfigClose = useCallback(() => {
+    setSelectedNode(null);
+    // Clear selection from all nodes
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        selected: false,
+      }))
+    );
+    onNodeConfigClose();
+  }, [onNodeConfigClose, setNodes]);
   const [selectedNode, setSelectedNode] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState(0);
+  const [connectionSourceNode, setConnectionSourceNode] = useState(null);
+
 
   // Load events and actions from backend
   useEffect(() => {
@@ -1112,7 +2591,12 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
           setIsActive(ruleData.isActive !== false);
           if (ruleData.nodes) {
             setNodes(ruleData.nodes);
-            setEdges(ruleData.edges || []);
+            // Ensure existing edges have arrow markers
+            const edgesWithArrows = (ruleData.edges || []).map(edge => ({
+              ...edge,
+              markerEnd: edge.markerEnd || { type: MarkerType.ArrowClosed, color: '#64748B' }
+            }));
+            setEdges(edgesWithArrows);
           }
         } catch (error) {
           console.error('Error loading rule:', error);
@@ -1130,32 +2614,51 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
     loadRuleData();
   }, [ruleId, rule, navigate, toast]);
 
-  // Initialize nodes and edges if editing existing rule (drawer mode) or create default for new rules
+  // Initialize nodes and edges if editing existing rule (drawer mode) or start empty for new rules
   useEffect(() => {
     if (rule && rule.nodes) {
       setNodes(rule.nodes);
-      setEdges(rule.edges || []);
+      // Ensure existing edges have arrow markers
+      const edgesWithArrows = (rule.edges || []).map(edge => ({
+        ...edge,
+        markerEnd: edge.markerEnd || { type: MarkerType.ArrowClosed, color: '#64748B' }
+      }));
+      setEdges(edgesWithArrows);
       setRuleName(rule.name || '');
       setIsActive(rule.isActive !== false);
     } else if (!rule && !ruleId) {
-      // Create default trigger node for new rules
-      const defaultTriggerNode = {
-        id: 'trigger-1',
-        type: 'trigger',
-        position: { x: 400, y: 50 },
-        data: {
-          label: 'Lead Created',
-          nodeType: 'lead_created',
-          description: 'Triggered when a new lead is created'
-        }
-      };
-      setNodes([defaultTriggerNode]);
+      // Start with empty graph for new rules
+      setNodes([]);
+      setEdges([]);
     }
   }, [rule, ruleId, setNodes, setEdges]);
 
   const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge(params, eds)),
+    (params) => {
+      setConnectionSourceNode(null);
+      setEdges((eds) => addEdge({
+        ...params,
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#64748B' }
+      }, eds));
+    },
     [setEdges]
+  );
+
+  const onConnectStart = useCallback(
+    (event, { nodeId, handleId, handleType }) => {
+      setConnectionSourceNode(nodeId);
+    },
+    []
+  );
+
+  const onConnectEnd = useCallback(
+    (event) => {
+      // Only open the node palette if no connection was made (connectionSourceNode still exists)
+      if (connectionSourceNode) {
+        onNodePaletteOpen();
+      }
+    },
+    [connectionSourceNode, onNodePaletteOpen]
   );
 
   const onDragOver = useCallback((event) => {
@@ -1211,22 +2714,60 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
     };
 
     setNodes((nds) => [...nds, newNode]);
+
+    // If there's a pending connection from a source node, create the connection
+    if (connectionSourceNode) {
+      const sourceNode = nodes.find(n => n.id === connectionSourceNode);
+      if (sourceNode) {
+        const newEdge = {
+          id: `edge-${connectionSourceNode}-${newNode.id}`,
+          source: connectionSourceNode,
+          target: newNode.id,
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#64748B' }
+        };
+        setEdges((eds) => [...eds, newEdge]);
+      }
+      setConnectionSourceNode(null);
+    }
+
     onNodePaletteClose();
-  }, [setNodes, onNodePaletteClose]);
+  }, [setNodes, setEdges, connectionSourceNode, nodes, onNodePaletteClose]);
 
   const onNodeClick = useCallback((event, node) => {
     setSelectedNode(node);
+    // Update the selected state of all nodes
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        selected: n.id === node.id,
+      }))
+    );
     onNodeConfigOpen();
-  }, [onNodeConfigOpen]);
+  }, [onNodeConfigOpen, setNodes]);
 
   const deleteNode = useCallback((nodeId) => {
     setNodes((nds) => nds.filter((node) => node.id !== nodeId));
     setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
     if (selectedNode?.id === nodeId) {
       setSelectedNode(null);
-      onNodeConfigClose();
+      handleNodeConfigClose();
     }
-  }, [setNodes, setEdges, selectedNode, onNodeConfigClose]);
+  }, [setNodes, setEdges, selectedNode, handleNodeConfigClose]);
+
+  // Keyboard support for deleting nodes
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Delete' && selectedNode) {
+        event.preventDefault();
+        if (window.confirm(`Are you sure you want to delete this ${selectedNode.type} node? This will also remove all connections to/from this node.`)) {
+          deleteNode(selectedNode.id);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNode, deleteNode]);
 
   const updateNodeConfig = useCallback((config) => {
     if (!selectedNode) return;
@@ -1338,28 +2879,8 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
     }
 
     // Validate that there's at least one trigger and one action
-    // const hasTrigger = nodes.some(node => node.type === 'trigger');
+    const hasTrigger = nodes.some(node => node.type === 'trigger');
     const hasAction = nodes.some(node => node.type === 'action');
-
-    if (!hasTrigger) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please add at least one trigger to your automation rule',
-        status: 'error',
-        duration: 3000,
-      });
-      return;
-    }
-
-    if (!hasAction) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please add at least one action to your automation rule',
-        status: 'error',
-        duration: 3000,
-      });
-      return;
-    }
 
     // Validate that all nodes are properly configured
     const unconfiguredNodes = [];
@@ -1433,7 +2954,6 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
     });
 
     // Check if we have at least one trigger
-    const hasTrigger = nodes.some(node => node.type === 'trigger');
     if (!hasTrigger) {
       validationErrors.push('Workflow must contain at least one trigger node');
     }
@@ -1570,7 +3090,7 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
         <HStack justify="space-between" align="center">
           <Box>
             <Heading size="md" color="gray.900">
-              {rule ? 'Edit Automation Rule' : 'Create Automation Rule'}
+              Automation Builder - FunnelsEye
             </Heading>
             <Text fontSize="sm" color="gray.600">
               Drag and drop components to build your automation workflow
@@ -1648,6 +3168,8 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
+              onConnectStart={onConnectStart}
+              onConnectEnd={onConnectEnd}
               onDrop={onDrop}
               onDragOver={onDragOver}
               onNodeClick={onNodeClick}
@@ -2048,6 +3570,7 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
                         'Flow Control': [
                           { label: 'Delay', type: 'delay', icon: FiClock, color: 'orange', data: { label: 'Delay', delayMinutes: 5 }, description: 'Wait for a specified amount of time before continuing' },
                           { label: 'Condition', type: 'condition', icon: FiFilter, color: 'purple', data: { label: 'Condition', conditionType: 'Custom' }, description: 'Branch workflow based on conditions (if/else)' },
+                          { label: 'Message Validation', type: 'condition', icon: FiMessageSquare, color: 'blue', data: { label: 'Message Validation', conditionType: 'Message Validation', config: { messageSource: 'whatsapp', keywords: 'yes,confirm,interested', exactMatch: false, waitForReply: false, waitMinutes: 60, noReplyPath: false } }, description: 'Check if message contains keywords and route to YES or NO paths (with optional wait for reply)' },
                         ]
                       };
 
@@ -2222,7 +3745,7 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
       <Drawer
         isOpen={isNodeConfigOpen}
         placement="right"
-        onClose={onNodeConfigClose}
+        onClose={handleNodeConfigClose}
         size="md"
       >
         <DrawerOverlay />
@@ -2240,7 +3763,8 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
               <NodeConfigForm
                 node={selectedNode}
                 onSave={updateNodeConfig}
-                onCancel={onNodeConfigClose}
+                onCancel={handleNodeConfigClose}
+                onDelete={deleteNode}
               />
             )}
           </DrawerBody>

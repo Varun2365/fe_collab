@@ -137,9 +137,188 @@ const initRulesEngineWorker = async () => {
                             }
                             adjacencyList[edge.source].push({
                                 target: edge.target,
+                                handle: edge.sourceHandle || edge.handle || 'default',
                                 edge: edge
                             });
                         });
+
+                        // Function to handle wait for reply functionality
+                        const handleWaitForReply = async (nodeId, currentNode, eventPayload, config, adjacencyList, queue, delay) => {
+                            const { leadId, automationId } = eventPayload;
+                            const waitMinutes = config.waitMinutes || 60;
+                            const waitUntil = new Date(Date.now() + waitMinutes * 60 * 1000);
+
+                            try {
+                                // Create waiting record in database
+                                const AutomationWaitingReply = require('../schema/AutomationWaitingReply');
+                                const waitingRecord = new AutomationWaitingReply({
+                                    leadId,
+                                    automationId,
+                                    nodeId,
+                                    config,
+                                    eventPayload,
+                                    adjacencyList,
+                                    waitUntil,
+                                    status: 'waiting'
+                                });
+
+                                await waitingRecord.save();
+
+                                // Schedule timeout check
+                                setTimeout(async () => {
+                                    try {
+                                        const AutomationWaitingReply = require('../schema/AutomationWaitingReply');
+                                        const existingRecord = await AutomationWaitingReply.findOne({
+                                            leadId,
+                                            automationId,
+                                            nodeId,
+                                            status: 'waiting'
+                                        });
+
+                                        if (existingRecord) {
+                                            // No reply received, route to no-reply path if enabled
+                                            if (config.noReplyPath) {
+                                                const noReplyEdges = adjacencyList[nodeId]?.filter(edge => edge.handle === 'no-reply') || [];
+                                                if (noReplyEdges.length > 0) {
+                                                    // Create a new workflow instance for the no-reply path
+                                                    const noReplyQueue = [];
+                                                    noReplyEdges.forEach(({ target }) => {
+                                                        noReplyQueue.push({ nodeId: target, delay: 0 });
+                                                    });
+
+                                                    // Process the no-reply workflow
+                                                    await processAutomationWorkflow(noReplyQueue, adjacencyList, eventPayload, 0);
+                                                }
+                                            }
+
+                                            // Mark as expired
+                                            existingRecord.status = 'expired';
+                                            existingRecord.expiredAt = new Date();
+                                            await existingRecord.save();
+                                        }
+                                    } catch (error) {
+                                        console.error('Error processing wait timeout:', error);
+                                    }
+                                }, waitMinutes * 60 * 1000);
+
+                            } catch (error) {
+                                console.error('Error setting up wait for reply:', error);
+                            }
+                        };
+
+                        // Function to check and process waiting replies
+                        const checkWaitingReplies = async (eventPayload) => {
+                            try {
+                                const AutomationWaitingReply = require('../schema/AutomationWaitingReply');
+                                const { leadId, automationId } = eventPayload;
+
+                                // Find waiting records for this lead/automation
+                                const waitingRecords = await AutomationWaitingReply.find({
+                                    leadId,
+                                    automationId,
+                                    status: 'waiting'
+                                });
+
+                                for (const record of waitingRecords) {
+                                    const validationResult = evaluateMessageValidation(record.config, eventPayload);
+
+                                    if (validationResult === 'true' || validationResult === 'false') {
+                                        // Reply received, route accordingly
+                                        const matchingEdges = record.adjacencyList[record.nodeId]?.filter(edge => edge.handle === validationResult) || [];
+
+                                        if (matchingEdges.length > 0) {
+                                            // Create a new workflow instance for processing the reply
+                                            const replyQueue = [];
+                                            matchingEdges.forEach(({ target }) => {
+                                                replyQueue.push({ nodeId: target, delay: 0 });
+                                            });
+
+                                            // Process the reply workflow with BFS
+                                            const visited = new Set();
+                                            while (replyQueue.length > 0) {
+                                                const { nodeId, delay } = replyQueue.shift();
+
+                                                if (visited.has(nodeId)) continue;
+                                                visited.add(nodeId);
+
+                                                // Add delay processing here if needed
+                                                setTimeout(async () => {
+                                                    // Process the node (simplified version)
+                                                    const nextNode = { id: nodeId }; // You'd need to get the actual node data
+                                                    // This is a simplified implementation - you'd need to implement full node processing
+                                                }, delay * 1000);
+                                            }
+                                        }
+
+                                        // Mark as completed
+                                        record.status = 'completed';
+                                        record.completedAt = new Date();
+                                        record.replyPayload = eventPayload;
+                                        await record.save();
+                                    }
+                                }
+                            } catch (error) {
+                                console.error('Error checking waiting replies:', error);
+                            }
+                        };
+
+                        // Function to evaluate message validation conditions
+                        const evaluateMessageValidation = (config, eventPayload) => {
+                            if (!config || !config.keywords) {
+                                return 'false'; // Default to NO path
+                            }
+
+                            const messageContent = getMessageContent(eventPayload, config.messageSource);
+                            if (!messageContent) {
+                                return 'false'; // Default to NO path
+                            }
+
+                            // Check if message contains any of the keywords
+                            const keywords = config.keywords.split(',').map(k => k.trim().toLowerCase());
+                            const message = messageContent.toLowerCase();
+
+                            let matches = false;
+                            if (config.exactMatch) {
+                                // Exact word match
+                                const words = message.split(/\s+/);
+                                matches = keywords.some(keyword =>
+                                    words.some(word => word === keyword)
+                                );
+                            } else {
+                                // Contains match (partial)
+                                matches = keywords.some(keyword => message.includes(keyword));
+                            }
+
+                            return matches ? 'true' : 'false'; // YES or NO path
+                        };
+
+                        // Function to extract message content based on source
+                        const getMessageContent = (eventPayload, source = 'whatsapp') => {
+                            // Check different message sources
+                            if (source === 'whatsapp' || source === 'all') {
+                                if (eventPayload.message?.body) return eventPayload.message.body;
+                                if (eventPayload.content?.body) return eventPayload.content.body;
+                                if (eventPayload.whatsapp?.message) return eventPayload.whatsapp.message;
+                            }
+
+                            if (source === 'sms' || source === 'all') {
+                                if (eventPayload.sms?.message) return eventPayload.sms.message;
+                                if (eventPayload.message?.text) return eventPayload.message.text;
+                            }
+
+                            if (source === 'email' || source === 'all') {
+                                if (eventPayload.email?.body) return eventPayload.email.body;
+                                if (eventPayload.email?.subject) return eventPayload.email.subject;
+                                if (eventPayload.email?.content) return eventPayload.email.content;
+                            }
+
+                            // Fallback to any message field
+                            return eventPayload.message ||
+                                   eventPayload.content ||
+                                   eventPayload.body ||
+                                   eventPayload.text ||
+                                   '';
+                        };
 
                         // Function to evaluate conditions
                         const evaluateConditions = (conditions, eventData) => {
@@ -166,6 +345,9 @@ const initRulesEngineWorker = async () => {
                                 return current && current[prop] !== undefined ? current[prop] : undefined;
                             }, obj);
                         };
+
+                        // Check if this event resolves any waiting replies
+                        await checkWaitingReplies(eventPayload);
 
                         // BFS traversal starting from trigger node
                         const visited = new Set();
@@ -243,19 +425,48 @@ const initRulesEngineWorker = async () => {
                                 });
                                 continue;
                             } else if (currentNode.type === 'condition') {
-                                // Evaluate condition
-                                const conditionConfig = currentNode.data?.conditions || currentNode.config?.conditions || [];
-                                const conditionMet = evaluateConditions(conditionConfig, {
-                                    ...eventPayload,
-                                    relatedDoc: relatedDoc
-                                });
+                                // Handle different condition types
+                                if (currentNode.data?.conditionType === 'Message Validation') {
+                                    // Handle Message Validation with optional wait for reply
+                                    const config = currentNode.data.config;
 
-                                // Only follow edges if condition is met
-                                if (conditionMet) {
-                                    const nextNodes = adjacencyList[nodeId] || [];
-                                    nextNodes.forEach(({ target }) => {
-                                        queue.push({ nodeId: target, delay: delay });
+                                    if (config?.waitForReply) {
+                                        // Schedule wait for reply
+                                        await handleWaitForReply(nodeId, currentNode, eventPayload, config, adjacencyList, queue, delay);
+                                    } else {
+                                        // Immediate validation without waiting
+                                        const validationResult = evaluateMessageValidation(config, eventPayload);
+                                        const matchingEdges = adjacencyList[nodeId]?.filter(edge => edge.handle === validationResult) || [];
+
+                                        if (matchingEdges.length > 0) {
+                                            matchingEdges.forEach(({ target }) => {
+                                                queue.push({ nodeId: target, delay: delay });
+                                            });
+                                        }
+                                    }
+                                } else {
+                                    // Standard condition evaluation
+                                    const conditionConfig = currentNode.data?.conditions || currentNode.config?.conditions || [];
+                                    const conditionMet = evaluateConditions(conditionConfig, {
+                                        ...eventPayload,
+                                        relatedDoc: relatedDoc
                                     });
+
+                                    // Only follow TRUE edges if condition is met, FALSE edges if not met
+                                    const targetHandle = conditionMet ? 'true' : 'false';
+                                    const matchingEdges = adjacencyList[nodeId]?.filter(edge => edge.handle === targetHandle) || [];
+
+                                    if (matchingEdges.length > 0) {
+                                        matchingEdges.forEach(({ target }) => {
+                                            queue.push({ nodeId: target, delay: delay });
+                                        });
+                                    } else {
+                                        // Fallback to all edges if no specific handle matches
+                                        const nextNodes = adjacencyList[nodeId] || [];
+                                        nextNodes.forEach(({ target }) => {
+                                            queue.push({ nodeId: target, delay: delay });
+                                        });
+                                    }
                                 }
                                 continue;
                             }
