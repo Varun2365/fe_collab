@@ -78,37 +78,31 @@ const AdminLayout = () => {
         { name: 'Hierarchy Requests', href: '/hierarchy-requests', icon: UserCheck },
       ]
     },
-    // Group 2: Financial & MLM, Subscription Plans, Analytics & Reports
+    // Group 2: Financial & MLM, Subscription Plans, Central Messaging
     {
-      title: 'Financial & Analytics',
+      title: 'Configurations',
       items: [
         { name: 'Financial & MLM', href: '/financial-mlm', icon: DollarSign },
         { name: 'Subscription Plans', href: '/subscription-plans', icon: Package },
-        { name: 'Analytics & Reports', href: '/analytics', icon: BarChart3 },
+        { name: 'Central Messaging', href: '/messaging', icon: MessageCircle },
       ]
     },
-    // Group 3: Content Creation, Uploads
+    // Group 3: Ads Campaigns, Automation Rules, Course Creation, Funnels, Uploads
     {
       title: 'Content Management',
       items: [
-        { 
-          name: 'Course Creation', 
-          href: '/course-creation', 
+        { name: 'Ads Campaigns', href: '/ads-campaigns', icon: TrendingUp },
+        { name: 'Automation Rules', href: '/automation-rules', icon: Zap },
+        {
+          name: 'Course Creation',
+          href: '/course-creation',
           icon: PlusCircle,
-          hasDropdown: true 
+          hasDropdown: true
         },
+        { name: 'Funnels', href: '/funnels', icon: Target },
         { name: 'Uploads', href: '/uploads', icon: Upload },
       ]
     },
-    // Group 4: Messaging, Mail Setup, Admin Staff
-    {
-      title: 'Communication & Staff',
-      items: [
-        { name: 'WhatsApp Dashboard', href: '/messaging', icon: MessageCircle },
-        { name: 'Mail Setup', href: '/mail-setup', icon: Mail },
-        { name: 'Admin Staff', href: '/admin-staff', icon: UserCheck },
-      ]
-    }
   ];
 
   const handleLogout = async () => {
@@ -128,22 +122,27 @@ const AdminLayout = () => {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-background border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0",
+        "fixed inset-y-0 left-0 z-50 w-64 border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
+      )} style={{ backgroundColor: '#02001a', borderColor: '#1a0a4d' }}>
         <div className="flex flex-col h-screen">
           {/* Logo */}
-          <div className="flex items-center justify-between h-16 px-6 border-b">
+          <div className="flex items-center justify-between h-16 px-6 border-b" style={{ borderColor: '#1a0a4d' }}>
             <div className="flex items-center space-x-2">
-              <div className="p-2 bg-primary rounded-lg">
-                <Shield className="h-6 w-6 text-primary-foreground" />
+              <img src="/logo.png" alt="FunnelsEye Logo" className="h-6 w-6" />
+              <div className="flex flex-col">
+                <span className="text-sm text-white font-normal">FunnelsEye</span>
+                <span className="text-lg font-bold text-white">Admin Control</span>
               </div>
-              <span className="text-lg font-semibold">Admin Panel</span>
             </div>
             <Button
               variant="ghost"
               size="sm"
-              className="lg:hidden"
+              className="lg:hidden text-gray-400 hover:text-white"
+              style={{
+                '--tw-ring-color': 'transparent',
+                '--tw-bg-opacity': '0'
+              }}
               onClick={() => setSidebarOpen(false)}
             >
               <X className="h-4 w-4" />
@@ -156,7 +155,7 @@ const AdminLayout = () => {
               <div key={group.title}>
                 {/* Group Title */}
                 <div className="px-3 mb-3">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <h3 className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">
                     {group.title}
                   </h3>
                 </div>
@@ -177,11 +176,28 @@ const AdminLayout = () => {
                         >
                           <CollapsibleTrigger asChild>
                             <Button
-                              variant={isOnCoursePage ? "secondary" : "ghost"}
+                              variant="ghost"
                               className={cn(
-                                "w-full justify-between nav-item",
-                                isOnCoursePage && "bg-secondary text-secondary-foreground"
+                                "w-full justify-between nav-item text-gray-400 hover:text-white font-normal",
+                                isOnCoursePage && "text-white font-medium"
                               )}
+                              style={{
+                                '--tw-ring-color': 'transparent',
+                                backgroundColor: isOnCoursePage ? 'rgba(42, 20, 89, 0.4)' : 'transparent',
+                                borderRadius: isOnCoursePage ? '3px' : '0px'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isOnCoursePage) {
+                                  e.currentTarget.style.backgroundColor = 'rgba(42, 20, 89, 0.2)';
+                                  e.currentTarget.style.borderRadius = '3px';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isOnCoursePage) {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                  e.currentTarget.style.borderRadius = '0px';
+                                }
+                              }}
                             >
                               <div className="flex items-center">
                                 <item.icon className="mr-3 h-4 w-4" />
@@ -196,11 +212,28 @@ const AdminLayout = () => {
                           </CollapsibleTrigger>
                           <CollapsibleContent className="ml-4 mt-1 space-y-1">
                             <Button
-                              variant={isOnCoursePage && courseCategory === 'customer' ? "secondary" : "ghost"}
+                              variant="ghost"
                               className={cn(
-                                "w-full justify-start nav-item text-sm h-8",
-                                isOnCoursePage && courseCategory === 'customer' && "bg-secondary text-secondary-foreground"
+                                "w-full justify-start nav-item text-sm h-8 text-gray-400 hover:text-white font-normal",
+                                isOnCoursePage && courseCategory === 'customer' && "text-white font-medium"
                               )}
+                              style={{
+                                '--tw-ring-color': 'transparent',
+                                backgroundColor: (isOnCoursePage && courseCategory === 'customer') ? 'rgba(42, 20, 89, 0.4)' : 'transparent',
+                                borderRadius: (isOnCoursePage && courseCategory === 'customer') ? '3px' : '0px'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!(isOnCoursePage && courseCategory === 'customer')) {
+                                  e.currentTarget.style.backgroundColor = 'rgba(42, 20, 89, 0.2)';
+                                  e.currentTarget.style.borderRadius = '3px';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!(isOnCoursePage && courseCategory === 'customer')) {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                  e.currentTarget.style.borderRadius = '0px';
+                                }
+                              }}
                               onClick={() => {
                                 setCourseCategory('customer');
                                 navigate('/course-creation?category=customer');
@@ -211,11 +244,28 @@ const AdminLayout = () => {
                               Customer Courses
                             </Button>
                             <Button
-                              variant={isOnCoursePage && courseCategory === 'coach' ? "secondary" : "ghost"}
+                              variant="ghost"
                               className={cn(
-                                "w-full justify-start nav-item text-sm h-8",
-                                isOnCoursePage && courseCategory === 'coach' && "bg-secondary text-secondary-foreground"
+                                "w-full justify-start nav-item text-sm h-8 text-gray-400 hover:text-white font-normal",
+                                isOnCoursePage && courseCategory === 'coach' && "text-white font-medium"
                               )}
+                              style={{
+                                '--tw-ring-color': 'transparent',
+                                backgroundColor: (isOnCoursePage && courseCategory === 'coach') ? 'rgba(42, 20, 89, 0.4)' : 'transparent',
+                                borderRadius: (isOnCoursePage && courseCategory === 'coach') ? '3px' : '0px'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!(isOnCoursePage && courseCategory === 'coach')) {
+                                  e.currentTarget.style.backgroundColor = 'rgba(42, 20, 89, 0.2)';
+                                  e.currentTarget.style.borderRadius = '3px';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!(isOnCoursePage && courseCategory === 'coach')) {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                  e.currentTarget.style.borderRadius = '0px';
+                                }
+                              }}
                               onClick={() => {
                                 setCourseCategory('coach');
                                 navigate('/course-creation?category=coach');
@@ -234,11 +284,28 @@ const AdminLayout = () => {
                     return (
                       <Button
                         key={item.name}
-                        variant={isActive ? "secondary" : "ghost"}
+                        variant="ghost"
                         className={cn(
-                          "w-full justify-start nav-item",
-                          isActive && "bg-secondary text-secondary-foreground"
+                          "w-full justify-start nav-item text-gray-400 hover:text-white font-normal",
+                          isActive && "text-white font-medium"
                         )}
+                        style={{
+                          '--tw-ring-color': 'transparent',
+                          backgroundColor: isActive ? 'rgba(42, 20, 89, 0.4)' : 'transparent',
+                          borderRadius: isActive ? '3px' : '0px'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.backgroundColor = 'rgba(42, 20, 89, 0.2)';
+                            e.currentTarget.style.borderRadius = '3px';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.borderRadius = '0px';
+                          }
+                        }}
                         onClick={() => {
                           navigate(item.href);
                           setSidebarOpen(false);
@@ -254,7 +321,7 @@ const AdminLayout = () => {
                 {/* Divider (except for last group) */}
                 {groupIndex < navigationGroups.length - 1 && (
                   <div className="mt-6 mb-2">
-                    <div className="h-px bg-border"></div>
+                    <div className="h-px bg-gray-500 opacity-50"></div>
                   </div>
                 )}
               </div>
@@ -262,16 +329,16 @@ const AdminLayout = () => {
           </nav>
 
           {/* User info and logout */}
-          <div className="p-4 border-t">
+          <div className="p-4 border-t" style={{ borderColor: '#1a0a4d' }}>
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-muted rounded-full">
-                <Shield className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2" style={{ backgroundColor: '#1a0a4d' }}>
+                <Shield className="h-4 w-4 text-purple-300" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
+                <p className="text-sm font-medium text-white truncate">
                   {admin?.firstName} {admin?.lastName}
                 </p>
-                <p className="text-xs text-muted-foreground truncate">
+                <p className="text-xs text-gray-400 truncate">
                   {admin?.email}
                 </p>
               </div>
@@ -279,7 +346,8 @@ const AdminLayout = () => {
                 variant="ghost"
                 size="sm"
                 onClick={handleLogout}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-gray-400 hover:text-white"
+                style={{ '--tw-ring-color': 'transparent' }}
               >
                 <LogOut className="h-4 w-4" />
               </Button>

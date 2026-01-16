@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   Box, Flex, Text, Button, Input, InputGroup, InputLeftElement,
   Table, Thead, Tbody, Tr, Th, Td, TableContainer, Badge, Avatar,
@@ -15,7 +15,8 @@ import {
   GridItem, Grid, Stack, ButtonGroup, FormErrorMessage,
   NumberInput, NumberInputField, NumberInputStepper, NumberIncrementStepper, NumberDecrementStepper,
   MenuDivider, Accordion, AccordionItem, AccordionButton, AccordionPanel, AccordionIcon,
-  Code, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay
+  Code, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay,
+  Drawer, DrawerBody, DrawerFooter, DrawerHeader, DrawerOverlay, DrawerContent, DrawerCloseButton
 } from '@chakra-ui/react';
 import {
   SearchIcon, AddIcon, EditIcon, DeleteIcon, EmailIcon, PhoneIcon,
@@ -30,14 +31,19 @@ import {
   FiZap, FiActivity, FiClock, FiBell, FiCode, FiDatabase, FiShield,
   FiAlertTriangle, FiInfo, FiExternalLink, FiSave, FiX, FiXCircle,
   FiRefreshCw, FiPlus, FiSettings, FiSend, FiMessageSquare, FiCheckCircle,
-  FiRepeat
+  FiRepeat, FiLink
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
+import axios from 'axios';
 import { useSelector } from 'react-redux';
-import { getCoachId, getToken, isAuthenticated, debugAuthState } from '../../utils/authUtils';
-import { API_BASE_URL } from '../../config/apiConfig';
+import { getCoachId, getToken, isAuthenticated, debugAuthState, getAuthHeaders } from '../../utils/authUtils';
+
+import { API_BASE_URL as BASE_URL } from '../../config/apiConfig';
 import AutomationRulesGraphBuilder from './AutomationRulesGraphBuilder';
 import automationRulesService from './automationRulesService';
+
+// --- API CONFIGURATION ---
+const API_BASE_URL = `${BASE_URL}/api`;
 
 // Stats Card Component
 const StatsCard = ({ title, value, icon, color = "blue", helpText }) => (
@@ -136,10 +142,19 @@ const AutomationRulesDashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
 
-  // Redux state
-  const coachId = useSelector(getCoachId);
-  const token = useSelector(getToken);
-  const isAuth = useSelector(isAuthenticated);
+  // Redux state (same pattern as reference file)
+  const authState = useSelector((state) => state.auth);
+  const token = getToken(authState);
+  const coachId = getCoachId(authState);
+  const isAuth = isAuthenticated(authState);
+
+  // Get auth headers (same pattern as reference file)
+  const getAuthHeaders = () => {
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
+  };
 
   // Component state
   const [sequences, setSequences] = useState([]);
@@ -166,21 +181,88 @@ const AutomationRulesDashboard = () => {
     isActive: true
   });
 
+  // Builder resources for funnel assignment
+  const [builderResources, setBuilderResources] = useState({
+    funnels: []
+  });
+
   // API Functions
   const fetchSequences = useCallback(async () => {
     try {
+      setLoading(true);
+      console.log("Starting to fetch sequences and builder resources...");
+      console.log("Auth token available:", !!getToken());
+
       const response = await automationRulesService.getSequences();
       setSequences(response.data || []);
+      console.log("Sequences fetched:", response.data?.length || 0);
+
+      // Also fetch builder resources (funnels)
+      try {
+        console.log("Fetching builder resources...");
+        const resourcesResponse = await axios.get(`${API_BASE_URL}/automation-rules/builder-resources`, {
+          headers: getAuthHeaders()
+        });
+        console.log("Builder resources response:", resourcesResponse.data);
+        const newResources = resourcesResponse.data.data || { funnels: [] };
+        console.log("Setting builder resources:", newResources);
+        console.log("Funnels in response:", newResources.funnels);
+        setBuilderResources(newResources);
+      } catch (resourcesErr) {
+        console.error("Could not fetch builder resources:", resourcesErr);
+        console.error("Error details:", resourcesErr.response?.data || resourcesErr.message);
+        setBuilderResources({ funnels: [] });
+      }
     } catch (error) {
       console.error('Error fetching sequences:', error);
+      setSequences([]);
+      setBuilderResources({ funnels: [] });
       toast({
         title: 'Error',
         description: 'Failed to load automation sequences',
         status: 'error',
         duration: 3000,
       });
+    } finally {
+      setLoading(false);
     }
   }, [toast]);
+
+  // Handle funnel assignment
+  const handleFunnelAssignment = async (ruleId, funnelId) => {
+    try {
+      const response = await axios.put(
+        `${API_BASE_URL}/automation-rules/${ruleId}/assign-funnel`,
+        { funnelId: funnelId || null },
+        { headers: getAuthHeaders() }
+      );
+
+      if (response.data.success) {
+        // Update local state
+        setSequences(prev => prev.map(rule =>
+          rule._id === ruleId
+            ? { ...rule, funnelId: funnelId || null }
+            : rule
+        ));
+        toast({
+          title: 'Funnel assignment updated',
+          description: `Rule ${funnelId ? 'assigned to funnel' : 'unassigned from funnel'}`,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      console.error('Error assigning funnel:', error);
+      toast({
+        title: 'Assignment failed',
+        description: error.response?.data?.message || 'Failed to assign funnel',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
 
   const fetchFlows = useCallback(async () => {
     try {
@@ -324,34 +406,23 @@ const AutomationRulesDashboard = () => {
   }
 
   return (
-    <Container maxW="7xl" mx="auto" py={6} px={4}>
-      {/* Header */}
-      <VStack spacing={6} align="stretch">
-        <Box>
-          <HStack justify="space-between" align="center" mb={4}>
-            <Box>
-              <Heading size="lg" color="gray.900" mb={1}>
-                Automation Rules
-              </Heading>
-              <Text color="gray.600" fontSize="md">
-                Create intelligent workflows with drag-and-drop automation rules
-              </Text>
-            </Box>
-            <HStack spacing={3}>
-              <Button
-                leftIcon={<FiPlus />}
-                colorScheme="blue"
-                onClick={() => window.open('/create/workflow', '_blank')}
-                size="md"
-              >
-                Create Rule
-              </Button>
-            </HStack>
-          </HStack>
-        </Box>
+    <Container maxW="8xl" mx="auto" py={8} px={6}>
+      <VStack spacing={8} align="stretch">
+        {/* Header Section */}
+      <Box mb={8}>
+        <HStack justify="space-between" align="center" mb={6}>
+          <Box>
+            <Heading size="xl" color="gray.900" fontWeight="700">
+              Automation Builder - FunnelsEye
+            </Heading>
+            <Text color="gray.600" fontSize="md" mt={1}>
+              Create and manage your automated workflows
+            </Text>
+          </Box>
+        </HStack>
 
         {/* Stats Cards */}
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4} mb={6}>
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6} mb={8}>
           <StatsCard
             title="Total Rules"
             value={sequences.length}
@@ -382,7 +453,52 @@ const AutomationRulesDashboard = () => {
           />
         </SimpleGrid>
 
-        {/* Main Content Tabs */}
+        {/* Search and Actions Bar */}
+        <Card bg="white" borderRadius="xl" border="1px" borderColor="gray.200" shadow="sm" mb={6}>
+          <CardBody py={4}>
+            <HStack spacing={4}>
+              <InputGroup maxW="400px">
+                <InputLeftElement pointerEvents="none">
+                  <SearchIcon color="gray.400" />
+                </InputLeftElement>
+                <Input
+                  placeholder="Search automation rules..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  bg="gray.50"
+                  border="1px"
+                  borderColor="gray.200"
+                  _hover={{ borderColor: 'gray.300' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                />
+              </InputGroup>
+
+              <Button
+                leftIcon={<FiRefreshCw />}
+                variant="outline"
+                size="md"
+                onClick={fetchSequences}
+                isLoading={loading}
+                loadingText="Refreshing..."
+              >
+                Refresh
+              </Button>
+
+              <Button
+                leftIcon={<FiPlus />}
+                colorScheme="blue"
+                size="md"
+                onClick={() => window.open('/create/workflow', '_blank')}
+                fontWeight="600"
+              >
+                Create Rule
+              </Button>
+            </HStack>
+          </CardBody>
+        </Card>
+      </Box>
+
+      {/* Main Content Tabs */}
         <Card bg="white" borderRadius="xl" border="1px" borderColor="gray.200" shadow="sm">
           <Tabs variant="enclosed" colorScheme="blue" index={activeTab} onChange={setActiveTab}>
             <TabList px={6} pt={4}>
@@ -458,6 +574,7 @@ const AutomationRulesDashboard = () => {
                             <Th fontSize="xs" fontWeight="700" color="gray.700" textTransform="uppercase" letterSpacing="0.05em">Name</Th>
                             <Th fontSize="xs" fontWeight="700" color="gray.700" textTransform="uppercase" letterSpacing="0.05em">Trigger</Th>
                             <Th fontSize="xs" fontWeight="700" color="gray.700" textTransform="uppercase" letterSpacing="0.05em">Status</Th>
+                            <Th fontSize="xs" fontWeight="700" color="gray.700" textTransform="uppercase" letterSpacing="0.05em">Funnels</Th>
                             <Th fontSize="xs" fontWeight="700" color="gray.700" textTransform="uppercase" letterSpacing="0.05em">Last Run</Th>
                             <Th fontSize="xs" fontWeight="700" color="gray.700" textTransform="uppercase" letterSpacing="0.05em">Actions</Th>
                           </Tr>
@@ -508,6 +625,31 @@ const AutomationRulesDashboard = () => {
                                   >
                                     {sequence.isActive ? 'Active' : 'Inactive'}
                                   </Badge>
+                                </Td>
+                                <Td onClick={(e) => e.stopPropagation()}>
+                                  <Select
+                                    size="sm"
+                                    value={sequence.funnelId || ''}
+                                    onChange={(e) => handleFunnelAssignment(sequence._id, e.target.value)}
+                                    placeholder="No funnel"
+                                    maxW="200px"
+                                    fontSize="xs"
+                                    borderRadius="md"
+                                    borderColor="gray.300"
+                                    _hover={{ borderColor: 'blue.400' }}
+                                    _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px blue.500' }}
+                                  >
+                                    {console.log('Rendering funnels in dropdown:', builderResources.funnels)}
+                                    {builderResources.funnels && builderResources.funnels.length > 0 ? (
+                                      builderResources.funnels.map(funnel => (
+                                        <option key={funnel.id} value={funnel.id}>
+                                          {funnel.name}
+                                        </option>
+                                      ))
+                                    ) : (
+                                      <option disabled>No funnels available</option>
+                                    )}
+                                  </Select>
                                 </Td>
                                 <Td>
                                   <Text fontSize="xs" color="gray.500">
@@ -668,7 +810,8 @@ const AutomationRulesDashboard = () => {
         </Card>
       </VStack>
 
-{/* Delete Confirmation Dialog */}
+
+      {/* Delete Confirmation Dialog */}
       <AlertDialog
         isOpen={isDeleteDialogOpen}
         leastDestructiveRef={undefined}
@@ -695,6 +838,8 @@ const AutomationRulesDashboard = () => {
           </AlertDialogContent>
         </AlertDialogOverlay>
       </AlertDialog>
+
+
     </Container>
   );
 };

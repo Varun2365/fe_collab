@@ -900,10 +900,10 @@ const NodeConfigForm = ({ node, onSave, onCancel, onDelete }) => {
                       />
 
                       <VariableInput
-                        fieldName="emailBody"
+                        fieldName="body"
                         label="Email Content"
-                        value={config.emailBody || ''}
-                        onChange={(value) => setConfig({ ...config, emailBody: value })}
+                        value={config.body || ''}
+                        onChange={(value) => setConfig({ ...config, body: value })}
                         placeholder="Enter your email content. Use variables for dynamic values"
                         type="textarea"
                         rows={6}
@@ -1117,8 +1117,8 @@ const NodeConfigForm = ({ node, onSave, onCancel, onDelete }) => {
                       Tag Name
                     </FormLabel>
                     <Input
-                      value={config.tagName || ''}
-                      onChange={(e) => setConfig({ ...config, tagName: e.target.value })}
+                      value={config.tag || ''}
+                      onChange={(e) => setConfig({ ...config, tag: e.target.value })}
                       placeholder="Enter tag name"
                       bg="white"
                       borderColor="gray.200"
@@ -1147,14 +1147,729 @@ const NodeConfigForm = ({ node, onSave, onCancel, onDelete }) => {
                 </VStack>
               );
 
+            case 'add_to_funnel':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Funnel
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.funnelId || ''}
+                      onChange={(e) => setConfig({ ...config, funnelId: e.target.value })}
+                      placeholder="Select funnel"
+                    >
+                      <MenuItem value="">Choose a funnel...</MenuItem>
+                      <MenuDivider />
+                      {/* Funnels would be populated from builderResources */}
+                      {builderResources?.funnels?.map(funnel => (
+                        <MenuItem key={funnel._id} value={funnel._id}>
+                          {funnel.name}
+                        </MenuItem>
+                      )) || []}
+                    </SearchableMenu>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      The funnel to add the lead to
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Stage (Optional)
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.stageId || ''}
+                      onChange={(e) => setConfig({ ...config, stageId: e.target.value })}
+                      placeholder="Select starting stage"
+                    >
+                      <MenuItem value="">Entry stage</MenuItem>
+                      <MenuDivider />
+                      {/* Stages would be populated based on selected funnel */}
+                      <MenuItem value="stage1">Stage 1</MenuItem>
+                      <MenuItem value="stage2">Stage 2</MenuItem>
+                      <MenuItem value="stage3">Stage 3</MenuItem>
+                    </SearchableMenu>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Leave empty to add to funnel entry
+                    </FormHelperText>
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'move_to_funnel_stage':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Stage ID
+                    </FormLabel>
+                    <Input
+                      value={config.stageId || ''}
+                      onChange={(e) => setConfig({ ...config, stageId: e.target.value })}
+                      placeholder="Enter stage ID"
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      The stage ID to move the lead to
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Stage Name (Optional)
+                    </FormLabel>
+                    <Input
+                      value={config.stageName || ''}
+                      onChange={(e) => setConfig({ ...config, stageName: e.target.value })}
+                      placeholder="Enter stage name"
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Optional descriptive name for the stage
+                    </FormHelperText>
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'update_lead_field':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Field Name
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.field || ''}
+                      onChange={(e) => setConfig({ ...config, field: e.target.value })}
+                      placeholder="Select field to update"
+                    >
+                      <MenuItem value="firstName">First Name</MenuItem>
+                      <MenuItem value="lastName">Last Name</MenuItem>
+                      <MenuItem value="email">Email</MenuItem>
+                      <MenuItem value="phone">Phone</MenuItem>
+                      <MenuItem value="company">Company</MenuItem>
+                      <MenuItem value="website">Website</MenuItem>
+                      <MenuItem value="status">Status</MenuItem>
+                      <MenuItem value="temperature">Temperature</MenuItem>
+                      <MenuItem value="score">Score</MenuItem>
+                      <MenuItem value="source">Source</MenuItem>
+                      <MenuItem value="campaign">Campaign</MenuItem>
+                    </SearchableMenu>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      The lead field to update
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      New Value
+                    </FormLabel>
+                    <VariableInput
+                      fieldName="value"
+                      value={config.value || ''}
+                      onChange={(value) => setConfig({ ...config, value: value })}
+                      placeholder="Enter new field value"
+                      helperText="Use variables for dynamic values"
+                    />
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'update_lead_status':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      New Status
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.status || ''}
+                      onChange={(e) => setConfig({ ...config, status: e.target.value })}
+                      placeholder="Select new status"
+                    >
+                      <MenuItem value="new">New</MenuItem>
+                      <MenuItem value="contacted">Contacted</MenuItem>
+                      <MenuItem value="qualified">Qualified</MenuItem>
+                      <MenuItem value="proposal">Proposal</MenuItem>
+                      <MenuItem value="negotiation">Negotiation</MenuItem>
+                      <MenuItem value="closed_won">Closed Won</MenuItem>
+                      <MenuItem value="closed_lost">Closed Lost</MenuItem>
+                      <MenuItem value="nurture">Nurture</MenuItem>
+                      <MenuItem value="unqualified">Unqualified</MenuItem>
+                    </SearchableMenu>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Update the lead's status in the system
+                    </FormHelperText>
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'assign_lead_to_staff':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Staff Member
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.staffId || ''}
+                      onChange={(e) => setConfig({ ...config, staffId: e.target.value })}
+                      placeholder="Select staff member"
+                    >
+                      <MenuItem value="">Choose staff member...</MenuItem>
+                      <MenuDivider />
+                      {/* Staff would be populated from builderResources */}
+                      {builderResources?.staff?.map(staff => (
+                        <MenuItem key={staff._id} value={staff._id}>
+                          {staff.name} ({staff.email})
+                        </MenuItem>
+                      )) || []}
+                    </SearchableMenu>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      The staff member to assign this lead to
+                    </FormHelperText>
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'create_deal':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Deal Value
+                    </FormLabel>
+                    <NumberInput
+                      value={config.dealValue || 0}
+                      onChange={(value) => setConfig({ ...config, dealValue: parseFloat(value) || 0 })}
+                      min={0}
+                      precision={2}
+                    >
+                      <NumberInputField
+                        bg="white"
+                        borderColor="gray.200"
+                        _hover={{ borderColor: 'gray.300' }}
+                        _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                        borderRadius="md"
+                      />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      The monetary value of this deal
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Deal Type
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.dealType || 'consultation'}
+                      onChange={(e) => setConfig({ ...config, dealType: e.target.value })}
+                      placeholder="Select deal type"
+                    >
+                      <MenuItem value="consultation">Consultation</MenuItem>
+                      <MenuItem value="service">Service</MenuItem>
+                      <MenuItem value="product">Product</MenuItem>
+                      <MenuItem value="package">Package</MenuItem>
+                      <MenuItem value="subscription">Subscription</MenuItem>
+                    </SearchableMenu>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      The type of deal or service
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Description
+                    </FormLabel>
+                    <Textarea
+                      value={config.description || ''}
+                      onChange={(e) => setConfig({ ...config, description: e.target.value })}
+                      placeholder="Describe this deal"
+                      rows={3}
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Optional description of the deal
+                    </FormHelperText>
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'send_push_notification':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Recipient
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.recipientId || ''}
+                      onChange={(e) => setConfig({ ...config, recipientId: e.target.value })}
+                      placeholder="Select recipient"
+                    >
+                      <MenuItem value="coach">Coach</MenuItem>
+                      <MenuItem value="lead">Lead</MenuItem>
+                      {/* Specific staff members could be added here */}
+                    </SearchableMenu>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Who should receive this notification
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Message
+                    </FormLabel>
+                    <Textarea
+                      value={config.message || ''}
+                      onChange={(e) => setConfig({ ...config, message: e.target.value })}
+                      placeholder="Enter notification message"
+                      rows={3}
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      The notification message content
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Title
+                    </FormLabel>
+                    <Input
+                      value={config.title || ''}
+                      onChange={(e) => setConfig({ ...config, title: e.target.value })}
+                      placeholder="Notification title"
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Optional title for the notification
+                    </FormHelperText>
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'schedule_drip_sequence':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Sequence Name
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.sequenceName || ''}
+                      onChange={(e) => setConfig({ ...config, sequenceName: e.target.value })}
+                      placeholder="Select drip sequence"
+                    >
+                      <MenuItem value="">Choose sequence...</MenuItem>
+                      <MenuDivider />
+                      {/* Sequences would be populated from API */}
+                      <MenuItem value="welcome_sequence">Welcome Sequence</MenuItem>
+                      <MenuItem value="followup_sequence">Follow-up Sequence</MenuItem>
+                      <MenuItem value="nurture_sequence">Nurture Sequence</MenuItem>
+                    </SearchableMenu>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      The drip sequence to start for this lead
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Start Delay (minutes)
+                    </FormLabel>
+                    <NumberInput
+                      value={config.startDelay || 0}
+                      onChange={(value) => setConfig({ ...config, startDelay: parseInt(value) || 0 })}
+                      min={0}
+                    >
+                      <NumberInputField
+                        bg="white"
+                        borderColor="gray.200"
+                        _hover={{ borderColor: 'gray.300' }}
+                        _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                        borderRadius="md"
+                      />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Minutes to wait before starting the sequence
+                    </FormHelperText>
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'add_followup_date':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Follow-up Date
+                    </FormLabel>
+                    <VariableInput
+                      fieldName="followupDate"
+                      value={config.followupDate || ''}
+                      onChange={(value) => setConfig({ ...config, followupDate: value })}
+                      placeholder="e.g., {{current_date + 7}} or 2024-01-15"
+                      helperText="Use date variables or specific dates"
+                    />
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Follow-up Type
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.followupType || 'general'}
+                      onChange={(e) => setConfig({ ...config, followupType: e.target.value })}
+                      placeholder="Select follow-up type"
+                    >
+                      <MenuItem value="general">General</MenuItem>
+                      <MenuItem value="call">Call</MenuItem>
+                      <MenuItem value="email">Email</MenuItem>
+                      <MenuItem value="meeting">Meeting</MenuItem>
+                      <MenuItem value="task">Task</MenuItem>
+                    </SearchableMenu>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      The type of follow-up activity
+                    </FormHelperText>
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'create_invoice':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Amount
+                    </FormLabel>
+                    <NumberInput
+                      value={config.amount || 0}
+                      onChange={(value) => setConfig({ ...config, amount: parseFloat(value) || 0 })}
+                      min={0}
+                      precision={2}
+                    >
+                      <NumberInputField
+                        bg="white"
+                        borderColor="gray.200"
+                        _hover={{ borderColor: 'gray.300' }}
+                        _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                        borderRadius="md"
+                      />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Invoice amount
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Currency
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.currency || 'USD'}
+                      onChange={(e) => setConfig({ ...config, currency: e.target.value })}
+                      placeholder="Select currency"
+                    >
+                      <MenuItem value="USD">USD ($)</MenuItem>
+                      <MenuItem value="EUR">EUR (€)</MenuItem>
+                      <MenuItem value="GBP">GBP (£)</MenuItem>
+                      <MenuItem value="CAD">CAD (C$)</MenuItem>
+                      <MenuItem value="AUD">AUD (A$)</MenuItem>
+                    </SearchableMenu>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Description
+                    </FormLabel>
+                    <Textarea
+                      value={config.description || ''}
+                      onChange={(e) => setConfig({ ...config, description: e.target.value })}
+                      placeholder="Invoice description"
+                      rows={3}
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      What this invoice is for
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Due Date
+                    </FormLabel>
+                    <VariableInput
+                      fieldName="dueDate"
+                      value={config.dueDate || ''}
+                      onChange={(value) => setConfig({ ...config, dueDate: value })}
+                      placeholder="e.g., {{current_date + 30}} or 2024-02-15"
+                      helperText="When payment is due"
+                    />
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'issue_refund':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Refund Amount
+                    </FormLabel>
+                    <NumberInput
+                      value={config.amount || 0}
+                      onChange={(value) => setConfig({ ...config, amount: parseFloat(value) || 0 })}
+                      min={0}
+                      precision={2}
+                    >
+                      <NumberInputField
+                        bg="white"
+                        borderColor="gray.200"
+                        _hover={{ borderColor: 'gray.300' }}
+                        _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                        borderRadius="md"
+                      />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Amount to refund
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Reason
+                    </FormLabel>
+                    <Textarea
+                      value={config.reason || ''}
+                      onChange={(e) => setConfig({ ...config, reason: e.target.value })}
+                      placeholder="Reason for refund"
+                      rows={2}
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Why this refund is being issued
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Refund Type
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.refundType || 'partial'}
+                      onChange={(e) => setConfig({ ...config, refundType: e.target.value })}
+                      placeholder="Select refund type"
+                    >
+                      <MenuItem value="partial">Partial Refund</MenuItem>
+                      <MenuItem value="full">Full Refund</MenuItem>
+                    </SearchableMenu>
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'call_webhook':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Webhook URL
+                    </FormLabel>
+                    <Input
+                      value={config.url || ''}
+                      onChange={(e) => setConfig({ ...config, url: e.target.value })}
+                      placeholder="https://your-webhook-url.com/endpoint"
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      The URL to call when this action executes
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      HTTP Method
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.method || 'POST'}
+                      onChange={(e) => setConfig({ ...config, method: e.target.value })}
+                      placeholder="Select HTTP method"
+                    >
+                      <MenuItem value="GET">GET</MenuItem>
+                      <MenuItem value="POST">POST</MenuItem>
+                      <MenuItem value="PUT">PUT</MenuItem>
+                      <MenuItem value="PATCH">PATCH</MenuItem>
+                      <MenuItem value="DELETE">DELETE</MenuItem>
+                    </SearchableMenu>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Headers (JSON)
+                    </FormLabel>
+                    <Textarea
+                      value={config.headers ? JSON.stringify(config.headers, null, 2) : ''}
+                      onChange={(e) => {
+                        try {
+                          const headers = e.target.value ? JSON.parse(e.target.value) : {};
+                          setConfig({ ...config, headers });
+                        } catch (error) {
+                          // Invalid JSON, keep current value
+                        }
+                      }}
+                      placeholder='{"Authorization": "Bearer token", "Content-Type": "application/json"}'
+                      rows={3}
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      HTTP headers as JSON object
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Request Body (JSON)
+                    </FormLabel>
+                    <Textarea
+                      value={config.body ? JSON.stringify(config.body, null, 2) : ''}
+                      onChange={(e) => {
+                        try {
+                          const body = e.target.value ? JSON.parse(e.target.value) : {};
+                          setConfig({ ...config, body });
+                        } catch (error) {
+                          // Invalid JSON, keep current value
+                        }
+                      }}
+                      placeholder='{"leadId": "{{lead._id}}", "event": "automation_triggered"}'
+                      rows={4}
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Request body as JSON object (use variables)
+                    </FormHelperText>
+                  </FormControl>
+                </VStack>
+              );
+
+            case 'trigger_another_automation':
+              return (
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Automation Rule
+                    </FormLabel>
+                    <SearchableMenu
+                      value={config.automationRuleId || ''}
+                      onChange={(e) => setConfig({ ...config, automationRuleId: e.target.value })}
+                      placeholder="Select automation rule"
+                    >
+                      <MenuItem value="">Choose automation rule...</MenuItem>
+                      <MenuDivider />
+                      {/* Automation rules would be populated from builderResources */}
+                      {builderResources?.automationRules?.map(rule => (
+                        <MenuItem key={rule._id} value={rule._id}>
+                          {rule.name}
+                        </MenuItem>
+                      )) || []}
+                    </SearchableMenu>
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      The automation rule to trigger
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">
+                      Trigger Data (JSON)
+                    </FormLabel>
+                    <Textarea
+                      value={config.triggerData ? JSON.stringify(config.triggerData, null, 2) : ''}
+                      onChange={(e) => {
+                        try {
+                          const triggerData = e.target.value ? JSON.parse(e.target.value) : {};
+                          setConfig({ ...config, triggerData });
+                        } catch (error) {
+                          // Invalid JSON, keep current value
+                        }
+                      }}
+                      placeholder='{"customField": "value", "source": "automation"}'
+                      rows={3}
+                      bg="white"
+                      borderColor="gray.200"
+                      _hover={{ borderColor: 'gray.300' }}
+                      _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px var(--chakra-colors-blue-400)' }}
+                      borderRadius="md"
+                    />
+                    <FormHelperText fontSize="xs" color="gray.500" mt={1}>
+                      Optional data to pass to the triggered automation
+                    </FormHelperText>
+                  </FormControl>
+                </VStack>
+              );
+
             case 'add_note_to_lead':
               return (
                 <VStack spacing={5} align="stretch">
                   <VariableInput
-                    fieldName="noteContent"
+                    fieldName="note"
                     label="Note Content"
-                    value={config.noteContent || ''}
-                    onChange={(value) => setConfig({ ...config, noteContent: value })}
+                    value={config.note || ''}
+                    onChange={(value) => setConfig({ ...config, note: value })}
                     placeholder="Enter note content. Use variables for dynamic values"
                     type="textarea"
                     rows={6}
@@ -2590,7 +3305,8 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
           setRuleName(ruleData.name || '');
           setIsActive(ruleData.isActive !== false);
           if (ruleData.nodes) {
-            setNodes(ruleData.nodes);
+            const nodesWithConfigs = ensureNodeConfigs(ruleData.nodes);
+            setNodes(nodesWithConfigs);
             // Ensure existing edges have arrow markers
             const edgesWithArrows = (ruleData.edges || []).map(edge => ({
               ...edge,
@@ -2614,10 +3330,36 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
     loadRuleData();
   }, [ruleId, rule, navigate, toast]);
 
+  // Function to ensure nodes have proper default configs
+  const ensureNodeConfigs = (nodes) => {
+    return nodes.map(node => {
+      let defaultConfig = { ...node.data?.config };
+
+      // Set default configs based on node type
+      if (node.nodeType === 'create_task' || node.data?.nodeType === 'create_task') {
+        if (!defaultConfig.taskName && !defaultConfig.name) {
+          defaultConfig.taskName = 'New Task';
+        }
+        if (!defaultConfig.taskDescription && !defaultConfig.description) {
+          defaultConfig.taskDescription = 'Task created by automation';
+        }
+      }
+
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          config: defaultConfig
+        }
+      };
+    });
+  };
+
   // Initialize nodes and edges if editing existing rule (drawer mode) or start empty for new rules
   useEffect(() => {
     if (rule && rule.nodes) {
-      setNodes(rule.nodes);
+      const nodesWithConfigs = ensureNodeConfigs(rule.nodes);
+      setNodes(nodesWithConfigs);
       // Ensure existing edges have arrow markers
       const edgesWithArrows = (rule.edges || []).map(edge => ({
         ...edge,
@@ -2700,6 +3442,15 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
       y: Math.random() * 400 + 100,
     };
 
+    // Set default config based on node type
+    let defaultConfig = {};
+    if (nodeData.value === 'create_task' || nodeData.type === 'create_task') {
+      defaultConfig = {
+        taskName: 'New Task',
+        taskDescription: 'Task created by automation'
+      };
+    }
+
     const newNode = {
       id: `${nodeType}-${Date.now()}`,
       type: nodeType,
@@ -2708,7 +3459,7 @@ const AutomationRulesGraphBuilder = ({ rule, onSave, onClose }) => {
         label: nodeData.label || nodeData.name || nodeType,
         nodeType: nodeData.value || nodeData.type || nodeType,
         description: nodeData.description || '',
-        config: {},
+        config: { ...defaultConfig, ...nodeData.config },
         ...nodeData,
       },
     };

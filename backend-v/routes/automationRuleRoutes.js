@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 // --- CORRECTED: The import name must match the controller's export ---
-const { createRule, getRules, getRuleById, updateRule, deleteRule, getEventsAndActions, getBuilderResources, validateGraphWorkflow, assignFunnel, getAnalytics, getRuleByFunnel } = require('../controllers/automationRuleController'); 
+const { createRule, getRules, getRuleById, updateRule, deleteRule, getEventsAndActions, getBuilderResources, validateGraphWorkflow, assignFunnel, assignFunnels, getAnalytics, getRuleByFunnel } = require('../controllers/automationRuleController'); 
 
 // Using unified authentication middleware
 const { 
@@ -22,6 +22,33 @@ router.use(unifiedCoachAuth(), updateLastActive, filterResourcesByPermission('au
 
 // Get builder resources (staff, funnels, templates) - needs auth
 router.get('/builder-resources', requirePermission('automation:read'), getBuilderResources);
+
+// Debug endpoint to check authentication
+router.get('/debug-auth', requirePermission('automation:read'), (req, res) => {
+  res.json({
+    success: true,
+    coachId: req.coachId,
+    user: req.user,
+    role: req.role
+  });
+});
+
+// Temporary endpoint to test funnel fetching without auth
+router.get('/test-funnels', async (req, res) => {
+  try {
+    const Funnel = require('../schema/Funnel');
+    const funnels = await Funnel.find({}).select('name _id coachId stages').limit(20);
+    res.json({
+      success: true,
+      funnels: funnels.map(f => ({ id: f._id, name: f.name, coachId: f.coachId, stages: f.stages?.length || 0 }))
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Temporary public endpoint for testing
+router.get('/builder-resources-public', getBuilderResources);
 
 // Validate graph workflow - needs auth
 router.post('/validate-graph', requirePermission('automation:read'), validateGraphWorkflow);

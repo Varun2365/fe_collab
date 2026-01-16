@@ -53,13 +53,25 @@ const initRulesEngineWorker = async () => {
 
                     // Helper function to find rules (both legacy and graph-based)
                     const findMatchingRules = async (eventName) => {
+                        const funnelId = eventPayload.funnelId; // Get funnel ID from event payload
+
+                        // Build funnel filter - rules must be assigned to this funnel or have no funnel restriction
+                        const funnelFilter = funnelId ? {
+                            $or: [
+                                { funnelId: funnelId }, // Rule is assigned to this funnel
+                                { funnelId: { $exists: false } }, // Rule has no funnel field (backward compatibility)
+                                { funnelId: null } // Rule explicitly has no funnel assigned
+                            ]
+                        } : {}; // If no funnel ID, include all rules
+
                         // Find legacy rules
-                        const legacyRules = await AutomationRule.find({ 
-                            triggerEvent: eventName, 
+                        const legacyRules = await AutomationRule.find({
+                            triggerEvent: eventName,
                             isActive: true,
-                            workflowType: { $ne: 'graph' } // Explicitly exclude graph workflows
+                            workflowType: { $ne: 'graph' }, // Explicitly exclude graph workflows
+                            ...funnelFilter
                         });
-                        
+
                         // Find graph-based rules where trigger node matches event
                         const graphRules = await AutomationRule.find({
                             isActive: true,
@@ -69,7 +81,8 @@ const initRulesEngineWorker = async () => {
                                     type: 'trigger',
                                     nodeType: eventName
                                 }
-                            }
+                            },
+                            ...funnelFilter
                         });
                         
                         return [...legacyRules, ...graphRules];
@@ -355,7 +368,7 @@ const initRulesEngineWorker = async () => {
 
                         while (queue.length > 0) {
                             const { nodeId, delay } = queue.shift();
-                            
+
                             if (visited.has(nodeId)) continue;
                             visited.add(nodeId);
 
@@ -367,9 +380,6 @@ const initRulesEngineWorker = async () => {
                                 // Extract config from multiple possible locations
                                 const actionConfig = currentNode.config || currentNode.data?.config || currentNode.data || {};
                                 const actionType = currentNode.nodeType;
-
-                                console.log(`[Rules Engine] Executing action node: ${currentNode.label} (${actionType})`);
-                                console.log(`[Rules Engine] Action config:`, JSON.stringify(actionConfig, null, 2));
 
                                 // Ensure relatedDoc is a plain object (not Mongoose document)
                                 const relatedDocPlain = relatedDoc.toObject ? relatedDoc.toObject() : relatedDoc;
@@ -412,16 +422,18 @@ const initRulesEngineWorker = async () => {
                                     console.log(`[Rules Engine] Dispatched immediate action "${actionType}" for event ${eventName}.`);
                                 }
                             } else if (currentNode.type === 'delay') {
-                                // Calculate delay from delay node
-                                const delayConfig = currentNode.config || currentNode.data?.config || {};
+                                // Calculate delay from delay node - check multiple locations
+                                const delayConfig = currentNode.config || currentNode.data?.config || currentNode.data || {};
+
                                 const delayMs = (delayConfig.delayMinutes || 0) * 60 * 1000 +
                                                (delayConfig.delaySeconds || 0) * 1000 +
                                                (delayConfig.delayHours || 0) * 60 * 60 * 1000;
-                                
+
                                 // Add delay to next nodes
                                 const nextNodes = adjacencyList[nodeId] || [];
                                 nextNodes.forEach(({ target }) => {
-                                    queue.push({ nodeId: target, delay: delay + delayMs });
+                                    const newDelay = delay + delayMs;
+                                    queue.push({ nodeId: target, delay: newDelay });
                                 });
                                 continue;
                             } else if (currentNode.type === 'condition') {

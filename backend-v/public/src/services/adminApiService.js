@@ -110,6 +110,14 @@ class AdminApiService {
         return this.apiCall('/admin/v1/system-health');
     }
 
+    async getRevenueTrends() {
+        return this.apiCall('/admin/v1/revenue-trends');
+    }
+
+    async getTopPerformingCoaches() {
+        return this.apiCall('/admin/v1/top-coaches');
+    }
+
     async getSystemAnalytics() {
         return this.apiCall('/admin/v1/platform-analytics');
     }
