@@ -1,5 +1,19 @@
-import { useToast } from '@chakra-ui/react';
-import { useCallback } from 'react';
+import { useToast as originalUseToast } from '@chakra-ui/react';
+import { useCallback, useEffect } from 'react';
+
+// Global toast blocker - runs immediately when module loads
+const isAccountDeactivated = typeof window !== 'undefined' && localStorage.getItem('account_deactivated') === 'true';
+const isAccountUnderReview = typeof window !== 'undefined' && localStorage.getItem('account_under_review') === 'true';
+
+if (isAccountDeactivated || isAccountUnderReview) {
+  // Override the global toast function immediately
+  if (typeof window !== 'undefined') {
+    window.originalToast = window.toast;
+    window.toast = () => {
+      console.log('Global toast blocked: Account is deactivated or under review');
+    };
+  }
+}
 import {
   Box,
   Text,
@@ -20,11 +34,30 @@ import { CloseIcon } from '@chakra-ui/icons';
  * - Fixed height: auto (but consistent padding)
  * - Position: top-right
  * - Same styling as calendar section
+ * - Blocked when account is deactivated
  */
+// Create a blocked toast function
+const createBlockedToast = () => ({
+  success: () => console.log('Toast blocked: Account is deactivated'),
+  error: () => console.log('Toast blocked: Account is deactivated'),
+  warning: () => console.log('Toast blocked: Account is deactivated'),
+  info: () => console.log('Toast blocked: Account is deactivated'),
+  close: () => console.log('Toast close blocked: Account is deactivated'),
+  closeAll: () => console.log('Toast closeAll blocked: Account is deactivated'),
+  isActive: () => false,
+});
+
 export const useCustomToast = () => {
   const toast = useToast();
 
   return useCallback((message, status = 'info', options = {}) => {
+    // Block all toasts when account is deactivated or under review
+    const isAccountDeactivated = typeof window !== 'undefined' && localStorage.getItem('account_deactivated') === 'true';
+    const isAccountUnderReview = typeof window !== 'undefined' && localStorage.getItem('account_under_review') === 'true';
+    if (isAccountDeactivated || isAccountUnderReview) {
+      console.log('Toast blocked: Account is deactivated or under review');
+      return;
+    }
     const statusConfig = {
       success: {
         title: options.title || 'Success',
@@ -136,3 +169,52 @@ export const useCustomToast = () => {
   }, [toast]);
 };
 
+// Custom useToast that blocks when account is deactivated or under review
+export const useToast = () => {
+  const originalToast = originalUseToast();
+
+  // Check if account is deactivated or under review
+  const isAccountDeactivated = typeof window !== 'undefined' && localStorage.getItem('account_deactivated') === 'true';
+  const isAccountUnderReview = typeof window !== 'undefined' && localStorage.getItem('account_under_review') === 'true';
+
+  if (isAccountDeactivated || isAccountUnderReview) {
+    return createBlockedToast();
+  }
+
+  return originalToast;
+};
+
+/**
+ * Global toast blocker for deactivated accounts
+ * This hook can be used to completely disable all toasts when account is deactivated
+ */
+export const useBlockedToast = () => {
+  const originalToast = originalUseToast();
+
+  useEffect(() => {
+    const isAccountDeactivated = localStorage.getItem('account_deactivated') === 'true';
+    const isAccountUnderReview = localStorage.getItem('account_under_review') === 'true';
+
+    if (isAccountDeactivated || isAccountUnderReview) {
+      // Override the global toast function
+      const originalToastFn = window.toast;
+      window.toast = () => {
+        console.log('Global toast blocked: Account is deactivated or under review');
+      };
+
+      return () => {
+        // Restore original functions
+        window.toast = originalToastFn;
+      };
+    }
+  }, [originalToast]);
+
+  // Return a no-op function when deactivated or under review
+  const isAccountDeactivated = localStorage.getItem('account_deactivated') === 'true';
+  const isAccountUnderReview = localStorage.getItem('account_under_review') === 'true';
+  if (isAccountDeactivated || isAccountUnderReview) {
+    return createBlockedToast();
+  }
+
+  return originalToast;
+};

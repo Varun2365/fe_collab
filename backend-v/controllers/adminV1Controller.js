@@ -137,6 +137,18 @@ exports.getPlatformAnalytics = asyncHandler(async (req, res) => {
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - parseInt(timeRange));
 
+        // If specific metric is requested, return that data directly
+        if (metric === 'users') {
+            console.log('🎯 [getPlatformAnalytics] Metric=users requested, calling getUserAnalytics');
+            const userAnalytics = await getUserAnalytics(startDate);
+            console.log('📤 [getPlatformAnalytics] Returning user analytics:', userAnalytics);
+            res.json({
+                success: true,
+                data: userAnalytics
+            });
+            return;
+        }
+
         let analytics = {};
 
         if (metric === 'all' || metric === 'users') {
@@ -211,7 +223,8 @@ exports.getUsers = asyncHandler(async (req, res) => {
             .sort(sort)
             .limit(limit * 1)
             .skip((page - 1) * limit)
-            .populate('coachId', 'name email')
+            .populate('coachId', 'name email _id')
+            .populate('sponsorId', 'name selfCoachId')
             .populate('referralId', 'name email');
 
         const total = await User.countDocuments(query);
@@ -1070,36 +1083,53 @@ async function getSystemHealth() {
 }
 
 async function getUserAnalytics(startDate) {
-    const totalUsers = await User.countDocuments({ role: 'user' });
-    const newUsers = await User.countDocuments({ 
-        role: 'user', 
-        createdAt: { $gte: startDate } 
-    });
-    const activeUsers = await User.countDocuments({ 
-        role: 'user', 
-        status: 'active'
-    });
-    const coaches = await User.countDocuments({ role: 'coach' });
-    const inactiveUsers = await User.countDocuments({ 
-        role: 'user', 
-        status: 'inactive' 
-    });
+    try {
+        console.log('🔍 [getUserAnalytics] Starting analytics calculation with startDate:', startDate);
 
-    // Calculate percentages
-    const activePercentage = totalUsers > 0 ? ((activeUsers / totalUsers) * 100).toFixed(1) : 0;
-    const coachPercentage = totalUsers > 0 ? ((coaches / totalUsers) * 100).toFixed(1) : 0;
-    const growthRate = totalUsers > 0 ? ((newUsers / totalUsers) * 100).toFixed(1) : 0;
+        // Count all users for total users (this includes all roles)
+        const totalUsers = await User.countDocuments();
+        const newUsers = await User.countDocuments({
+            createdAt: { $gte: startDate }
+        });
+        const activeUsers = await User.countDocuments({
+            status: 'active'
+        });
+        const coaches = await User.countDocuments({ role: 'coach' });
+        const inactiveUsers = await User.countDocuments({
+            status: 'inactive'
+        });
 
-    return {
-        totalUsers,
-        newUsersThisMonth: newUsers,
-        activeUsers,
-        activePercentage,
-        coaches,
-        coachPercentage,
-        inactiveUsers,
-        growthRate
-    };
+        console.log('📊 [getUserAnalytics] Raw counts:', {
+            totalUsers,
+            newUsers,
+            activeUsers,
+            coaches,
+            inactiveUsers
+        });
+
+        // Calculate percentages
+        const activePercentage = totalUsers > 0 ? ((activeUsers / totalUsers) * 100).toFixed(1) : 0;
+        const coachPercentage = totalUsers > 0 ? ((coaches / totalUsers) * 100).toFixed(1) : 0;
+        const growthRate = totalUsers > 0 ? ((newUsers / totalUsers) * 100).toFixed(1) : 0;
+
+        const result = {
+            totalUsers,
+            newUsersThisMonth: newUsers,
+            activeUsers,
+            activePercentage,
+            coaches,
+            coachPercentage,
+            inactiveUsers,
+            growthRate
+        };
+
+        console.log('📈 [getUserAnalytics] Final analytics:', result);
+
+        return result;
+    } catch (error) {
+        console.error('❌ [getUserAnalytics] Error:', error);
+        throw error;
+    }
 }
 
 async function getRevenueAnalytics(startDate) {

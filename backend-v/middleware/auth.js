@@ -100,6 +100,28 @@ const protect = async (req, res, next) => {
             });
         }
 
+        // Check if coach account is under review
+        if (user.role === 'coach' && user.status === 'under_review') {
+            return res.status(403).json({
+                success: false,
+                message: 'Your account is being held for review. Please wait for admin approval.',
+                code: 'ACCOUNT_UNDER_REVIEW',
+                underReview: true,
+                blockedRoute: req.originalUrl
+            });
+        }
+
+        // Check if coach is deactivated by admin
+        if (user.role === 'coach' && user.status === 'inactive') {
+            return res.status(403).json({
+                success: false,
+                message: 'Your account has been deactivated by the admin.',
+                code: 'ACCOUNT_DEACTIVATED',
+                deactivated: true,
+                blockedRoute: req.originalUrl
+            });
+        }
+
         // Check subscription status for coaches
         if (user.role === 'coach') {
             // Import CoachSubscription model for subscription check

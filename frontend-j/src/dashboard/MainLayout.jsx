@@ -18,6 +18,7 @@ const MainLayout = () => {
   const location = useLocation();
   const [sidebarWidth, setSidebarWidth] = useState('320px');
   const [isHoverMode, setIsHoverMode] = useState(false);
+  const [isAccountDeactivated, setIsAccountDeactivated] = useState(false);
 
   // Priority Feed modal state
   const [isPriorityFeedOpen, setIsPriorityFeedOpen] = useState(false);
@@ -35,6 +36,39 @@ const MainLayout = () => {
       navigate('/login');
     }
   }, [isAuthenticated, navigate]);
+
+  // Check for account deactivation and under review
+  useEffect(() => {
+    const checkAccountStatus = () => {
+      const deactivated = localStorage.getItem('account_deactivated') === 'true';
+      const underReview = localStorage.getItem('account_under_review') === 'true';
+      setIsAccountDeactivated(deactivated || underReview);
+    };
+
+    // Check initially
+    checkAccountStatus();
+
+    // Listen for storage changes
+    const handleStorageChange = (e) => {
+      if (e.key === 'account_deactivated' || e.key === 'account_under_review') {
+        checkAccountStatus();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Also listen for custom events
+    const handleStatusEvent = () => {
+      checkAccountStatus();
+    };
+
+    window.addEventListener('account-status-changed', handleStatusEvent);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('account-status-changed', handleStatusEvent);
+    };
+  }, []);
 
   // Listen for sidebar collapse events
   useEffect(() => {
@@ -93,7 +127,7 @@ const MainLayout = () => {
         w={isMobile ? "100%" : (isHoverMode ? "100%" : `calc(100% - ${sidebarWidth})`)}
         overflow="hidden"
       >
-        {!isProfilePage && <TopNav />}
+        {!isProfilePage && !isAccountDeactivated && <TopNav />}
         <Box
           as="main"
           p={isProfilePage ? 0 : 6}

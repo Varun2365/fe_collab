@@ -1,27 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import { Progress } from '../components/ui/progress';
-import { Separator } from '../components/ui/separator';
-import { 
-  Users, 
-  UserPlus, 
-  Search, 
-  Filter, 
-  Download, 
-  Upload, 
-  Edit, 
-  Trash2, 
-  Eye, 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Switch } from '../components/ui/switch';
+import {
+  Users,
+  UserPlus,
+  Search,
+  Download,
+  Edit,
+  Trash2,
+  Eye,
   MoreHorizontal,
   UserCheck,
   UserX,
@@ -29,15 +25,12 @@ import {
   Mail,
   Phone,
   MapPin,
-  TrendingUp,
-  TrendingDown,
-  Activity,
-  AlertCircle,
   CheckCircle,
+  AlertCircle,
   Clock,
   RefreshCw,
-  ChevronDown,
-  ChevronUp
+  Filter,
+  X
 } from 'lucide-react';
 import adminApiService from '../services/adminApiService';
 import { useToast } from '../contexts/ToastContext';
@@ -46,10 +39,10 @@ const UserManagement = () => {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
-  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [roleFilter, setRoleFilter] = useState('all');
   const [showDeleted, setShowDeleted] = useState(false);
@@ -61,7 +54,24 @@ const UserManagement = () => {
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  
+  const [countryFilter, setCountryFilter] = useState('all');
+  const [cityFilter, setCityFilter] = useState('');
+  const [phoneFilter, setPhoneFilter] = useState('');
+  const [emailFilter, setEmailFilter] = useState('');
+  const [coachIdFilter, setCoachIdFilter] = useState('');
+  const [sponsorIdFilter, setSponsorIdFilter] = useState('');
+  const [isVerifiedFilter, setIsVerifiedFilter] = useState('all');
+  const [showFilterDialog, setShowFilterDialog] = useState(false);
+
+  // Debounced search effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   // Dialog states
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -91,7 +101,7 @@ const UserManagement = () => {
     phone: '',
     password: '',
     confirmPassword: '',
-    role: 'user',
+    role: 'coach',
     status: 'active',
     coachId: '',
     notes: '',
@@ -117,6 +127,8 @@ const UserManagement = () => {
     includeDeleted: false
   });
 
+  const [togglingUsers, setTogglingUsers] = useState(new Set()); // Track users being toggled
+
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
 
   // Load users data
@@ -131,9 +143,11 @@ const UserManagement = () => {
         sortOrder
       };
       
-      // Only add search if it's not empty
-      if (searchTerm && searchTerm.trim()) {
-        params.search = searchTerm.trim();
+      // Only add search if it's not empty and debounced
+      if (debouncedSearchTerm && debouncedSearchTerm.trim()) {
+        params.search = debouncedSearchTerm.trim();
+        // When searching, show all results (disable pagination for search)
+        params.limit = 1000; // Large limit to show all matching results
       }
       
       // Only add status if it's not 'all'
@@ -150,9 +164,41 @@ const UserManagement = () => {
       if (startDate) {
         params.startDate = startDate;
       }
-      
+
       if (endDate) {
         params.endDate = endDate;
+      }
+
+      // Add location filters
+      if (countryFilter && countryFilter !== 'all') {
+        params.country = countryFilter;
+      }
+
+      if (cityFilter && cityFilter.trim()) {
+        params.city = cityFilter.trim();
+      }
+
+      // Add contact filters
+      if (phoneFilter && phoneFilter.trim()) {
+        params.phone = phoneFilter.trim();
+      }
+
+      if (emailFilter && emailFilter.trim()) {
+        params.email = emailFilter.trim();
+      }
+
+      // Add coach/sponsor filters
+      if (coachIdFilter && coachIdFilter.trim()) {
+        params.selfCoachId = coachIdFilter.trim();
+      }
+
+      if (sponsorIdFilter && sponsorIdFilter.trim()) {
+        params.sponsorId = sponsorIdFilter.trim();
+      }
+
+      // Add verification filter
+      if (isVerifiedFilter && isVerifiedFilter !== 'all') {
+        params.isVerified = isVerifiedFilter === 'verified';
       }
       
       const response = await adminApiService.getUsers(params);
@@ -167,18 +213,6 @@ const UserManagement = () => {
       showToast('Error loading users', 'error');
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Load analytics data
-  const loadAnalytics = async () => {
-    try {
-      const response = await adminApiService.getUserAnalytics();
-      if (response.success) {
-        setAnalytics(response.data);
-      }
-    } catch (error) {
-      console.error('Error loading analytics:', error);
     }
   };
 
@@ -197,9 +231,8 @@ const UserManagement = () => {
 
   useEffect(() => {
     loadUsers();
-    loadAnalytics();
     loadSubscriptionPlans();
-  }, [currentPage, searchTerm, statusFilter, roleFilter, startDate, endDate, sortBy, sortOrder]);
+  }, [currentPage, debouncedSearchTerm, statusFilter, roleFilter, startDate, endDate, countryFilter, cityFilter, phoneFilter, emailFilter, coachIdFilter, sponsorIdFilter, isVerifiedFilter, sortBy, sortOrder]);
 
   // Handle user selection
   const handleUserSelect = (userId, checked) => {
@@ -331,6 +364,59 @@ const UserManagement = () => {
     }
   };
 
+  // Toggle user status with loading state
+  const toggleUserStatus = async (userId, currentStatus) => {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+
+    // Add user to toggling set
+    setTogglingUsers(prev => new Set(prev).add(userId));
+
+    try {
+      await updateUserStatus(userId, newStatus);
+    } finally {
+      // Remove user from toggling set
+      setTogglingUsers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(userId);
+        return newSet;
+      });
+    }
+  };
+
+  // Approve user under review
+  const approveUser = async (userId) => {
+    // Add user to toggling set
+    setTogglingUsers(prev => new Set(prev).add(userId));
+
+    try {
+      await updateUserStatus(userId, 'active');
+    } finally {
+      // Remove user from toggling set
+      setTogglingUsers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(userId);
+        return newSet;
+      });
+    }
+  };
+
+  // Reject user under review
+  const rejectUser = async (userId) => {
+    // Add user to toggling set
+    setTogglingUsers(prev => new Set(prev).add(userId));
+
+    try {
+      await updateUserStatus(userId, 'inactive');
+    } finally {
+      // Remove user from toggling set
+      setTogglingUsers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(userId);
+        return newSet;
+      });
+    }
+  };
+
   // Handle bulk actions
   const handleBulkAction = async () => {
     if (selectedUsers.length === 0) {
@@ -406,7 +492,7 @@ const UserManagement = () => {
           phone: '',
           password: '',
           confirmPassword: '',
-          role: 'user',
+          role: 'coach',
           status: 'active',
           coachId: '',
           notes: '',
@@ -489,15 +575,17 @@ const UserManagement = () => {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'active':
-        return <Badge variant="default" className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Active</Badge>;
+        return <Badge className="bg-green-50 text-green-700 border-green-200"><CheckCircle className="w-3 h-3 mr-1" />Active</Badge>;
       case 'inactive':
-        return <Badge variant="secondary" className="bg-gray-100 text-gray-800"><UserX className="w-3 h-3 mr-1" />Inactive</Badge>;
+        return <Badge className="bg-red-50 text-red-700 border-red-200"><UserX className="w-3 h-3 mr-1" />Deactivated</Badge>;
+      case 'under_review':
+        return <Badge className="bg-blue-50 text-blue-700 border-blue-200"><Clock className="w-3 h-3 mr-1" />Under Review</Badge>;
       case 'pending':
-        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
+        return <Badge className="bg-amber-50 text-amber-700 border-amber-200"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
       case 'suspended':
-        return <Badge variant="destructive" className="bg-red-100 text-red-800"><AlertCircle className="w-3 h-3 mr-1" />Suspended</Badge>;
+        return <Badge className="bg-red-50 text-red-700 border-red-200"><AlertCircle className="w-3 h-3 mr-1" />Suspended</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline" className="border-gray-300 text-gray-600">{status}</Badge>;
     }
   };
 
@@ -505,15 +593,15 @@ const UserManagement = () => {
   const getRoleBadge = (role) => {
     switch (role) {
       case 'admin':
-        return <Badge variant="default" className="bg-purple-100 text-purple-800">Admin</Badge>;
+        return <Badge className="bg-purple-50 text-purple-700 border-purple-200">Admin</Badge>;
       case 'coach':
-        return <Badge variant="default" className="bg-blue-100 text-blue-800">Coach</Badge>;
+        return <Badge className="bg-blue-50 text-blue-700 border-blue-200">Coach</Badge>;
       case 'customer':
-        return <Badge variant="outline">Customer</Badge>;
+        return <Badge className="bg-gray-50 text-gray-700 border-gray-200">Customer</Badge>;
       case 'staff':
-        return <Badge variant="default" className="bg-orange-100 text-orange-800">Staff</Badge>;
+        return <Badge className="bg-orange-50 text-orange-700 border-orange-200">Staff</Badge>;
       default:
-        return <Badge variant="outline">{role}</Badge>;
+        return <Badge variant="outline" className="border-gray-300 text-gray-600">{role}</Badge>;
     }
   };
 
@@ -522,274 +610,100 @@ const UserManagement = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-          <p className="text-muted-foreground">Manage users, roles, and permissions</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">User Management</h1>
+          <p className="text-sm text-gray-600 mt-1">Manage users, roles, and permissions</p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button 
-            onClick={() => setShowDeleted(!showDeleted)} 
-            variant={showDeleted ? "default" : "outline"} 
+        <div className="flex items-center space-x-3">
+          <Button
+            onClick={() => setShowDeleted(!showDeleted)}
+            variant={showDeleted ? "default" : "outline"}
             size="sm"
+            className="h-9"
           >
             <Trash2 className="w-4 h-4 mr-2" />
             {showDeleted ? 'Hide Deleted' : 'Show Deleted'}
           </Button>
-          <Button onClick={() => setExportDialogOpen(true)} variant="outline" size="sm">
+          <Button onClick={() => setExportDialogOpen(true)} variant="outline" size="sm" className="h-9">
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Button onClick={() => setCreateUserDialogOpen(true)} size="sm">
+          <Button onClick={() => setCreateUserDialogOpen(true)} size="sm" className="h-9">
             <UserPlus className="w-4 h-4 mr-2" />
             Create User
           </Button>
         </div>
       </div>
 
-      {/* Analytics Cards */}
-      {analytics && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{analytics.totalUsers}</div>
-              <p className="text-xs text-muted-foreground">
-                <TrendingUp className="w-3 h-3 inline mr-1" />
-                +{analytics.newUsersThisMonth} this month
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-              <UserCheck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{analytics.activeUsers}</div>
-              <p className="text-xs text-muted-foreground">
-                {analytics.activePercentage}% of total
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Coaches</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{analytics.coaches}</div>
-              <p className="text-xs text-muted-foreground">
-                {analytics.coachPercentage}% of users
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{analytics.growthRate}%</div>
-              <p className="text-xs text-muted-foreground">
-                Monthly growth
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <Tabs defaultValue="users" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="users" className="space-y-4">
-          {/* Filters and Search */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Filters & Search</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <Label htmlFor="search">Search Users</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="search"
-                      placeholder="Search by name, email, or phone..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="w-full sm:w-48">
-                  <Label htmlFor="status-filter">Status</Label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="suspended">Suspended</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="w-full sm:w-48">
-                  <Label htmlFor="role-filter">Role</Label>
-                  <Select value={roleFilter} onValueChange={setRoleFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Roles" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Roles</SelectItem>
-                      <SelectItem value="customer">Customer</SelectItem>
-                      <SelectItem value="coach">Coach</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="staff">Staff</SelectItem>
-                    </SelectContent>
-                  </Select>
+      {/* Users Table with Integrated Filters */}
+      <Card className="border-gray-200">
+        <CardContent className="p-0">
+          {/* Filter Bar */}
+          <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search users..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 h-9 bg-white border-gray-300"
+                  />
                 </div>
               </div>
-              
-              {/* Advanced Filters Toggle */}
-              <div className="mt-4">
+              <div className="flex items-center gap-3">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                  className="flex items-center space-x-2"
+                  onClick={() => setShowFilterDialog(true)}
+                  className="h-9 px-3 text-gray-600 hover:text-gray-900"
                 >
-                  <Filter className="w-4 h-4" />
-                  <span>Advanced Filters</span>
-                  {showAdvancedFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  <Filter className="w-4 h-4 mr-2" />
+                  Filters
+                  {(statusFilter !== 'all' || roleFilter !== 'all' || startDate || endDate || countryFilter !== 'all' || sponsorIdFilter || isVerifiedFilter !== 'all') && (
+                    <span className="ml-2 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
+                      Active
+                    </span>
+                  )}
                 </Button>
               </div>
-              
-              {/* Advanced Filters */}
-              {showAdvancedFilters && (
-                <div className="mt-4 pt-4 border-t">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="start-date">Start Date</Label>
-                      <Input
-                        id="start-date"
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="end-date">End Date</Label>
-                      <Input
-                        id="end-date"
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="sort-by">Sort By</Label>
-                      <Select value={sortBy} onValueChange={setSortBy}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sort by" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="createdAt">Created Date</SelectItem>
-                          <SelectItem value="name">Name</SelectItem>
-                          <SelectItem value="email">Email</SelectItem>
-                          <SelectItem value="role">Role</SelectItem>
-                          <SelectItem value="status">Status</SelectItem>
-                          <SelectItem value="lastActiveAt">Last Active</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex items-center space-x-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="sort-order">Sort Order</Label>
-                      <Select value={sortOrder} onValueChange={setSortOrder}>
-                        <SelectTrigger className="w-32">
-                          <SelectValue placeholder="Order" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="desc">Descending</SelectItem>
-                          <SelectItem value="asc">Ascending</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-end space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setStartDate('');
-                          setEndDate('');
-                          setSortBy('createdAt');
-                          setSortOrder('desc');
-                        }}
-                      >
-                        Clear Filters
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          {/* Bulk Actions */}
+          {/* Bulk Actions Bar */}
           {selectedUsers.length > 0 && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-muted-foreground">
-                      {selectedUsers.length} user(s) selected
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setBulkActionDialogOpen(true)}
-                    >
-                      <MoreHorizontal className="w-4 h-4 mr-2" />
-                      Bulk Actions
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedUsers([])}
-                    >
-                      Clear Selection
-                    </Button>
-                  </div>
+            <div className="border-b border-gray-200 bg-blue-50 px-6 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm text-gray-700 font-medium">
+                    {selectedUsers.length} user{selectedUsers.length === 1 ? '' : 's'} selected
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBulkActionDialogOpen(true)}
+                    className="h-8 text-gray-700 border-gray-300"
+                  >
+                    <MoreHorizontal className="w-4 h-4 mr-2" />
+                    Actions
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedUsers([])}
+                    className="h-8 text-gray-500 hover:text-gray-700"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Users Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Users</CardTitle>
-              <CardDescription>
-                Manage all users in the system
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <div className="p-6">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <RefreshCw className="w-6 h-6 animate-spin mr-2" />
@@ -799,261 +713,255 @@ const UserManagement = () => {
                 <div className="space-y-4">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">
+                      <TableRow className="border-gray-200 hover:bg-gray-50">
+                        <TableHead className="w-12 py-3">
                           <input
                             type="checkbox"
                             checked={selectedUsers.length === users.length && users.length > 0}
                             onChange={(e) => handleSelectAll(e.target.checked)}
-                            className="rounded"
+                            className="rounded border-gray-300"
                           />
                         </TableHead>
-                        <TableHead>User</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Contact</TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead>Joined</TableHead>
-                        <TableHead className="w-12">Actions</TableHead>
+                        <TableHead className="py-3 text-gray-700 font-medium">User</TableHead>
+                        <TableHead className="py-3 text-gray-700 font-medium">Role & Status</TableHead>
+                        <TableHead className="py-3 text-gray-700 font-medium">Contact</TableHead>
+                        <TableHead className="py-3 text-gray-700 font-medium">Location</TableHead>
+                        <TableHead className="py-3 text-gray-700 font-medium">Joined</TableHead>
+                        <TableHead className="py-3 text-gray-700 font-medium w-12">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {users.map((user) => (
-                        <TableRow key={user._id} className={user.deletedAt ? 'opacity-60 bg-red-50' : ''}>
-                          <TableCell>
+                        <TableRow key={user._id} className={`border-gray-200 hover:bg-gray-50 ${user.deletedAt ? 'bg-red-50/50' : ''}`}>
+                          <TableCell className="py-4">
                             <input
                               type="checkbox"
                               checked={selectedUsers.includes(user._id)}
                               onChange={(e) => handleUserSelect(user._id, e.target.checked)}
-                              className="rounded"
+                              className="rounded border-gray-300"
                             />
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                                <Users className="w-4 h-4 text-primary" />
-                              </div>
-                              <div>
-                                <div className="font-medium flex items-center space-x-2">
-                                  <button
-                                    onClick={() => {
-                                      console.log('🔍 [UserManagement] Navigating to user:', user._id);
-                                      navigate(`/users/${user._id}`);
-                                    }}
-                                    className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                                  >
-                                    {user.name || 'N/A'}
-                                  </button>
-                                  {user.deletedAt && (
-                                    <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
-                                      DELETED
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-sm text-muted-foreground">{user.email}</div>
-                              </div>
+                          <TableCell className="py-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-[35px] h-[35px] rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                          {user.profilePictureUrl || user.profilePicture ? (
+                            <img
+                              src={user.profilePictureUrl || user.profilePicture}
+                              alt={user.name || 'User'}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <div className="w-full h-full flex items-center justify-center" style={{ display: user.profilePictureUrl || user.profilePicture ? 'none' : 'flex' }}>
+                            <Users className="w-[18px] h-[18px] text-gray-600" />
+                          </div>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-gray-900">
+                            <button
+                              onClick={() => {
+                                console.log('🔍 [UserManagement] Navigating to user:', user._id);
+                                navigate(`/users/${user._id}`);
+                              }}
+                              className="text-blue-600 hover:text-blue-800 cursor-pointer"
+                            >
+                              {user.name || 'N/A'}
+                            </button>
+                            {user.deletedAt && (
+                              <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                                DELETED
+                              </span>
+                            )}
+                          </div>
+                          {user.sponsorId && user.sponsorId.selfCoachId && (
+                            <div className="text-xs text-gray-400 mt-1">
+                              <span className="font-medium">Sponsor:</span> {user.sponsorId.selfCoachId} - {user.sponsorId.name || 'Unknown Coach'}
                             </div>
-                          </TableCell>
-                          <TableCell>{getRoleBadge(user.role)}</TableCell>
-                          <TableCell>{getStatusBadge(user.status)}</TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              {user.phone && (
-                                <div className="flex items-center text-sm">
-                                  <Phone className="w-3 h-3 mr-1" />
-                                  {user.phone}
-                                </div>
-                              )}
-                              <div className="flex items-center text-sm">
-                                <Mail className="w-3 h-3 mr-1" />
-                                {user.email}
-                              </div>
+                          )}
+                          {user.selfCoachId && (
+                            <div className="text-xs text-gray-400 mt-1">
+                              <span className="font-medium">Coach ID:</span> {user.selfCoachId}
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            {user.city && user.country ? (
-                              <div className="flex items-center text-sm">
-                                <MapPin className="w-3 h-3 mr-1" />
-                                {user.city}, {user.country}
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="flex flex-col space-y-3">
+                        <div className="flex justify-center">
+                          {getRoleBadge(user.role)}
+                        </div>
+                          <div className="flex justify-center">
+                            {togglingUsers.has(user._id) ? (
+                              <div className="w-6 h-3 bg-gray-200 rounded-full flex items-center justify-center">
+                                <RefreshCw className="w-2 h-2 text-gray-500 animate-spin" />
+                              </div>
+                            ) : user.status === 'under_review' ? (
+                              <div className="text-xs text-blue-600 font-medium px-2 py-1 bg-blue-50 rounded">
+                                Pending
                               </div>
                             ) : (
-                              <span className="text-muted-foreground">N/A</span>
+                              <Switch
+                                checked={user.status === 'active'}
+                                onCheckedChange={() => toggleUserStatus(user._id, user.status)}
+                                className={`scale-75 ${
+                                  user.status === 'active'
+                                    ? 'data-[state=checked]:bg-green-500'
+                                    : 'data-[state=unchecked]:bg-red-500'
+                                }`}
+                              />
                             )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center text-sm">
-                              <Calendar className="w-3 h-3 mr-1" />
-                              {new Date(user.createdAt).toLocaleDateString()}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center space-x-1">
+                          </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Mail className="w-3 h-3 mr-2" />
+                          {user.email}
+                        </div>
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Phone className="w-3 h-3 mr-2" />
+                          {user.phone || '—'}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      {user.country ? (
+                        <div className="flex items-center text-sm text-gray-600">
+                          <MapPin className="w-3 h-3 mr-2" />
+                          <span className="capitalize">{user.country}</span>
+                          {user.city && <span className="text-gray-400">, {user.city}</span>}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Calendar className="w-3 h-3 mr-2" />
+                        {new Date(user.createdAt).toLocaleDateString()}
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openUserDialog(user)}
+                          className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+
+                        {user.status === 'under_review' ? (
+                          <>
+                            {togglingUsers.has(user._id) ? (
+                              <div className="flex items-center space-x-1">
+                                <RefreshCw className="w-4 h-4 text-gray-500 animate-spin" />
+                              </div>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => approveUser(user._id)}
+                                  className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  title="Approve user"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => rejectUser(user._id)}
+                                  className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  title="Reject user"
+                                >
+                                  <UserX className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                          </>
+                        ) : (
+                          !user.deletedAt && (
+                            <>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => openUserDialog(user)}
+                                className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
                               >
-                                <Eye className="w-4 h-4" />
+                                <Edit className="w-4 h-4" />
                               </Button>
-                              {!user.deletedAt && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => openUserDialog(user)}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => deleteUser(user._id)}
-                                    className="text-red-600 hover:text-red-700"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </>
-                              )}
-                              {user.deletedAt && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => restoreUser(user._id)}
-                                  className="text-green-600 hover:text-green-700"
-                                >
-                                  <RefreshCw className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteUser(user._id)}
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )
+                        )}
 
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-muted-foreground">
-                        Page {currentPage} of {totalPages}
+                        {user.deletedAt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => restoreUser(user._id)}
+                            className="h-8 w-8 p-0 text-green-500 hover:text-green-700"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                          disabled={currentPage === 1}
-                        >
-                          Previous
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                          disabled={currentPage === totalPages}
-                        >
-                          Next
-                        </Button>
-                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                  </TableBody>
+                </Table>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                    <div className="text-sm text-gray-600">
+                      Page {currentPage} of {totalPages}
                     </div>
-                  )}
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className="h-8 border-gray-300 text-gray-700"
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                        className="h-8 border-gray-300 text-gray-700"
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+              )}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-4">
-          {analytics && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* User Growth Chart */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>User Growth</CardTitle>
-                  <CardDescription>Monthly user registration trends</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {analytics.monthlyGrowth?.map((month, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>{month.month}</span>
-                          <span>{month.count} users</span>
-                        </div>
-                        <Progress value={(month.count / analytics.maxMonthlyUsers) * 100} />
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Role Distribution */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Role Distribution</CardTitle>
-                  <CardDescription>User roles breakdown</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {analytics.roleDistribution?.map((role, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          {getRoleBadge(role.role)}
-                        </div>
-                        <div className="text-sm font-medium">{role.count}</div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Status Distribution */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Status Distribution</CardTitle>
-                  <CardDescription>User status breakdown</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {analytics.statusDistribution?.map((status, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          {getStatusBadge(status.status)}
-                        </div>
-                        <div className="text-sm font-medium">{status.count}</div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Recent Activity */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                  <CardDescription>Latest user activities</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {analytics.recentActivity?.map((activity, index) => (
-                      <div key={index} className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-primary rounded-full"></div>
-                        <div className="flex-1">
-                          <div className="text-sm">{activity.description}</div>
-                          <div className="text-xs text-muted-foreground">{activity.timestamp}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-
-      {/* User Dialog */}
-      <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
+          </div>
+        </CardContent>
+      </Card>
+      {/* Dialogs */}
+      <>
+        <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editMode ? 'Edit User' : 'Add New User'}</DialogTitle>
@@ -1205,100 +1113,102 @@ const UserManagement = () => {
 
       {/* Create User Dialog */}
       <Dialog open={createUserDialogOpen} onOpenChange={setCreateUserDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create New User</DialogTitle>
-            <DialogDescription>
-              Create a comprehensive user account with all details
+        <DialogContent className="w-[50vw] h-[calc(600px+10vh)] overflow-y-auto flex flex-col">
+          <DialogHeader className="text-center pb-4 flex-shrink-0">
+            <DialogTitle className="text-xl font-semibold text-gray-900">Create New User</DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Add a new user to the system with complete details
             </DialogDescription>
           </DialogHeader>
-          
-          <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="basic">Basic Info</TabsTrigger>
-              <TabsTrigger value="personal">Personal</TabsTrigger>
-              <TabsTrigger value="subscription">Subscription</TabsTrigger>
-              <TabsTrigger value="additional">Additional</TabsTrigger>
+
+          <Tabs defaultValue="basic" className="w-full flex-1 flex flex-col">
+            <TabsList className="grid w-full grid-cols-4 mb-6">
+              <TabsTrigger value="basic" className="text-sm">Basic Info</TabsTrigger>
+              <TabsTrigger value="account" className="text-sm">Account</TabsTrigger>
+              <TabsTrigger value="subscription" className="text-sm">Subscription</TabsTrigger>
+              <TabsTrigger value="details" className="text-sm">Details</TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="basic" className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="create-name">Full Name *</Label>
-                  <Input
-                    id="create-name"
-                    value={createUserForm.name}
-                    onChange={(e) => setCreateUserForm({...createUserForm, name: e.target.value})}
-                    placeholder="Enter full name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="create-email">Email Address *</Label>
-                  <Input
-                    id="create-email"
-                    type="email"
-                    value={createUserForm.email}
-                    onChange={(e) => setCreateUserForm({...createUserForm, email: e.target.value})}
-                    placeholder="Enter email address"
-                  />
-                </div>
+
+            <TabsContent value="basic" className="space-y-5 mt-0 flex-1">
+              <div className="space-y-2">
+                <Label htmlFor="create-name" className="text-sm font-medium text-gray-700">
+                  Full Name *
+                </Label>
+                <Input
+                  id="create-name"
+                  value={createUserForm.name}
+                  onChange={(e) => setCreateUserForm({...createUserForm, name: e.target.value})}
+                  placeholder="Enter full name"
+                  className="h-10"
+                />
               </div>
-              
+
+              <div className="space-y-2">
+                <Label htmlFor="create-email" className="text-sm font-medium text-gray-700">
+                  Email Address *
+                </Label>
+                <Input
+                  id="create-email"
+                  type="email"
+                  value={createUserForm.email}
+                  onChange={(e) => setCreateUserForm({...createUserForm, email: e.target.value})}
+                  placeholder="Enter email address"
+                  className="h-10"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="create-phone">Phone Number</Label>
-                  <Input
-                    id="create-phone"
-                    value={createUserForm.phone}
-                    onChange={(e) => setCreateUserForm({...createUserForm, phone: e.target.value})}
-                    placeholder="Enter phone number"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="create-password">Password *</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="create-password" className="text-sm font-medium text-gray-700">
+                    Password *
+                  </Label>
                   <Input
                     id="create-password"
                     type="password"
                     value={createUserForm.password}
                     onChange={(e) => setCreateUserForm({...createUserForm, password: e.target.value})}
                     placeholder="Enter password"
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="create-phone" className="text-sm font-medium text-gray-700">
+                    Phone Number
+                  </Label>
+                  <Input
+                    id="create-phone"
+                    value={createUserForm.phone}
+                    onChange={(e) => setCreateUserForm({...createUserForm, phone: e.target.value})}
+                    placeholder="Enter phone number"
+                    className="h-10"
                   />
                 </div>
               </div>
-              
+            </TabsContent>
+
+            <TabsContent value="account" className="space-y-5 mt-0 flex-1">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="create-confirm-password">Confirm Password *</Label>
-                  <Input
-                    id="create-confirm-password"
-                    type="password"
-                    value={createUserForm.confirmPassword}
-                    onChange={(e) => setCreateUserForm({...createUserForm, confirmPassword: e.target.value})}
-                    placeholder="Confirm password"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="create-role">Role</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="create-role" className="text-sm font-medium text-gray-700">
+                    Role *
+                  </Label>
                   <Select value={createUserForm.role} onValueChange={(value) => setCreateUserForm({...createUserForm, role: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Select role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="premium">Premium User</SelectItem>
                       <SelectItem value="coach">Coach</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="create-status">Status</Label>
+
+                <div className="space-y-2">
+                  <Label htmlFor="create-status" className="text-sm font-medium text-gray-700">
+                    Status
+                  </Label>
                   <Select value={createUserForm.status} onValueChange={(value) => setCreateUserForm({...createUserForm, status: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="active">Active</SelectItem>
@@ -1308,33 +1218,130 @@ const UserManagement = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label htmlFor="create-coach">Assigned Coach ID</Label>
-                  <Input
-                    id="create-coach"
-                    value={createUserForm.coachId}
-                    onChange={(e) => setCreateUserForm({...createUserForm, coachId: e.target.value})}
-                    placeholder="Enter coach ID (optional)"
-                  />
-                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-coach" className="text-sm font-medium text-gray-700">
+                  Sponsor Coach ID
+                </Label>
+                <Input
+                  id="create-coach"
+                  value={createUserForm.coachId}
+                  onChange={(e) => setCreateUserForm({...createUserForm, coachId: e.target.value})}
+                  placeholder="Enter sponsor coach ID (optional)"
+                  className="h-10"
+                />
               </div>
             </TabsContent>
-            
-            <TabsContent value="personal" className="space-y-4">
+
+            <TabsContent value="subscription" className="space-y-5 mt-0 flex-1">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="create-dob">Date of Birth</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="create-subscription-plan" className="text-sm font-medium text-gray-700">
+                    Subscription Plan
+                  </Label>
+                  <Select value={createUserForm.subscriptionPlan} onValueChange={(value) => setCreateUserForm({...createUserForm, subscriptionPlan: value})}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Select plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No Plan</SelectItem>
+                      {Array.isArray(subscriptionPlans) && subscriptionPlans.map((plan) => (
+                        <SelectItem key={plan._id || plan.id} value={plan._id || plan.id}>
+                          {plan.name} - ${plan.price}/{plan.billingCycle || plan.interval}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="create-payment-method" className="text-sm font-medium text-gray-700">
+                    Payment Method
+                  </Label>
+                  <Select value={createUserForm.paymentMethod} onValueChange={(value) => setCreateUserForm({...createUserForm, paymentMethod: value})}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Select method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="stripe">Stripe</SelectItem>
+                      <SelectItem value="paypal">PayPal</SelectItem>
+                      <SelectItem value="razorpay">Razorpay</SelectItem>
+                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="create-start-date" className="text-sm font-medium text-gray-700">
+                    Start Date
+                  </Label>
+                  <Input
+                    id="create-start-date"
+                    type="date"
+                    value={createUserForm.startDate}
+                    onChange={(e) => setCreateUserForm({...createUserForm, startDate: e.target.value})}
+                    className="h-10"
+                  />
+                </div>
+
+                <div className="flex items-center space-x-3 pt-8">
+                  <input
+                    type="checkbox"
+                    id="create-auto-renew"
+                    checked={createUserForm.autoRenew}
+                    onChange={(e) => setCreateUserForm({...createUserForm, autoRenew: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="create-auto-renew" className="text-sm font-medium text-gray-700">
+                    Auto Renew
+                  </Label>
+                </div>
+              </div>
+
+              {createUserForm.subscriptionPlan && createUserForm.subscriptionPlan !== "none" && (
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h4 className="font-medium text-gray-900 mb-2">Selected Plan Details</h4>
+                  {Array.isArray(subscriptionPlans) && createUserForm.subscriptionPlan !== "none" && subscriptionPlans.find(p => (p._id || p.id) === createUserForm.subscriptionPlan) && (
+                    <div className="text-sm text-gray-600 space-y-1">
+                      {(() => {
+                        const selectedPlan = subscriptionPlans.find(p => (p._id || p.id) === createUserForm.subscriptionPlan);
+                        return (
+                          <>
+                            <p><span className="font-medium">Plan:</span> {selectedPlan.name}</p>
+                            <p><span className="font-medium">Price:</span> ${selectedPlan.price}/{selectedPlan.billingCycle || selectedPlan.interval}</p>
+                            <p><span className="font-medium">Features:</span> {Array.isArray(selectedPlan.features) ? selectedPlan.features.join(', ') : 'N/A'}</p>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="details" className="space-y-5 mt-0 flex-1">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="create-dob" className="text-sm font-medium text-gray-700">
+                    Date of Birth
+                  </Label>
                   <Input
                     id="create-dob"
                     type="date"
                     value={createUserForm.dateOfBirth}
                     onChange={(e) => setCreateUserForm({...createUserForm, dateOfBirth: e.target.value})}
+                    className="h-10"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="create-gender">Gender</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="create-gender" className="text-sm font-medium text-gray-700">
+                    Gender
+                  </Label>
                   <Select value={createUserForm.gender} onValueChange={(value) => setCreateUserForm({...createUserForm, gender: value})}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-10">
                       <SelectValue placeholder="Select gender" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1346,186 +1353,108 @@ const UserManagement = () => {
                   </Select>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="create-occupation">Occupation</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="create-occupation" className="text-sm font-medium text-gray-700">
+                    Occupation
+                  </Label>
                   <Input
                     id="create-occupation"
                     value={createUserForm.occupation}
                     onChange={(e) => setCreateUserForm({...createUserForm, occupation: e.target.value})}
                     placeholder="Enter occupation"
+                    className="h-10"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="create-company">Company</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="create-company" className="text-sm font-medium text-gray-700">
+                    Company
+                  </Label>
                   <Input
                     id="create-company"
                     value={createUserForm.company}
                     onChange={(e) => setCreateUserForm({...createUserForm, company: e.target.value})}
                     placeholder="Enter company name"
+                    className="h-10"
                   />
                 </div>
               </div>
-              
-              <div>
-                <Label htmlFor="create-website">Website</Label>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-website" className="text-sm font-medium text-gray-700">
+                  Website
+                </Label>
                 <Input
                   id="create-website"
                   type="url"
                   value={createUserForm.website}
                   onChange={(e) => setCreateUserForm({...createUserForm, website: e.target.value})}
                   placeholder="https://example.com"
+                  className="h-10"
                 />
               </div>
-              
-              <div>
-                <Label htmlFor="create-bio">Bio</Label>
-                <textarea
-                  id="create-bio"
-                  className="w-full p-2 border rounded-md min-h-[80px]"
-                  value={createUserForm.bio}
-                  onChange={(e) => setCreateUserForm({...createUserForm, bio: e.target.value})}
-                  placeholder="Enter user bio"
-                />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="subscription" className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="create-subscription-plan">Subscription Plan</Label>
-                  <Select value={createUserForm.subscriptionPlan} onValueChange={(value) => setCreateUserForm({...createUserForm, subscriptionPlan: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select subscription plan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">No Plan</SelectItem>
-                      {Array.isArray(subscriptionPlans) && subscriptionPlans.map((plan) => (
-                        <SelectItem key={plan._id || plan.id} value={plan._id || plan.id}>
-                          {plan.name} - ${plan.price}/{plan.billingCycle || plan.interval}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="create-payment-method">Payment Method</Label>
-                  <Select value={createUserForm.paymentMethod} onValueChange={(value) => setCreateUserForm({...createUserForm, paymentMethod: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="stripe">Stripe</SelectItem>
-                      <SelectItem value="paypal">PayPal</SelectItem>
-                      <SelectItem value="razorpay">Razorpay</SelectItem>
-                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="create-start-date">Subscription Start Date</Label>
-                  <Input
-                    id="create-start-date"
-                    type="date"
-                    value={createUserForm.startDate}
-                    onChange={(e) => setCreateUserForm({...createUserForm, startDate: e.target.value})}
-                  />
-                </div>
-                <div className="flex items-center space-x-2 pt-6">
-                  <input
-                    type="checkbox"
-                    id="create-auto-renew"
-                    checked={createUserForm.autoRenew}
-                    onChange={(e) => setCreateUserForm({...createUserForm, autoRenew: e.target.checked})}
-                    className="rounded"
-                  />
-                  <Label htmlFor="create-auto-renew">Auto Renew</Label>
-                </div>
-              </div>
-              
-              {createUserForm.subscriptionPlan && (
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-medium mb-2">Selected Plan Details:</h4>
-                  {Array.isArray(subscriptionPlans) && subscriptionPlans.find(p => (p._id || p.id) === createUserForm.subscriptionPlan) && (
-                    <div className="text-sm text-gray-600">
-                      {(() => {
-                        const selectedPlan = subscriptionPlans.find(p => (p._id || p.id) === createUserForm.subscriptionPlan);
-                        return (
-                          <>
-                            <p><strong>Plan:</strong> {selectedPlan.name}</p>
-                            <p><strong>Price:</strong> ${selectedPlan.price}/{selectedPlan.billingCycle || selectedPlan.interval}</p>
-                            <p><strong>Features:</strong> {Array.isArray(selectedPlan.features) ? selectedPlan.features.join(', ') : 'N/A'}</p>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  )}
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="additional" className="space-y-4">
-              <div>
-                <Label htmlFor="create-address">Address</Label>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-address" className="text-sm font-medium text-gray-700">
+                  Address
+                </Label>
                 <Input
                   id="create-address"
                   value={createUserForm.address}
                   onChange={(e) => setCreateUserForm({...createUserForm, address: e.target.value})}
                   placeholder="Enter street address"
+                  className="h-10"
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="create-city">City</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="create-city" className="text-sm font-medium text-gray-700">
+                    City
+                  </Label>
                   <Input
                     id="create-city"
                     value={createUserForm.city}
                     onChange={(e) => setCreateUserForm({...createUserForm, city: e.target.value})}
                     placeholder="Enter city"
+                    className="h-10"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="create-state">State/Province</Label>
-                  <Input
-                    id="create-state"
-                    value={createUserForm.state}
-                    onChange={(e) => setCreateUserForm({...createUserForm, state: e.target.value})}
-                    placeholder="Enter state/province"
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="create-country">Country</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="create-country" className="text-sm font-medium text-gray-700">
+                    Country
+                  </Label>
                   <Input
                     id="create-country"
                     value={createUserForm.country}
                     onChange={(e) => setCreateUserForm({...createUserForm, country: e.target.value})}
                     placeholder="Enter country"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="create-zip">ZIP/Postal Code</Label>
-                  <Input
-                    id="create-zip"
-                    value={createUserForm.zipCode}
-                    onChange={(e) => setCreateUserForm({...createUserForm, zipCode: e.target.value})}
-                    placeholder="Enter ZIP/postal code"
+                    className="h-10"
                   />
                 </div>
               </div>
-              
-              <div>
-                <Label htmlFor="create-notes">Admin Notes</Label>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-bio" className="text-sm font-medium text-gray-700">
+                  Bio
+                </Label>
+                <textarea
+                  id="create-bio"
+                  className="w-full p-3 border border-gray-300 rounded-md min-h-[80px] resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={createUserForm.bio}
+                  onChange={(e) => setCreateUserForm({...createUserForm, bio: e.target.value})}
+                  placeholder="Enter user bio"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-notes" className="text-sm font-medium text-gray-700">
+                  Admin Notes
+                </Label>
                 <textarea
                   id="create-notes"
-                  className="w-full p-2 border rounded-md min-h-[80px]"
+                  className="w-full p-3 border border-gray-300 rounded-md min-h-[80px] resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={createUserForm.notes}
                   onChange={(e) => setCreateUserForm({...createUserForm, notes: e.target.value})}
                   placeholder="Enter admin notes about this user"
@@ -1533,12 +1462,19 @@ const UserManagement = () => {
               </div>
             </TabsContent>
           </Tabs>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateUserDialogOpen(false)}>
+
+          <DialogFooter className="flex gap-3 pt-6 border-t border-gray-200 flex-shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => setCreateUserDialogOpen(false)}
+              className="flex-1 h-10 border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
               Cancel
             </Button>
-            <Button onClick={handleCreateUser}>
+            <Button
+              onClick={handleCreateUser}
+              className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white"
+            >
               Create User
             </Button>
           </DialogFooter>
@@ -1591,6 +1527,170 @@ const UserManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Advanced Filter Dialog */}
+      <Dialog open={showFilterDialog} onOpenChange={setShowFilterDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Filter className="w-5 h-5 text-gray-600" />
+              Advanced Filters
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Refine your search with precise filters
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-2">
+            {/* Primary Filters Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Status Filter */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Status</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="under_review">Under Review</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Role Filter */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Role</Label>
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    <SelectValue placeholder="All Roles" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="coach">Coach</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="client">Client</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Verification Status */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Verification</Label>
+                <Select value={isVerifiedFilter} onValueChange={setIsVerifiedFilter}>
+                  <SelectTrigger className="h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    <SelectValue placeholder="All Users" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Users</SelectItem>
+                    <SelectItem value="verified">Verified Only</SelectItem>
+                    <SelectItem value="unverified">Unverified Only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Date Range */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-gray-700">Join Date Range</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-500">From</Label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-500">To</Label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Secondary Filters Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Location Filter */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Country</Label>
+                <Select value={countryFilter} onValueChange={setCountryFilter}>
+                  <SelectTrigger className="h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    <SelectValue placeholder="All Countries" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Countries</SelectItem>
+                    <SelectItem value="India">India</SelectItem>
+                    <SelectItem value="United States">United States</SelectItem>
+                    <SelectItem value="United Kingdom">United Kingdom</SelectItem>
+                    <SelectItem value="Canada">Canada</SelectItem>
+                    <SelectItem value="Australia">Australia</SelectItem>
+                    <SelectItem value="Germany">Germany</SelectItem>
+                    <SelectItem value="France">France</SelectItem>
+                    <SelectItem value="Japan">Japan</SelectItem>
+                    <SelectItem value="Brazil">Brazil</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Sponsor ID Filter */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Sponsor ID</Label>
+                <Input
+                  placeholder="Enter sponsor coach ID"
+                  value={sponsorIdFilter}
+                  onChange={(e) => setSponsorIdFilter(e.target.value)}
+                  className="h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-3 pt-6 border-t border-gray-200">
+            <Button
+              variant="outline"
+              onClick={() => {
+                // Clear all filters
+                setStatusFilter('all');
+                setRoleFilter('all');
+                setStartDate('');
+                setEndDate('');
+                setCountryFilter('all');
+                setCityFilter('');
+                setPhoneFilter('');
+                setEmailFilter('');
+                setCoachIdFilter('');
+                setSponsorIdFilter('');
+                setIsVerifiedFilter('all');
+                setShowFilterDialog(false);
+              }}
+              className="flex items-center gap-2 h-10 px-4 border-gray-300 hover:bg-gray-50"
+            >
+              <X className="w-4 h-4" />
+              Clear All
+            </Button>
+            <Button
+              onClick={() => setShowFilterDialog(false)}
+              className="h-10 px-6 bg-blue-600 hover:bg-blue-700"
+            >
+              Apply Filters
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      </>
     </div>
   );
 };

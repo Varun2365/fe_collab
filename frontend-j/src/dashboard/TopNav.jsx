@@ -201,6 +201,17 @@ const TopNav = () => {
   // Fetch notifications from notification API
   const fetchNotifications = async () => {
 
+    // Don't fetch notifications if account is deactivated or under review
+    const isAccountDeactivated = localStorage.getItem('account_deactivated') === 'true';
+    const isAccountUnderReview = localStorage.getItem('account_under_review') === 'true';
+    if (isAccountDeactivated || isAccountUnderReview) {
+      setLoading(false);
+      setNotifications([]);
+      setNotificationCount(0);
+      setUnreadCount(0);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -249,7 +260,15 @@ const TopNav = () => {
       const dashboardData = await dashboardAPI.getCompleteData();
       const notifications = [];
 
-
+      // Ensure dashboardData exists and has expected structure
+      if (!dashboardData) {
+        console.warn('Dashboard data not available');
+        setNotifications([]);
+        setNotificationCount(0);
+        setUnreadCount(0);
+        setLoading(false);
+        return;
+      }
 
       // 1. Performance Alerts (High Priority)
 
@@ -703,12 +722,13 @@ const TopNav = () => {
 
     } catch (error) {
 
-      console.error('❌ Error fetching notifications:', error);
-
-      
+      // Silently handle errors when account is deactivated
+      const isAccountDeactivated = localStorage.getItem('account_deactivated') === 'true';
+      if (!isAccountDeactivated) {
+        console.warn('⚠️ Error fetching notifications (non-critical):', error.message);
+      }
 
       // Set empty state if API fails
-
       setNotifications([]);
 
       setNotificationCount(0);
