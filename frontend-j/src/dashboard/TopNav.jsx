@@ -178,9 +178,6 @@ const TopNav = () => {
 
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const [socketStatus, setSocketStatus] = useState('disconnected'); // 'connected', 'disconnected', 'connecting', 'error'
-  const [socketUrl, setSocketUrl] = useState('');
-  const [socketId, setSocketId] = useState('');
   
 
   // Check if we're on mobile
@@ -203,6 +200,17 @@ const TopNav = () => {
 
   // Fetch notifications from notification API
   const fetchNotifications = async () => {
+
+    // Don't fetch notifications if account is deactivated or under review
+    const isAccountDeactivated = localStorage.getItem('account_deactivated') === 'true';
+    const isAccountUnderReview = localStorage.getItem('account_under_review') === 'true';
+    if (isAccountDeactivated || isAccountUnderReview) {
+      setLoading(false);
+      setNotifications([]);
+      setNotificationCount(0);
+      setUnreadCount(0);
+      return;
+    }
 
     setLoading(true);
 
@@ -252,7 +260,15 @@ const TopNav = () => {
       const dashboardData = await dashboardAPI.getCompleteData();
       const notifications = [];
 
-
+      // Ensure dashboardData exists and has expected structure
+      if (!dashboardData) {
+        console.warn('Dashboard data not available');
+        setNotifications([]);
+        setNotificationCount(0);
+        setUnreadCount(0);
+        setLoading(false);
+        return;
+      }
 
       // 1. Performance Alerts (High Priority)
 
@@ -706,12 +722,13 @@ const TopNav = () => {
 
     } catch (error) {
 
-      console.error('❌ Error fetching notifications:', error);
-
-      
+      // Silently handle errors when account is deactivated
+      const isAccountDeactivated = localStorage.getItem('account_deactivated') === 'true';
+      if (!isAccountDeactivated) {
+        console.warn('⚠️ Error fetching notifications (non-critical):', error.message);
+      }
 
       // Set empty state if API fails
-
       setNotifications([]);
 
       setNotificationCount(0);
@@ -1037,303 +1054,10 @@ const TopNav = () => {
 
 
 
-  // WebSocket connection for real-time notifications
+  // Fetch notifications on mount
   useEffect(() => {
-
-    const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const userId = user._id || user.id;
-    
-    console.log('🔌 [Notifications] Setting up WebSocket connection:', {
-      hasToken: !!token,
-      userId: userId,
-      tokenLength: token ? token.length : 0
-    });
-    
-    if (!token || !userId) {
-      console.warn('🔌 [Notifications] ⚠️ Missing token or userId, cannot connect to WebSocket');
-      setSocketStatus('disconnected');
-      // Only fetch once on mount if no token/userId
     fetchNotifications();
-
-      return;
-    }
-
-    // Initialize Socket.IO connection
-    let socket;
-    let interval;
-    let connectionTimeout;
-    let connectionCheckInterval;
-    
-    // Import socket.io-client
-    console.log('🔌 [Notifications] ==========================================');
-    console.log('🔌 [Notifications] STEP 1: Starting socket.io-client import...');
-    console.log('🔌 [Notifications] ==========================================');
-    
-    import('socket.io-client')
-      .then((ioModule) => {
-        console.log('🔌 [Notifications] ✅ STEP 2: socket.io-client imported successfully');
-        console.log('🔌 [Notifications] ioModule keys:', Object.keys(ioModule));
-        
-        const io = ioModule.default || ioModule.io;
-        
-        if (!io) {
-          console.error('🔌 [Notifications] ❌ STEP 2 FAILED: io function not found');
-          console.error('🔌 [Notifications] Available exports:', Object.keys(ioModule));
-          setSocketStatus('error');
-          return;
-        }
-        
-        console.log('🔌 [Notifications] ✅ STEP 3: io function found');
-        console.log('🔌 [Notifications] io type:', typeof io);
-        
-        // Get base URL (without /api)
-        let socketBaseUrl = API_BASE_URL;
-        if (socketBaseUrl.includes('/api')) {
-          socketBaseUrl = socketBaseUrl.replace('/api', '');
-        }
-        
-        // Socket.IO namespace connection
-        // Format: io('http://localhost:8080/notification')
-        // Socket.IO will use /socket.io path automatically, namespace is /notification
-        const notificationUrl = `${socketBaseUrl}/notification`;
-        
-        console.log('🔌 [Notifications] ==========================================');
-        console.log('🔌 [Notifications] Connection Setup:');
-        console.log('🔌 [Notifications] Base URL:', socketBaseUrl);
-        console.log('🔌 [Notifications] Namespace URL:', notificationUrl);
-        console.log('🔌 [Notifications] Socket.IO Path: /socket.io');
-        console.log('🔌 [Notifications] Namespace: /notification');
-        console.log('🔌 [Notifications] Has Token:', !!token);
-        console.log('🔌 [Notifications] User ID:', userId);
-        console.log('🔌 [Notifications] ==========================================');
-        
-        setSocketUrl(notificationUrl);
-        setSocketStatus('connecting');
-        
-        connectionTimeout = setTimeout(() => {
-          if (socket && !socket.connected) {
-            console.warn('🔌 [Notifications] ⚠️ Connection timeout');
-            setSocketStatus('disconnected');
-          }
-        }, 15000);
-        
-        // Create socket connection
-        // Socket.IO client: io('http://localhost:8080/notification')
-        // This connects to http://localhost:8080/socket.io with namespace /notification
-        console.log('🔌 [Notifications] Creating socket connection...');
-        console.log('🔌 [Notifications] Will connect to:', `${socketBaseUrl}/socket.io`);
-        console.log('🔌 [Notifications] Namespace:', '/notification');
-        
-        socket = io(notificationUrl, {
-          transports: ['websocket'],
-          auth: { token: token },
-          reconnection: true,
-          reconnectionDelay: 1000,
-          reconnectionAttempts: 5,
-          autoConnect: true,
-          timeout: 15000,
-          path: '/socket.io' // Socket.IO handshake path
-        });
-        
-        console.log('🔌 [Notifications] ✅ Socket instance created');
-        console.log('🔌 [Notifications] Socket state:', {
-          connected: socket.connected,
-          disconnected: socket.disconnected,
-          id: socket.id
-        });
-        console.log('🔌 [Notifications] Socket.io manager:', {
-          uri: socket.io.uri,
-          opts: socket.io.opts
-        });
-        
-        // Log when socket actually tries to connect
-        socket.io.on('open', () => {
-          console.log('🔌 [Notifications] 🔵 Socket.IO manager opened connection');
-        });
-        
-        socket.io.on('error', (error) => {
-          console.error('🔌 [Notifications] 🔴 Socket.IO manager error:', error);
-        });
-
-        // Connection event handlers
-        socket.on('connect', () => {
-          console.log('🔌 [Notifications] ✅✅✅ CONNECTED! Socket ID:', socket.id);
-          clearTimeout(connectionTimeout);
-          setSocketStatus('connected');
-          setSocketId(socket.id);
-          socket.emit('coach-join', userId);
-          socket.emit('user-join', userId);
-        });
-
-        socket.on('connected', (data) => {
-          console.log('🔌 [Notifications] Server confirmed:', data);
-          setSocketId(data.socketId || socket.id);
-        });
-
-        socket.on('room-joined', (data) => {
-          console.log('🔌 [Notifications] Joined room:', data);
-        });
-
-        socket.on('disconnect', (reason) => {
-          console.log('🔌 [Notifications] Disconnected:', reason);
-          setSocketStatus('disconnected');
-        });
-
-        socket.on('reconnect', (attemptNumber) => {
-          console.log('🔌 [Notifications] Reconnected after', attemptNumber, 'attempts');
-          setSocketStatus('connected');
-          socket.emit('coach-join', userId);
-          socket.emit('user-join', userId);
-        });
-
-        socket.on('reconnect_attempt', (attemptNumber) => {
-          console.log('🔌 [Notifications] Reconnect attempt', attemptNumber);
-          setSocketStatus('connecting');
-        });
-
-        socket.on('reconnect_error', (error) => {
-          console.warn('🔌 [Notifications] Reconnect error:', error);
-          setSocketStatus('error');
-        });
-
-        socket.on('reconnect_failed', () => {
-          console.error('🔌 [Notifications] Reconnect failed');
-          setSocketStatus('error');
-        });
-
-        socket.on('notification', (notificationData) => {
-          console.log('📬 [Notifications] Received real-time notification:', notificationData);
-          
-          const newNotification = {
-            id: notificationData.id,
-            type: notificationData.type,
-            title: notificationData.title || 'Notification',
-            message: notificationData.message,
-            priority: notificationData.priority,
-            timestamp: notificationData.createdAt || new Date().toISOString(),
-            read: notificationData.isRead || false,
-            category: notificationData.type,
-            icon: notificationData.type === 'error' ? 'error' : notificationData.type === 'warning' ? 'warning' : notificationData.type === 'success' ? 'success' : 'info',
-            actionUrl: notificationData.actionUrl,
-            actionLabel: notificationData.actionLabel
-          };
-
-          setNotifications(prev => [newNotification, ...prev]);
-          setNotificationCount(prev => prev + 1);
-          if (!newNotification.read) {
-            setUnreadCount(prev => prev + 1);
-          }
-
-          toast({
-            title: newNotification.title,
-            description: newNotification.message,
-            status: notificationData.type === 'error' ? 'error' : notificationData.type === 'warning' ? 'warning' : notificationData.type === 'success' ? 'success' : 'info',
-            duration: 5000,
-            isClosable: true,
-            position: 'top-right'
-          });
-        });
-
-        socket.on('connect_error', (error) => {
-          console.error('🔌 [Notifications] ❌ CONNECTION ERROR:', error);
-          console.error('🔌 [Notifications] Error message:', error.message);
-          clearTimeout(connectionTimeout);
-          setSocketStatus('error');
-          setTimeout(() => {
-            if (!socket.connected) {
-              setSocketStatus('disconnected');
-            }
-          }, 3000);
-        });
-
-        socket.on('error', (error) => {
-          console.error('🔌 [Notifications] ❌ Socket error:', error);
-          setSocketStatus('error');
-        });
-        
-        console.log('🔌 [Notifications] ✅ All event handlers attached');
-
-        // Periodically check connection state (fallback)
-        connectionCheckInterval = setInterval(() => {
-        if (socket) {
-          const isConnected = socket.connected;
-          
-          // Only log every 10 seconds to avoid spam
-          const shouldLog = Math.random() < 0.1; // 10% chance to log
-          if (shouldLog) {
-            console.log('🔌 [Notifications] Connection check:', {
-              connected: isConnected,
-              disconnected: socket.disconnected,
-              id: socket.id
-            });
-          }
-          
-          if (isConnected) {
-            // Update status if not already connected
-            setSocketStatus(prev => {
-              if (prev !== 'connected') {
-                console.log('🔌 [Notifications] ✅ Connection state updated to connected (fallback check)');
-                setSocketId(socket.id);
-                socket.emit('coach-join', userId);
-                socket.emit('user-join', userId);
-                return 'connected';
-              }
-              return prev;
-            });
-          } else {
-            // Update status if connection lost
-            setSocketStatus(prev => {
-              if (prev === 'connected') {
-                console.log('🔌 [Notifications] ❌ Connection lost (fallback check)');
-                return 'disconnected';
-              } else if (prev === 'connecting') {
-                // If still connecting after timeout, log warning
-                if (shouldLog) {
-                  console.warn('🔌 [Notifications] ⚠️ Still connecting...');
-                }
-              }
-              return prev;
-            });
-          }
-        } else {
-          console.warn('🔌 [Notifications] ⚠️ Socket not initialized in connection check');
-        }
-        }, 2000); // Check every 2 seconds
-      })
-      .catch((error) => {
-        console.error('🔌 [Notifications] ❌❌❌ FAILED to import socket.io-client:', error);
-        console.error('🔌 [Notifications] Error message:', error.message);
-        console.error('🔌 [Notifications] Error stack:', error.stack);
-        console.error('🔌 [Notifications] Full error:', error);
-        setSocketStatus('error');
-        if (connectionTimeout) {
-          clearTimeout(connectionTimeout);
-        }
-        fetchNotifications();
-      });
-
-    // Fetch notifications once on mount (initial load)
-    fetchNotifications();
-    
-    return () => {
-      console.log('🔌 [Notifications] Cleaning up WebSocket connection');
-      if (connectionTimeout) {
-        clearTimeout(connectionTimeout);
-      }
-      if (socket) {
-        console.log('🔌 [Notifications] Disconnecting socket');
-        socket.disconnect();
-        socket.removeAllListeners();
-      }
-      if (interval) {
-        clearInterval(interval);
-      }
-      if (connectionCheckInterval) {
-        clearInterval(connectionCheckInterval);
-      }
-    };
-  }, [toast]);
+  }, []);
 
 
   const handleSidebarToggle = () => {
@@ -1681,24 +1405,6 @@ const TopNav = () => {
 
                       )}
 
-                    <Tooltip 
-                      label={
-                        socketStatus === 'connected' ? 'Real-time active' :
-                        socketStatus === 'connecting' ? 'Connecting...' :
-                        'Disconnected'
-                      }
-                      placement="top"
-                    >
-                      <HStack spacing={1}>
-                        {socketStatus === 'connected' ? (
-                          <Box w={2} h={2} bg="green.500" borderRadius="full" />
-                        ) : socketStatus === 'connecting' ? (
-                          <Spinner size="xs" color="orange.500" />
-                        ) : (
-                          <Box w={2} h={2} bg="gray.400" borderRadius="full" />
-                        )}
-                      </HStack>
-                    </Tooltip>
                   </HStack>
                   <HStack spacing={2}>
                       {unreadCount > 0 && (

@@ -112,6 +112,7 @@ import {
   FiZap,
   FiTrendingUp,
   FiAlertTriangle,
+  FiSearch,
 } from 'react-icons/fi';
 import { API_BASE_URL } from '../config/apiConfig';
 import { getToken } from '../utils/authUtils';
@@ -275,6 +276,17 @@ const Profile = () => {
   const { isOpen: isCancelOpen, onOpen: onCancelOpen, onClose: onCancelClose } = useDisclosure();
   const [cancellationReason, setCancellationReason] = useState('');
 
+  // Sponsor change state
+  const [sponsorChangeData, setSponsorChangeData] = useState({
+    newSponsorId: '',
+    reason: ''
+  });
+  const [sponsorChangeLoading, setSponsorChangeLoading] = useState(false);
+  const { isOpen: isSponsorChangeOpen, onOpen: onSponsorChangeOpen, onClose: onSponsorChangeClose } = useDisclosure();
+  const [sponsorSearchResults, setSponsorSearchResults] = useState([]);
+  const [sponsorSearchLoading, setSponsorSearchLoading] = useState(false);
+  const [sponsorDetails, setSponsorDetails] = useState(null);
+
   // Color mode values
   const bgColor = useColorModeValue('gray.50', 'gray.900');
   const cardBg = useColorModeValue('white', 'gray.800');
@@ -303,6 +315,31 @@ const Profile = () => {
       loadSubscriptionData();
     }
   }, [activeTab, token]);
+
+  // Load sponsor details
+  useEffect(() => {
+    if (user?.sponsorId) {
+      loadSponsorDetails();
+    }
+  }, [user]);
+
+  const loadSponsorDetails = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/coach-hierarchy/details`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSponsorDetails(data.data);
+      }
+    } catch (error) {
+      console.error('Error loading sponsor details:', error);
+    }
+  };
 
   const fetchLeadMagnets = async () => {
     if (!token) return;
@@ -449,6 +486,107 @@ const Profile = () => {
     } else {
       window.location.href = `${API_BASE_URL}/subscription-plans`;
     }
+  };
+
+  // Sponsor change functions
+  const handleSponsorChange = async () => {
+    if (!sponsorChangeData.newSponsorId.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a sponsor ID',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    try {
+      setSponsorChangeLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/coach-hierarchy/admin-request`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          requestType: 'sponsor_change',
+          requestedData: {
+            sponsorId: sponsorChangeData.newSponsorId
+          },
+          reason: sponsorChangeData.reason || 'Sponsor change requested by user'
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast({
+          title: 'Request Submitted',
+          description: 'Your sponsor change request has been submitted for admin approval',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        setSponsorChangeData({ newSponsorId: '', reason: '' });
+        onSponsorChangeClose();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to submit sponsor change request');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setSponsorChangeLoading(false);
+    }
+  };
+
+  const handleSponsorInputChange = (field, value) => {
+    setSponsorChangeData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+
+    // Search for sponsors when typing in the sponsor ID field
+    if (field === 'newSponsorId' && value.trim().length >= 2) {
+      searchSponsors(value);
+    } else if (field === 'newSponsorId' && value.trim().length < 2) {
+      setSponsorSearchResults([]);
+    }
+  };
+
+  const searchSponsors = async (query) => {
+    try {
+      setSponsorSearchLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/coach-hierarchy/search-sponsor?query=${encodeURIComponent(query)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSponsorSearchResults(data.data.digitalSponsors || []);
+      }
+    } catch (error) {
+      console.error('Error searching sponsors:', error);
+    } finally {
+      setSponsorSearchLoading(false);
+    }
+  };
+
+  const selectSponsor = (sponsor) => {
+    setSponsorChangeData(prev => ({
+      ...prev,
+      newSponsorId: sponsor.selfCoachId
+    }));
+    setSponsorSearchResults([]);
   };
 
   // Also update when user changes
@@ -2883,16 +3021,65 @@ const Profile = () => {
 
               <TabPanel px={0} py={8}>
                 <Box maxW="1200px" mx="auto">
-                  <Card bg={cardBg} borderRadius="xl" boxShadow="sm" mb={4}>
-                    <CardBody p={6}>
-                      <Text fontSize="xl" fontWeight="700" color={textColor} mb={4}>
-                        Settings
-                      </Text>
-                      <Text color={mutedTextColor}>
-                        Profile settings and preferences will be displayed here.
-                      </Text>
-                    </CardBody>
-                  </Card>
+                  <VStack spacing={6} align="stretch">
+                    {/* Sponsor Management */}
+                    <Card bg={cardBg} borderRadius="xl" boxShadow="sm">
+                      <CardBody p={6}>
+                        <Flex justify="space-between" align="center" mb={6}>
+                          <Text fontSize="xl" fontWeight="700" color={textColor}>
+                            Sponsor Management
+                          </Text>
+                          <Button 
+                            leftIcon={<FiEdit />} 
+                            size="sm" 
+                            colorScheme="blue"
+                            onClick={onSponsorChangeOpen}
+                          >
+                            Change Sponsor
+                          </Button>
+                        </Flex>
+                        
+                        <VStack spacing={4} align="stretch">
+                          <HStack justify="space-between">
+                            <Text fontSize="sm" color={mutedTextColor}>Current Sponsor:</Text>
+                            <Text fontSize="sm" fontWeight="600" color={textColor}>
+                              {sponsorDetails?.sponsorId?.name || sponsorDetails?.sponsorId?.selfCoachId || user?.sponsorId || 'Not assigned'}
+                            </Text>
+                          </HStack>
+                          <HStack justify="space-between">
+                            <Text fontSize="sm" color={mutedTextColor}>Sponsor Coach ID:</Text>
+                            <Text fontSize="sm" fontWeight="600" color={textColor}>
+                              {sponsorDetails?.sponsorId?.selfCoachId || 'N/A'}
+                            </Text>
+                          </HStack>
+                          <HStack justify="space-between">
+                            <Text fontSize="sm" color={mutedTextColor}>Your Coach ID:</Text>
+                            <Text fontSize="sm" fontWeight="600" color={textColor}>
+                              {user?.selfCoachId || 'N/A'}
+                            </Text>
+                          </HStack>
+                          <HStack justify="space-between">
+                            <Text fontSize="sm" color={mutedTextColor}>Current Level:</Text>
+                            <Badge colorScheme="blue" fontSize="xs">
+                              Level {user?.currentLevel || 1}
+                            </Badge>
+                          </HStack>
+                        </VStack>
+                      </CardBody>
+                    </Card>
+
+                    {/* Other Settings */}
+                    <Card bg={cardBg} borderRadius="xl" boxShadow="sm">
+                      <CardBody p={6}>
+                        <Text fontSize="xl" fontWeight="700" color={textColor} mb={4}>
+                          General Settings
+                        </Text>
+                        <Text color={mutedTextColor}>
+                          Other profile settings and preferences will be displayed here.
+                        </Text>
+                      </CardBody>
+                    </Card>
+                  </VStack>
                 </Box>
               </TabPanel>
             </TabPanels>
@@ -4274,6 +4461,148 @@ const Profile = () => {
                 _active={{ bg: 'red.700' }}
               >
                 Cancel Subscription
+              </Button>
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Sponsor Change Modal */}
+      <Modal isOpen={isSponsorChangeOpen} onClose={onSponsorChangeClose} size="md" isCentered>
+        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
+        <ModalContent borderRadius="2xl" overflow="hidden">
+          <ModalHeader pb={2}>
+            <VStack spacing={3} align="start">
+              <Flex align="center" gap={3}>
+                <Box
+                  w="12px"
+                  h="12px"
+                  bg="blue.500"
+                  borderRadius="full"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Icon as={FiUser} boxSize={6} color="blue.500" />
+                </Box>
+                <Text fontSize="lg" fontWeight="600" color={textColor}>
+                  Change Sponsor ID
+                </Text>
+              </Flex>
+            </VStack>
+          </ModalHeader>
+          <ModalCloseButton />
+
+          <ModalBody py={6}>
+            <VStack spacing={4} align="stretch">
+              <Alert status="info" borderRadius="lg" p={4}>
+                <AlertIcon />
+                <AlertDescription fontSize="sm" lineHeight="1.6">
+                  Sponsor change requests require admin approval. Your current sponsor information will be updated after approval.
+                </AlertDescription>
+              </Alert>
+              
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="500" color={textColor}>
+                  New Sponsor ID
+                </FormLabel>
+                <Box position="relative">
+                  <Input
+                    value={sponsorChangeData.newSponsorId}
+                    onChange={(e) => handleSponsorInputChange('newSponsorId', e.target.value)}
+                    placeholder="Enter new sponsor Coach ID or name"
+                    borderRadius="lg"
+                    focusBorderColor="blue.300"
+                  />
+                  {sponsorSearchLoading && (
+                    <Spinner
+                      size="sm"
+                      position="absolute"
+                      right="10px"
+                      top="50%"
+                      transform="translateY(-50%)"
+                    />
+                  )}
+                </Box>
+                
+                {/* Sponsor Search Results */}
+                {sponsorSearchResults.length > 0 && (
+                  <Box
+                    mt={2}
+                    bg={cardBg}
+                    border="1px solid"
+                    borderColor={borderColor}
+                    borderRadius="lg"
+                    maxH="200px"
+                    overflowY="auto"
+                    boxShadow="md"
+                  >
+                    {sponsorSearchResults.map((sponsor, index) => (
+                      <Box
+                        key={sponsor._id}
+                        p={3}
+                        cursor="pointer"
+                        borderBottom={index < sponsorSearchResults.length - 1 ? "1px solid" : "none"}
+                        borderColor={borderColor}
+                        _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+                        onClick={() => selectSponsor(sponsor)}
+                      >
+                        <VStack align="start" spacing={1}>
+                          <Text fontSize="sm" fontWeight="600" color={textColor}>
+                            {sponsor.name}
+                          </Text>
+                          <Text fontSize="xs" color={mutedTextColor}>
+                            Coach ID: {sponsor.selfCoachId}
+                          </Text>
+                          <Text fontSize="xs" color={mutedTextColor}>
+                            Level {sponsor.currentLevel}
+                          </Text>
+                        </VStack>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel fontSize="sm" fontWeight="500" color={textColor}>
+                  Reason for Change (Optional)
+                </FormLabel>
+                <Textarea
+                  value={sponsorChangeData.reason}
+                  onChange={(e) => handleSponsorInputChange('reason', e.target.value)}
+                  placeholder="Please provide a reason for this sponsor change..."
+                  rows={3}
+                  borderRadius="lg"
+                  focusBorderColor="blue.300"
+                  resize="none"
+                />
+              </FormControl>
+            </VStack>
+          </ModalBody>
+
+          <ModalFooter borderTop="1px solid" borderColor={borderColor} py={4}>
+            <HStack spacing={3} w="full">
+              <Button
+                variant="outline"
+                onClick={onSponsorChangeClose}
+                flex={1}
+                borderRadius="lg"
+                fontWeight="500"
+                borderColor={borderColor}
+                _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+              >
+                Cancel
+              </Button>
+              <Button
+                colorScheme="blue"
+                onClick={handleSponsorChange}
+                flex={1}
+                borderRadius="lg"
+                fontWeight="500"
+                isLoading={sponsorChangeLoading}
+              >
+                Submit Request
               </Button>
             </HStack>
           </ModalFooter>

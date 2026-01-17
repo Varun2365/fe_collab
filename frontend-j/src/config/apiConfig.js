@@ -17,8 +17,8 @@ const isProduction = import.meta.env.PROD || import.meta.env.MODE === 'productio
 // Set the API base URL based on environment
 // In development, use localhost:8080
 // In production (build), use api.funnelseye.com
-export const API_BASE_URL = isDevelopment 
-  ? 'http://localhost:8080' 
+export const API_BASE_URL = isDevelopment
+  ? 'http://localhost:8080'
   : 'https://api.funnelseye.com';
 
 // Export for use in other files

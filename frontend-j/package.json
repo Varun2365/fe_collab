@@ -43,7 +43,6 @@
     "react-toastify": "^11.0.5",
     "reactflow": "^11.11.4",
     "recharts": "^3.4.1",
-    "socket.io-client": "^4.8.3",
     "sweetalert": "^2.1.2",
     "swiper": "^11.0.5"
   },

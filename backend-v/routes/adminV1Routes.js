@@ -47,10 +47,49 @@ router.get('/analytics',
  * @access Private (Admin)
  * @example GET /api/admin/v1/system-health
  */
-router.get('/system-health', 
-    verifyAdminToken, 
-    checkAdminPermission('viewAnalytics'), 
+router.get('/system-health',
+    verifyAdminToken,
+    checkAdminPermission('viewAnalytics'),
     adminV1Controller.getSystemHealth
+);
+
+/**
+ * @route GET /api/admin/v1/revenue-trends
+ * @desc Get revenue trends from subscription payments
+ * @access Private (Admin)
+ * @query period (optional): Time period (30d, 90d, 1y) default: 30d
+ * @example GET /api/admin/v1/revenue-trends?period=90d
+ */
+router.get('/revenue-trends',
+    verifyAdminToken,
+    checkAdminPermission('viewAnalytics'),
+    adminV1Controller.getRevenueTrends
+);
+
+/**
+ * @route GET /api/admin/v1/debug-payments
+ * @desc Debug endpoint to check payment data
+ * @access Private (Admin)
+ * @example GET /api/admin/v1/debug-payments
+ */
+router.get('/debug-payments',
+    verifyAdminToken,
+    checkAdminPermission('viewAnalytics'),
+    adminV1Controller.debugPayments
+);
+
+/**
+ * @route GET /api/admin/v1/top-coaches
+ * @desc Get top performing coaches
+ * @access Private (Admin)
+ * @query limit (optional): Number of coaches to return (default: 10)
+ * @query period (optional): Time period for performance calculation (default: 30d)
+ * @example GET /api/admin/v1/top-coaches?limit=5&period=90d
+ */
+router.get('/top-coaches',
+    verifyAdminToken,
+    checkAdminPermission('viewAnalytics'),
+    adminV1Controller.getTopPerformingCoaches
 );
 
 // ===== USER MANAGEMENT =====

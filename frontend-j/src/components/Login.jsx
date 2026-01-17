@@ -682,13 +682,13 @@ const Login = () => {
                           w="60px"
                           h="60px"
                           borderRadius="full"
-                          bg="purple.50"
+                          bg="blue.50"
                           mb={6}
                           mx="auto"
                           align="center"
                           justify="center"
                         >
-                          <Icon as={FaCheckCircle} boxSize={6} color="purple.600" />
+                          <Icon as={FaCheckCircle} boxSize={6} color="#4f46e5" />
                         </Flex>
                         
                         <Text fontSize="lg" fontWeight="600" color="#312e81" mb={8}>
@@ -704,15 +704,15 @@ const Login = () => {
                             placeholder="0"
                           >
                             {[...Array(6)].map((_, index) => (
-                              <PinInputField 
+                              <PinInputField
                                 key={index}
-                                borderRadius="md" 
-                                borderColor="purple.100"
+                                borderRadius="md"
+                                borderColor="blue.100"
                                 border="2px solid"
-                                _hover={{ borderColor: "purple.300" }}
+                                _hover={{ borderColor: "blue.300" }}
                                 _focus={{
-                                  borderColor: "purple.600",
-                                  boxShadow: "0 0 0 3px rgba(129, 140, 248, 0.6)"
+                                  borderColor: "#4f46e5",
+                                  boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.6)"
                                 }}
                                 fontSize="xl"
                                 fontWeight="600"
@@ -757,16 +757,16 @@ const Login = () => {
                       <VStack spacing={4}>
                         <Button
                           variant="ghost"
-                          colorScheme="purple"
                           onClick={() => handleRequestOTP(input.email)}
                           isDisabled={isLoading}
-                          _hover={{ bg: "purple.50" }}
+                          _hover={{ bg: "blue.50" }}
                           borderRadius="md"
                           fontWeight="500"
+                          color="#4f46e5"
                         >
                           Resend Verification Code
                         </Button>
-                        
+
                         <Button
                           variant="ghost"
                           leftIcon={<FaArrowLeft />}
@@ -774,8 +774,8 @@ const Login = () => {
                             setShowOtpForm(false);
                             setOtp('');
                           }}
-                          color="#4338ca"
-                          _hover={{ color: "#312e81", bg: "purple.50" }}
+                          color="#4f46e5"
+                          _hover={{ color: "#4338ca", bg: "blue.50" }}
                           borderRadius="md"
                           fontWeight="500"
                         >
@@ -977,12 +977,16 @@ const Login = () => {
           boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.25)"
         >
           {/* Progress Bar */}
-          <Progress 
-            value={getStepProgress()} 
-            size="xs" 
-            colorScheme="purple"
+          <Progress
+            value={getStepProgress()}
+            size="xs"
             bg="gray.100"
             borderRadius="0"
+            sx={{
+              '& > div': {
+                backgroundColor: '#4f46e5',
+              },
+            }}
           />
           
           <ModalHeader 
@@ -1023,11 +1027,11 @@ const Login = () => {
                   w="64px"
                   h="64px"
                   borderRadius="full"
-                  bg="purple.50"
+                  bg="blue.50"
                   align="center"
                   justify="center"
                 >
-                  <Icon as={FaEnvelope} boxSize={6} color="purple.600" />
+                  <Icon as={FaEnvelope} boxSize={6} color="#4f46e5" />
                 </Flex>
                 
                 <FormControl>
@@ -1051,7 +1055,7 @@ const Login = () => {
                       borderRadius="md"
                       border="1px solid"
                       borderColor="gray.200"
-                      _hover={{ borderColor: "purple.200" }}
+                      _hover={{ borderColor: "blue.200" }}
                       _focus={{
                         borderColor: "#4f46e5",
                         boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.15)"
@@ -1109,11 +1113,11 @@ const Login = () => {
                   w="64px"
                   h="64px"
                   borderRadius="full"
-                  bg="purple.50"
+                  bg="blue.50"
                   align="center"
                   justify="center"
                 >
-                  <Icon as={FaShieldAlt} boxSize={6} color="purple.600" />
+                  <Icon as={FaShieldAlt} boxSize={6} color="#4f46e5" />
                 </Flex>
                 
                 <Text fontSize="sm" color="gray.600" textAlign="center">
@@ -1132,12 +1136,12 @@ const Login = () => {
                     placeholder="0"
                   >
                     {[...Array(6)].map((_, index) => (
-                      <PinInputField 
+                      <PinInputField
                         key={index}
-                        borderRadius="md" 
+                        borderRadius="md"
                         borderColor="gray.200"
                         border="2px solid"
-                        _hover={{ borderColor: "purple.200" }}
+                        _hover={{ borderColor: "blue.200" }}
                         _focus={{
                           borderColor: "#4f46e5",
                           boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.15)"
@@ -1199,7 +1203,7 @@ const Login = () => {
                   leftIcon={<FaArrowLeft />}
                   onClick={() => setForgotPasswordStep('email')}
                   color="gray.500"
-                  _hover={{ color: "#4f46e5", bg: "purple.50" }}
+                  _hover={{ color: "#4f46e5", bg: "blue.50" }}
                   isDisabled={forgotPasswordLoading}
                 >
                   Change email
@@ -1214,11 +1218,11 @@ const Login = () => {
                   w="64px"
                   h="64px"
                   borderRadius="full"
-                  bg="purple.50"
+                  bg="blue.50"
                   align="center"
                   justify="center"
                 >
-                  <Icon as={FaLock} boxSize={6} color="purple.600" />
+                  <Icon as={FaLock} boxSize={6} color="#4f46e5" />
                 </Flex>
 
                 <FormControl>
@@ -1242,7 +1246,7 @@ const Login = () => {
                       borderRadius="md"
                       border="1px solid"
                       borderColor="gray.200"
-                      _hover={{ borderColor: "purple.200" }}
+                      _hover={{ borderColor: "blue.200" }}
                       _focus={{
                         borderColor: "#4f46e5",
                         boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.15)"
@@ -1266,9 +1270,9 @@ const Login = () => {
                 </FormControl>
 
                 <FormControl>
-                  <FormLabel 
-                    fontSize="sm" 
-                    fontWeight="500" 
+                  <FormLabel
+                    fontSize="sm"
+                    fontWeight="500"
                     color="gray.600"
                     mb={2}
                   >
@@ -1286,7 +1290,7 @@ const Login = () => {
                       borderRadius="md"
                       border="1px solid"
                       borderColor="gray.200"
-                      _hover={{ borderColor: "purple.200" }}
+                      _hover={{ borderColor: "blue.200" }}
                       _focus={{
                         borderColor: "#4f46e5",
                         boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.15)"

@@ -186,14 +186,13 @@ const AutomationRuleSchema = new mongoose.Schema({
     funnelId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Funnel',
-        default: null,
-        unique: true,
-        sparse: true, // Allow multiple null values
         index: true
     },
     triggerEvent: {
         type: String,
-        required: true,
+        required: function() {
+            return this.workflowType !== 'graph';
+        },
         enum: [
             // Lead & Customer Lifecycle
             'lead_created',
@@ -263,7 +262,9 @@ const AutomationRuleSchema = new mongoose.Schema({
     },
     actions: {
         type: [AutomationActionSchema],
-        required: false,
+        required: function() {
+            return this.workflowType !== 'graph';
+        },
         default: []
     },
     // Graph-based workflow structure
@@ -275,6 +276,9 @@ const AutomationRuleSchema = new mongoose.Schema({
     },
     nodes: {
         type: [WorkflowNodeSchema],
+        required: function() {
+            return this.workflowType === 'graph';
+        },
         default: [],
         description: 'Workflow nodes for graph-based automation'
     },
@@ -313,6 +317,9 @@ const AutomationRuleSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+// NOTE: If you get duplicate key errors for funnelId, you may need to drop the existing unique index:
+// In MongoDB shell: db.automationrules.dropIndex({ funnelId: 1 })
 
 const AutomationRule = mongoose.models.AutomationRule || mongoose.model('AutomationRule', AutomationRuleSchema);
 

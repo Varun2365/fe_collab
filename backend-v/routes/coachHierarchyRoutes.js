@@ -10,7 +10,11 @@ const {
     submitAdminRequest,
     getHierarchyDetails,
     getAdminRequests,
-    processAdminRequest
+    processAdminRequest,
+    updateCoach,
+    getMyRequests,
+    getRelevantRequests,
+    updateDownlineCoachSponsor
 } = require('../controllers/coachHierarchyController');
 
 const { 
@@ -49,6 +53,18 @@ router.post('/admin-request', unifiedCoachAuth(), updateLastActive, requirePermi
 
 // Get coach hierarchy details
 router.get('/details', unifiedCoachAuth(), updateLastActive, requirePermission('coach:read'), getHierarchyDetails);
+
+// Update coach information
+router.put('/update-coach/:coachId', unifiedCoachAuth(), updateLastActive, requirePermission('coach:update'), updateCoach);
+
+// Get my admin requests
+router.get('/my-requests', unifiedCoachAuth(), updateLastActive, requirePermission('coach:read'), getMyRequests);
+
+// Get relevant admin requests (my requests + downline requests affecting my hierarchy)
+router.get('/relevant-requests', unifiedCoachAuth(), updateLastActive, requirePermission('coach:read'), getRelevantRequests);
+
+// Update downline coach sponsor (through admin request)
+router.put('/update-downline-sponsor/:coachId', unifiedCoachAuth(), updateLastActive, requirePermission('coach:manage'), updateDownlineCoachSponsor);
 
 // ===== ADMIN ROUTES =====
 

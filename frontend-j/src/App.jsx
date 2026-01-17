@@ -1,6 +1,9 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, useSearchParams, useNavigate } from 'react-router-dom';
 import { Box } from '@chakra-ui/react';
+import { useDispatch } from 'react-redux';
+import { loginSuccess } from './redux/authSlice';
+import { API_BASE_URL } from './config/apiConfig';
 import MainLayout from './dashboard/MainLayout';
 import DashboardView from './dashboard/DashboardView';
 // import Funnels from './dashboard/Funnels';
@@ -45,13 +48,83 @@ import ClientDashboard from './client_dashboard/dashboard';
 import SubscriptionManagement from './dashboard/subscription/index.jsx';
 import CustomDomainManagement from './dashboard/dns/index.jsx';
 import AutomationDashboard from './dashboard/automation/index.jsx';
+import AutomationsV2 from './dashboard/automations-v2/index.jsx';
+import AutomationEditor from './dashboard/automations-v2/editor.jsx';
+import AutomationRulesDashboard from './dashboard/automation-rules/index.jsx';
+import AutomationRulesGraphBuilder from './dashboard/automation-rules/AutomationRulesGraphBuilder';
 import MessagingDashboard from './dashboard/messaging/index.jsx';
 import Courses from './dashboard/courses/index.jsx';
 import CourseEdit from './dashboard/courses/edit.jsx';
 import TasksAndActivities from './dashboard/tasks/index.jsx';
 import NotFound from './components/NotFound.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+
 function App() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  // Handle token authentication from URL parameters (from root_ui redirects)
+  useEffect(() => {
+    const token = searchParams.get('token');
+
+    if (token) {
+      console.log('🔐 Token found in URL parameters, validating with backend...');
+
+      // Validate token with backend and get user info
+      const validateToken = async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            const userData = await response.json();
+            console.log('🔐 Token validated successfully, user data:', userData);
+
+            // Store authentication data
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(userData));
+
+            // Dispatch login success to Redux
+            dispatch(loginSuccess({ user: userData, token }));
+
+            // Clean up URL by removing token parameter
+            const newSearchParams = new URLSearchParams(searchParams);
+            newSearchParams.delete('token');
+            const newSearch = newSearchParams.toString();
+            const newUrl = newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+
+            // Redirect to dashboard
+            navigate('/dashboard', { replace: true });
+          } else {
+            console.error('❌ Token validation failed:', response.status);
+            // Clean up invalid token from URL
+            const newSearchParams = new URLSearchParams(searchParams);
+            newSearchParams.delete('token');
+            const newSearch = newSearchParams.toString();
+            const newUrl = newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+          }
+        } catch (error) {
+          console.error('❌ Error validating token:', error);
+          // Clean up invalid token from URL
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.delete('token');
+          const newSearch = newSearchParams.toString();
+          const newUrl = newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname;
+          window.history.replaceState({}, '', newUrl);
+        }
+      };
+
+      validateToken();
+    }
+  }, [searchParams, navigate, dispatch]);
   return (
     <ErrorBoundary>
       <Box minH="100vh" bg="gray.50">
@@ -104,11 +177,18 @@ function App() {
           <Route path="subscription" element={<SubscriptionManagement />} />
           <Route path="dns" element={<CustomDomainManagement />} />
           <Route path="automation" element={<AutomationDashboard />} />
+          <Route path="automation-rules" element={<AutomationRulesDashboard />} />
           <Route path="messaging" element={<MessagingDashboard />} />
           <Route path="courses" element={<Courses />} />
           <Route path="courses/:courseId/edit" element={<CourseEdit />} />
           <Route path="tasks" element={<TasksAndActivities />} />
         </Route>
+
+        {/* Standalone Routes */}
+        <Route path="/automations-v2" element={<ProtectedRoute><AutomationsV2 /></ProtectedRoute>} />
+        <Route path="/editor/automation" element={<ProtectedRoute><AutomationEditor /></ProtectedRoute>} />
+        <Route path="/create/workflow" element={<ProtectedRoute><AutomationRulesGraphBuilder /></ProtectedRoute>} />
+        <Route path="/create/workflow/:ruleId" element={<ProtectedRoute><AutomationRulesGraphBuilder /></ProtectedRoute>} />
 
         {/* Standalone Portfolio Routes - No Sidebar/Topbar */}
         

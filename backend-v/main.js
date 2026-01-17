@@ -44,6 +44,7 @@ const customUrlRoutes = require('./routes/customUrlRoutes');
 const customDomainRoutes = require('./routes/customDomainRoutes');
 const leadRoutes = require('./routes/leadRoutes.js');
 const automationRuleRoutes = require('./routes/automationRuleRoutes.js');
+const automationsV2Routes = require('./routes/automationsV2Routes.js');
 const uploadRoutes = require('./routes/uploadRoutes');
 const webpageRenderRoutes = require('./routes/webpageRenderRoutes');
 const dailyPriorityFeedRoutes = require('./routes/dailyPriorityFeedRoutes');
@@ -119,6 +120,8 @@ const { initMessageProcessorWorker } = require('./workers/worker_message_process
 
 // --- Import message queue service ---
 const messageQueueService = require('./services/messageQueueService');
+const advancedMessageQueue = require('./services/advancedMessageQueueService');
+const advancedAutomationProcessorV2 = require('./services/AdvancedAutomationProcessorV2');
 
 // --- END ROUTES DATA ---
 
@@ -425,8 +428,11 @@ app.use('/api/lead-scoring', leadScoringTrackingRoutes);
 
 // ===== AUTOMATION & WORKFLOW =====
 app.use('/api/automation-rules', automationRuleRoutes);
+app.use('/api/automation', require('./routes/automation'));
+app.use('/api/automations-v2', automationsV2Routes);
 app.use('/api/workflow', workflowRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/mobile', require('./routes/mobile'));
 
 // ===== ACTIVITIES =====
 const activityRoutes = require('./routes/activityRoutes');
@@ -491,6 +497,9 @@ app.use('/api/admin/v1', adminV1Routes);
 // Single endpoint for all WhatsApp functionality - Admin and Coach
 app.use('/api/whatsapp/v1', centralWhatsAppRoutes);
 // Messaging routes moved to centralWhatsAppRoutes
+
+// ===== WHATSAPP SCAN ROUTE =====
+app.use('/whatsapp/scan', require('./routes/whatsappScanRoutes'));
 // app.use('/api/messaging', messagingRoutes);
 
 // ===== CENTRAL MESSAGING V1 SYSTEM =====
@@ -786,10 +795,42 @@ app.use((err, req, res, next) => {
     });
 });
 
+// Specific routes for standalone pages
+app.get('/automations-v2', (req, res) => {
+    const indexPath = path.join(__dirname, '..', 'frontend-j', 'dist', 'index.html');
+    if (require('fs').existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).send('Frontend not built. Please run npm run build in frontend-j directory.');
+    }
+});
+
+app.get('/editor/automation', (req, res) => {
+    const indexPath = path.join(__dirname, '..', 'frontend-j', 'dist', 'index.html');
+    if (require('fs').existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).send('Frontend not built. Please run npm run build in frontend-j directory.');
+    }
+});
+
+// General dashboard SPA fallback
+app.use('/dashboard', (req, res) => {
+    const indexPath = path.join(__dirname, '..', 'frontend-j', 'dist', 'index.html');
+    if (require('fs').existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).send('Frontend not built. Please run npm run build in frontend-j directory.');
+    }
+});
+
+// Serve static assets for the frontend
+app.use('/assets', express.static(path.join(__dirname, '..', 'frontend-j', 'dist', 'assets')));
+
 // 404 handler for unmatched routes
 // app.use('*', (req, res) => {
 //     // CORS headers are handled by the main CORS middleware
-    
+
 //     res.status(404).json({
 //         success: false,
 //         message: 'Route not found',
@@ -907,6 +948,10 @@ const startServer = async () => {
         await messageQueueService.initialize();
         console.log('✅ [MAIN] Message queue service initialized');
 
+        // Initialize Advanced Message Queue for V2 Automations
+        await advancedMessageQueue.initialize();
+        console.log('✅ [MAIN] Advanced message queue service initialized');
+
         // --- Start all the worker processes here with await ---
         await initRulesEngineWorker();
         await initActionExecutorWorker();
@@ -961,6 +1006,33 @@ const initializeSocketServices = () => {
         console.error('Error initializing Socket.IO services:', error.message);
     }
 };
+
+// Graceful shutdown handlers
+process.on('SIGTERM', async () => {
+    console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
+    try {
+        await advancedMessageQueue.shutdown();
+        await advancedAutomationProcessorV2.shutdown();
+        console.log('✅ Advanced services shut down');
+        process.exit(0);
+    } catch (error) {
+        console.error('❌ Error during shutdown:', error);
+        process.exit(1);
+    }
+});
+
+process.on('SIGINT', async () => {
+    console.log('\n🛑 Received SIGINT, shutting down gracefully...');
+    try {
+        await advancedMessageQueue.shutdown();
+        await advancedAutomationProcessorV2.shutdown();
+        console.log('✅ Advanced services shut down');
+        process.exit(0);
+    } catch (error) {
+        console.error('❌ Error during shutdown:', error);
+        process.exit(1);
+    }
+});
 
 // Call initialization after server starts
 setTimeout(initializeSocketServices, 1000);

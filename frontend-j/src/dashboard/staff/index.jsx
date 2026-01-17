@@ -2221,7 +2221,7 @@ const StaffManagement = () => {
         {/* Staff Details Modal */}
         <Modal isOpen={isDetailsModalOpen} onClose={onDetailsModalClose} size="xl">
           <ModalOverlay />
-          <ModalContent borderRadius="7px">
+          <ModalContent borderRadius="7px" maxH="90vh" overflow="hidden">
             <ModalHeader>
               <HStack>
                 <Avatar name={selectedStaff?.name} />
@@ -2232,21 +2232,16 @@ const StaffManagement = () => {
               </HStack>
             </ModalHeader>
             <ModalCloseButton />
-            <ModalBody>
+            <ModalBody maxH="calc(90vh - 120px)" overflowY="auto">
               <Tabs>
-                <TabList>
+                <TabList flexWrap="wrap">
                   <Tab>Overview</Tab>
                   <Tab>Tasks</Tab>
                   <Tab>Metrics</Tab>
                   <Tab>Leads</Tab>
                   <Tab>Permissions</Tab>
-                  <Tab>Notes</Tab>
-                  <Tab>Documents</Tab>
-                  <Tab>Schedule</Tab>
-                  <Tab>Attendance</Tab>
                   <Tab>Time Tracking</Tab>
                   <Tab>Reviews</Tab>
-                  <Tab>Communication</Tab>
                 </TabList>
                 
                 <TabPanels>
@@ -2293,15 +2288,6 @@ const StaffManagement = () => {
                       <Divider />
                       <Text fontWeight="bold">Quick Actions</Text>
                       <SimpleGrid columns={2} spacing={2}>
-                        <Button size="sm" leftIcon={<EditIcon />} onClick={onNotesModalOpen}>
-                          Add Note
-                        </Button>
-                        <Button size="sm" leftIcon={<FileIcon />} onClick={onDocumentsModalOpen}>
-                          Upload Document
-                        </Button>
-                        <Button size="sm" leftIcon={<CalendarIcon />} onClick={onScheduleModalOpen}>
-                          View Schedule
-                        </Button>
                         <Button size="sm" leftIcon={<AwardIcon />} onClick={onReviewModalOpen}>
                           Performance Review
                         </Button>
@@ -2426,118 +2412,6 @@ const StaffManagement = () => {
                   
                   <TabPanel>
                     <VStack spacing={4} align="stretch">
-                      <FormControl>
-                        <FormLabel>Add Note</FormLabel>
-                        <Textarea 
-                          placeholder="Enter note..."
-                          rows={3}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && e.ctrlKey && e.target.value.trim()) {
-                              saveStaffNote(selectedStaff?._id, e.target.value);
-                              e.target.value = '';
-                            }
-                          }}
-                        />
-                      </FormControl>
-                      <Divider />
-                      <VStack spacing={2} align="stretch" maxH="300px" overflowY="auto">
-                        {staffNotes[selectedStaff?._id]?.map((note, index) => (
-                          <Card key={index} size="sm" bg="gray.50">
-                            <CardBody>
-                              <HStack justify="space-between">
-                                <Text fontSize="sm">{note.note}</Text>
-                                <IconButton
-                                  size="xs"
-                                  icon={<DeleteIcon />}
-                                  onClick={() => deleteStaffNote(selectedStaff?._id, index)}
-                                />
-                              </HStack>
-                              <Text fontSize="xs" color="gray.500" mt={2}>
-                                {new Date(note.timestamp).toLocaleString()}
-                              </Text>
-                            </CardBody>
-                          </Card>
-                        )) || <Text color="gray.500">No notes</Text>}
-                      </VStack>
-                    </VStack>
-                  </TabPanel>
-                  
-                  <TabPanel>
-                    <VStack spacing={4} align="stretch">
-                      <FormControl>
-                        <FormLabel>Upload Document</FormLabel>
-                        <Input
-                          type="file"
-                          onChange={(e) => {
-                            if (e.target.files[0]) uploadStaffDocument(selectedStaff?._id, e.target.files[0]);
-                          }}
-                        />
-                      </FormControl>
-                      <Divider />
-                      <SimpleGrid columns={2} spacing={3}>
-                        {staffDocuments[selectedStaff?._id]?.map((doc, index) => (
-                          <Card key={index} size="sm">
-                            <CardBody>
-                              <VStack align="start" spacing={1}>
-                                <Text fontWeight="medium" fontSize="sm">{doc.name}</Text>
-                                <Text fontSize="xs" color="gray.500">{(doc.size / 1024).toFixed(2)} KB</Text>
-                                <Button size="xs" onClick={() => window.open(doc.url, '_blank')}>
-                                  View
-                                </Button>
-                              </VStack>
-                            </CardBody>
-                          </Card>
-                        )) || <Text color="gray.500">No documents</Text>}
-                      </SimpleGrid>
-                    </VStack>
-                  </TabPanel>
-                  
-                  <TabPanel>
-                    <VStack spacing={4} align="stretch">
-                      <SimpleGrid columns={7} spacing={2}>
-                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                          <Box key={day} textAlign="center" fontWeight="bold" p={2} bg="gray.100" borderRadius="md">
-                            {day}
-                          </Box>
-                        ))}
-                        {Array.from({ length: 35 }).map((_, index) => (
-                          <Box key={index} p={2} border="1px" borderColor="gray.200" borderRadius="md">
-                            <Text fontSize="xs" textAlign="center">{index + 1}</Text>
-                          </Box>
-                        ))}
-                      </SimpleGrid>
-                    </VStack>
-                  </TabPanel>
-                  
-                  <TabPanel>
-                    <VStack spacing={4} align="stretch">
-                      <HStack spacing={2}>
-                        <Button colorScheme="green" size="sm" onClick={() => markAttendance(selectedStaff?._id, 'present')}>
-                          Present
-                        </Button>
-                        <Button colorScheme="red" size="sm" onClick={() => markAttendance(selectedStaff?._id, 'absent')}>
-                          Absent
-                        </Button>
-                        <Button colorScheme="orange" size="sm" onClick={() => markAttendance(selectedStaff?._id, 'late')}>
-                          Late
-                        </Button>
-                      </HStack>
-                      <Divider />
-                      <VStack spacing={2} align="stretch" maxH="300px" overflowY="auto">
-                        {attendanceData.filter(a => a.staffId === selectedStaff?._id).slice(0, 10).map((record, index) => (
-                          <HStack key={index} justify="space-between" p={2} bg="gray.50" borderRadius="md">
-                            <Text fontSize="sm">{new Date(record.date).toLocaleDateString()}</Text>
-                            <Badge colorScheme={record.status === 'present' ? 'green' : 'red'}>
-                              {record.status}
-                            </Badge>
-                          </HStack>
-                        ))}
-                      </VStack>
-                    </VStack>
-                  </TabPanel>
-                  
-                  <TabPanel>
-                    <VStack spacing={4} align="stretch">
                       {timeTracking[selectedStaff?._id]?.isTracking ? (
                         <Card bg="green.50" p={4}>
                           <VStack spacing={2}>
@@ -2584,30 +2458,6 @@ const StaffManagement = () => {
                             </CardBody>
                           </Card>
                         ))}
-                      </VStack>
-                    </VStack>
-                  </TabPanel>
-                  
-                  <TabPanel>
-                    <VStack spacing={4} align="stretch">
-                      <Text fontWeight="bold">Communication History</Text>
-                      <VStack spacing={2} align="stretch" maxH="300px" overflowY="auto">
-                        {communicationHistory[selectedStaff?._id]?.map((comm, index) => (
-                          <Card key={index} size="sm" bg="gray.50">
-                            <CardBody>
-                              <VStack align="start" spacing={1}>
-                                <HStack>
-                                  <Badge colorScheme="blue">{comm.type}</Badge>
-                                  <Text fontSize="xs" color="gray.500">
-                                    {new Date(comm.timestamp).toLocaleString()}
-                                  </Text>
-                                </HStack>
-                                <Text fontSize="sm" fontWeight="medium">{comm.subject}</Text>
-                                <Text fontSize="sm">{comm.message}</Text>
-                              </VStack>
-                            </CardBody>
-                          </Card>
-                        )) || <Text color="gray.500">No communication history</Text>}
                       </VStack>
                     </VStack>
                   </TabPanel>

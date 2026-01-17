@@ -136,6 +136,101 @@ class ZoomService {
     }
 
     /**
+     * Create a custom Zoom meeting for automation rules
+     * @param {object} config - Meeting configuration from automation rule
+     * @param {string} coachId - Coach ID who owns the integration
+     */
+    async createCustomMeeting(config, coachId) {
+        try {
+            console.log(`[ZoomService] Creating custom Zoom meeting for coach: ${coachId}`);
+
+            // Get Zoom integration for the coach
+            const integration = await ZoomIntegration.findOne({ coachId });
+            if (!integration) {
+                throw new Error('Zoom integration not found for coach');
+            }
+
+            // Generate OAuth token
+            const tokenData = await this.generateOAuthToken(
+                integration.clientId,
+                integration.clientSecret,
+                integration.accountId,
+                integration
+            );
+
+            // Prepare meeting data from config
+            const meetingData = {
+                topic: config.meetingTopic || 'Automation Meeting',
+                type: config.meetingType === 'scheduled' ? 2 : 1, // 1 = instant, 2 = scheduled
+                start_time: config.startDate && config.startTime ?
+                    new Date(`${config.startDate}T${config.startTime}`).toISOString() : undefined,
+                duration: config.duration || 60,
+                timezone: config.timezone || 'UTC',
+                agenda: config.meetingDescription || '',
+                settings: {
+                    host_video: true,
+                    participant_video: true,
+                    join_before_host: config.joinBeforeHost || false,
+                    mute_upon_entry: false,
+                    watermark: false,
+                    use_pmi: false,
+                    approval_type: 0, // Automatically approve
+                    audio: 'both', // Both telephone and computer audio
+                    auto_recording: config.autoRecord ? 'cloud' : 'none',
+                    waiting_room: false
+                }
+            };
+
+            // Add password if configured
+            if (config.passwordProtected) {
+                meetingData.password = this.generateMeetingPassword();
+            }
+
+            console.log(`[ZoomService] Creating meeting with data:`, JSON.stringify(meetingData, null, 2));
+
+            // Create the meeting
+            const response = await axios.post(`${this.baseURL}/users/me/meetings`, meetingData, {
+                headers: {
+                    'Authorization': `Bearer ${tokenData.accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const zoomMeeting = response.data;
+
+            // Update usage stats
+            await integration.updateUsageStats({
+                participants: 0,
+                duration: config.duration || 60
+            });
+
+            console.log(`[ZoomService] Successfully created custom Zoom meeting: ${zoomMeeting.id}`);
+
+            return {
+                success: true,
+                meetingId: zoomMeeting.id,
+                joinUrl: zoomMeeting.join_url,
+                startUrl: zoomMeeting.start_url,
+                password: zoomMeeting.password,
+                topic: zoomMeeting.topic,
+                startTime: zoomMeeting.start_time,
+                duration: zoomMeeting.duration
+            };
+
+        } catch (error) {
+            console.error(`[ZoomService] Error creating custom meeting:`, error);
+            throw new Error(`Failed to create Zoom meeting: ${error.response?.data?.message || error.message}`);
+        }
+    }
+
+    /**
+     * Generate a random meeting password
+     */
+    generateMeetingPassword() {
+        return Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+
+    /**
      * Create a Zoom meeting for an appointment
      */
     async createMeetingForAppointment(appointmentId) {

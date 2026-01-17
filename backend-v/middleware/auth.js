@@ -100,6 +100,28 @@ const protect = async (req, res, next) => {
             });
         }
 
+        // Check if coach account is under review
+        if (user.role === 'coach' && user.status === 'under_review') {
+            return res.status(403).json({
+                success: false,
+                message: 'Your account is being held for review. Please wait for admin approval.',
+                code: 'ACCOUNT_UNDER_REVIEW',
+                underReview: true,
+                blockedRoute: req.originalUrl
+            });
+        }
+
+        // Check if coach is deactivated by admin
+        if (user.role === 'coach' && user.status === 'inactive') {
+            return res.status(403).json({
+                success: false,
+                message: 'Your account has been deactivated by the admin.',
+                code: 'ACCOUNT_DEACTIVATED',
+                deactivated: true,
+                blockedRoute: req.originalUrl
+            });
+        }
+
         // Check subscription status for coaches
         if (user.role === 'coach') {
             // Import CoachSubscription model for subscription check
@@ -210,6 +232,7 @@ const protect = async (req, res, next) => {
 
     } catch (error) {
         console.error('🔒 Error in protect middleware:', error.message);
+        console.log(token);
         // Handle different JWT errors
         if (error.name === 'JsonWebTokenError') {
             return res.status(401).json({
@@ -249,7 +272,10 @@ const authorizeCoach = (...roles) => {
 
         // Ownership check: Only apply to coaches, not admins
         // Admins can view any coach's data, coaches can only view their own
-        if (req.role === 'coach' && req.coachId && req.params.coachId && req.coachId.toString() !== req.params.coachId.toString()) {
+        // Skip ownership check for coach-hierarchy routes as they have their own authorization logic
+        const isHierarchyRoute = req.originalUrl.includes('/coach-hierarchy/');
+        if (req.role === 'coach' && req.coachId && req.params.coachId && 
+            req.coachId.toString() !== req.params.coachId.toString() && !isHierarchyRoute) {
             return res.status(403).json({
                 success: false,
                 message: `Forbidden: You are not authorized to access this resource for Coach ID ${req.params.coachId}.`
@@ -257,7 +283,9 @@ const authorizeCoach = (...roles) => {
         }
 
         // Additional ownership check for sponsorId parameter (used in downline routes)
-        if (req.role === 'coach' && req.coachId && req.params.sponsorId && req.coachId.toString() !== req.params.sponsorId.toString()) {
+        // Skip this check for coach-hierarchy routes as they have their own authorization logic
+        if (req.role === 'coach' && req.coachId && req.params.sponsorId && 
+            req.coachId.toString() !== req.params.sponsorId.toString() && !isHierarchyRoute) {
             return res.status(403).json({
                 success: false,
                 message: `Forbidden: You are not authorized to access downline data for Coach ID ${req.params.sponsorId}.`

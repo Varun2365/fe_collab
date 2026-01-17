@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '../config/apiConfig';
 
 // Helper function to get auth headers
-const getAuthHeaders = () => {
+export const getAuthHeaders = () => {
   let token = localStorage.getItem('token');
   let user = localStorage.getItem('user');
   
@@ -65,6 +65,15 @@ const getAuthHeaders = () => {
 
 // Enhanced helper function to handle API responses with better error handling
 const handleResponse = async (response) => {
+  // Clear deactivation flag on successful API calls (account is active)
+  if (response.ok) {
+    // Dispatch success event to notify components
+    window.dispatchEvent(new CustomEvent('api-success'));
+
+    // Clear deactivation flag if it exists
+    localStorage.removeItem('account_deactivated');
+  }
+
   if (!response.ok) {
     let errorData = {};
     
@@ -114,6 +123,47 @@ const handleResponse = async (response) => {
     
     if (response.status === 403) {
       console.error('❌ Forbidden (403) - Insufficient permissions');
+
+      // Check for account under review
+      if (errorData.code === 'ACCOUNT_UNDER_REVIEW') {
+        console.error('⏳ Account Under Review - Coach account is being reviewed by admin');
+
+        // Store under review state
+        localStorage.setItem('account_under_review', 'true');
+
+        // Dispatch custom event for components to handle
+        window.dispatchEvent(new CustomEvent('api-error', {
+          detail: {
+            code: 'ACCOUNT_UNDER_REVIEW',
+            message: errorData.message,
+            underReview: true
+          }
+        }));
+
+        // Don't throw error - let event system handle it silently
+        return;
+      }
+
+      // Check for account deactivation
+      if (errorData.code === 'ACCOUNT_DEACTIVATED') {
+        console.error('🚫 Account Deactivated - Coach account has been deactivated by admin');
+
+        // Store deactivation state
+        localStorage.setItem('account_deactivated', 'true');
+
+        // Dispatch custom event for components to handle
+        window.dispatchEvent(new CustomEvent('api-error', {
+          detail: {
+            code: 'ACCOUNT_DEACTIVATED',
+            message: errorData.message,
+            deactivated: true
+          }
+        }));
+
+        // Don't throw error - let event system handle it silently
+        return;
+      }
+
       throw new Error('Access denied. You do not have permission to perform this action.');
     }
     

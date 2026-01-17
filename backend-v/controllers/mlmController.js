@@ -331,7 +331,7 @@ const getTeamPerformance = async (req, res) => {
                     totalTasks: { $sum: 1 },
                     completedTasks: { 
                         $sum: { 
-                            $cond: [{ $eq: ['$status', 'Done'] }, 1, 0] 
+                            $cond: [{ $eq: ['$status', 'Completed'] }, 1, 0] 
                         } 
                     }
                 }

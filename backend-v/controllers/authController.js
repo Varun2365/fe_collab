@@ -866,6 +866,7 @@ const upgradeToCoach = async (req, res) => {
         // This ensures all required fields (selfCoachId, currentLevel) are set together
         const updateData = {
             role: 'coach',
+            status: 'under_review', // Set to under review for admin approval
             selfCoachId: selfCoachId,
             currentLevel: currentLevel,
             hierarchyLocked: false

@@ -252,4 +252,3 @@ const MessageSequenceBuilder = ({ sequences = [], onChange, templates = [] }) =>
 };
 
 export default MessageSequenceBuilder;
-

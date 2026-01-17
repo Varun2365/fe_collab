@@ -11,13 +11,13 @@ const AutomationRule = require('../schema/AutomationRule');
  */
 exports.createRule = async (req, res) => {
     try {
-        const { 
-            name, 
-            coachId, 
-            triggerEvent, 
-            triggerConditions, 
+        const {
+            name,
+            coachId,
+            triggerEvent,
+            triggerConditions,
             triggerConditionLogic,
-            actions, 
+            actions,
             description,
             isActive,
             // Graph-based workflow fields
@@ -127,14 +127,9 @@ exports.createRule = async (req, res) => {
             ruleData.nodes = nodes || [];
             ruleData.edges = edges || [];
             ruleData.viewport = viewport || { x: 0, y: 0, zoom: 1 };
-            
-            // Extract trigger event from trigger node for backward compatibility
-            const triggerNode = nodes.find(n => n.type === 'trigger');
-            if (triggerNode) {
-                ruleData.triggerEvent = triggerNode.nodeType;
-                ruleData.triggerConditions = triggerNode.data?.conditions || [];
-                ruleData.triggerConditionLogic = triggerNode.data?.conditionLogic || 'AND';
-            }
+
+            // For graph workflows, don't set triggerEvent since it's not required
+            // The trigger information is stored in the nodes themselves
         } else {
             // Legacy workflow
             ruleData.triggerEvent = triggerEvent;
@@ -253,8 +248,13 @@ exports.updateRule = async (req, res) => {
         // Determine if updating to graph workflow
         const isGraphWorkflow = workflowType === 'graph' || (nodes && nodes.length > 0);
         
-        // Prepare update data
-        const updateData = { ...otherFields };
+        // Prepare update data - preserve required fields from existing rule
+        const updateData = {
+            ...otherFields,
+            // Preserve required fields that shouldn't be changed during update
+            coachId: existingRule.coachId,
+            createdBy: existingRule.createdBy
+        };
         
         if (isGraphWorkflow) {
             // Validate graph workflow if nodes are provided
@@ -318,6 +318,53 @@ exports.updateRule = async (req, res) => {
             success: false,
             message: 'Internal server error',
             error: error.message 
+        });
+    }
+};
+
+/**
+ * @desc Assign a funnel to an automation rule
+ * @route PUT /api/automation-rules/:id/assign-funnel
+ * @access Private
+ */
+exports.assignFunnel = async (req, res) => {
+    try {
+        const { funnelId } = req.body;
+
+        // Get existing rule
+        const existingRule = await AutomationRule.findById(req.params.id);
+        if (!existingRule) {
+            return res.status(404).json({
+                success: false,
+                message: 'Automation rule not found'
+            });
+        }
+
+        // Update the rule with funnel assignment
+        const rule = await AutomationRule.findByIdAndUpdate(
+            req.params.id,
+            { funnelId: funnelId || null },
+            { new: true, runValidators: true }
+        );
+
+        if (!rule) {
+            return res.status(404).json({
+                success: false,
+                message: 'Rule not found'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: rule,
+            message: funnelId ? 'Rule assigned to funnel' : 'Rule unassigned from funnel'
+        });
+    } catch (error) {
+        console.error('Error assigning funnel to automation rule:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
         });
     }
 };
@@ -879,8 +926,14 @@ exports.getEventsAndActions = async (req, res) => {
 exports.getBuilderResources = async (req, res) => {
     try {
         const coachId = req.coachId || req.user?.id || req.user?._id;
-        
+
+        console.log('=== GET BUILDER RESOURCES ===');
+        console.log('req.coachId:', req.coachId);
+        console.log('req.user:', req.user);
+        console.log('Final coachId:', coachId);
+
         if (!coachId) {
+            console.log('No coachId found - returning error');
             return res.status(400).json({
                 success: false,
                 message: 'Coach ID is required'
@@ -890,25 +943,30 @@ exports.getBuilderResources = async (req, res) => {
         const Staff = require('../schema/Staff');
         const Funnel = require('../schema/Funnel');
         const MessageTemplate = require('../schema/MessageTemplate');
-        
+
+        console.log('Fetching staff for coachId:', coachId);
         // Fetch staff members
         const staff = await Staff.find({ coachId, isActive: true })
             .select('name email _id')
             .limit(100);
-        
+
+        console.log('Fetching funnels for coachId:', coachId);
         // Fetch funnels
         const funnels = await Funnel.find({ coachId })
             .select('name _id stages')
             .limit(100);
-        
+
+        console.log('Found funnels:', funnels.length);
+        funnels.forEach(f => console.log('- Funnel:', f.name, 'ID:', f._id));
+
         // Fetch message templates (WhatsApp and Email)
-        const messageTemplates = await MessageTemplate.find({ 
+        const messageTemplates = await MessageTemplate.find({
             coachId,
-            isActive: true 
+            isActive: true
         })
             .select('name type category _id')
             .limit(100);
-        
+
         // Fetch existing automation rules (for trigger_another_automation action)
         const automationRules = await AutomationRule.find({ coachId, isActive: true })
             .select('name _id')

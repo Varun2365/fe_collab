@@ -258,24 +258,39 @@ const aiService = {
  */
 async function sendWhatsAppMessage(config, eventPayload) {
     // Corrected to use relatedDoc
-    const leadData = eventPayload.relatedDoc; 
+    const leadData = eventPayload.relatedDoc;
     const coachId = leadData.coachId;
     const recipientNumber = leadData.phone;
     if (!recipientNumber) { throw new Error('Recipient phone number not found in event payload.'); }
-    
+
     // Get message content from config
-    let messageContent = config.messageTemplate || config.message || `Hi ${leadData.name}, this is an automated message.`;
-    
-    // Process template variables in the message
-    if (messageContent.includes('{{lead.name}}')) {
-        messageContent = messageContent.replace('{{lead.name}}', leadData.name || 'there');
-    }
-    if (messageContent.includes('{{lead.email}}')) {
-        messageContent = messageContent.replace('{{lead.email}}', leadData.email || 'your email');
-    }
-    if (messageContent.includes('{{lead.phone}}')) {
-        messageContent = messageContent.replace('{{lead.phone}}', leadData.phone || 'your phone');
-    }
+    let messageContent = config.messageTemplate || config.message || `Hi {{lead.name}}, this is an automated message.`;
+
+    // Process template variables in the message using comprehensive parser
+    const { parseTemplateString } = require('../utils/templateParser');
+    const templateData = {
+        lead: {
+            name: leadData.name,
+            firstName: leadData.firstName,
+            lastName: leadData.lastName,
+            email: leadData.email,
+            phone: leadData.phone,
+            source: leadData.source,
+            status: leadData.status,
+            temperature: leadData.temperature,
+            score: leadData.score,
+            createdAt: leadData.createdAt,
+            updatedAt: leadData.updatedAt,
+            created_at: leadData.createdAt,
+            updated_at: leadData.updatedAt
+        },
+        coach: {
+            name: eventPayload.coach?.name,
+            email: eventPayload.coach?.email
+        }
+    };
+
+    messageContent = parseTemplateString(messageContent, templateData);
     
     // Apply delay if specified
     if (config.delayMinutes && config.delayMinutes > 0) {
@@ -311,25 +326,33 @@ async function sendEmail(config, eventPayload) {
     // Process template variables in subject and body
     let subject = config.subject || 'Automated Message';
     let body = config.body || config.message || config.messageTemplate || '';
-    
-    // Replace template variables
-    if (leadData) {
-        if (subject.includes('{{lead.name}}')) {
-            subject = subject.replace(/\{\{lead\.name\}\}/g, leadData.name || 'there');
+
+    // Process template variables using comprehensive parser
+    const { parseTemplateString } = require('../utils/templateParser');
+    const templateData = {
+        lead: {
+            name: leadData.name,
+            firstName: leadData.firstName,
+            lastName: leadData.lastName,
+            email: leadData.email,
+            phone: leadData.phone,
+            source: leadData.source,
+            status: leadData.status,
+            temperature: leadData.temperature,
+            score: leadData.score,
+            createdAt: leadData.createdAt,
+            updatedAt: leadData.updatedAt,
+            created_at: leadData.createdAt,
+            updated_at: leadData.updatedAt
+        },
+        coach: {
+            name: eventPayload.coach?.name,
+            email: eventPayload.coach?.email
         }
-        if (subject.includes('{{lead.email}}')) {
-            subject = subject.replace(/\{\{lead\.email\}\}/g, leadData.email || '');
-        }
-        if (body.includes('{{lead.name}}')) {
-            body = body.replace(/\{\{lead\.name\}\}/g, leadData.name || 'there');
-        }
-        if (body.includes('{{lead.email}}')) {
-            body = body.replace(/\{\{lead\.email\}\}/g, leadData.email || '');
-        }
-        if (body.includes('{{lead.phone}}')) {
-            body = body.replace(/\{\{lead\.phone\}\}/g, leadData.phone || '');
-        }
-    }
+    };
+
+    subject = parseTemplateString(subject, templateData);
+    body = parseTemplateString(body, templateData);
 
     // Placeholder for .ics file generation
     const calendarInvite = config.sendCalendarInvite ? createICSFile(leadData) : null;
@@ -372,22 +395,35 @@ async function sendSMS(config, eventPayload) {
     }
     
     let message = config.message || config.messageTemplate || '';
-    if (!message) { 
-        throw new Error('SMS message content is required.'); 
+    if (!message) {
+        throw new Error('SMS message content is required.');
     }
-    
-    // Replace template variables
-    if (leadData) {
-        if (message.includes('{{lead.name}}')) {
-            message = message.replace(/\{\{lead\.name\}\}/g, leadData.name || 'there');
+
+    // Process template variables using comprehensive parser
+    const { parseTemplateString } = require('../utils/templateParser');
+    const templateData = {
+        lead: {
+            name: leadData.name,
+            firstName: leadData.firstName,
+            lastName: leadData.lastName,
+            email: leadData.email,
+            phone: leadData.phone,
+            source: leadData.source,
+            status: leadData.status,
+            temperature: leadData.temperature,
+            score: leadData.score,
+            createdAt: leadData.createdAt,
+            updatedAt: leadData.updatedAt,
+            created_at: leadData.createdAt,
+            updated_at: leadData.updatedAt
+        },
+        coach: {
+            name: eventPayload.coach?.name,
+            email: eventPayload.coach?.email
         }
-        if (message.includes('{{lead.email}}')) {
-            message = message.replace(/\{\{lead\.email\}\}/g, leadData.email || '');
-        }
-        if (message.includes('{{lead.phone}}')) {
-            message = message.replace(/\{\{lead\.phone\}\}/g, leadData.phone || '');
-        }
-    }
+    };
+
+    message = parseTemplateString(message, templateData);
     
     await smsService.sendSMS({ to: recipientNumber, message: message });
     console.log(`[ActionExecutor] SMS sent successfully to ${recipientNumber}`);
@@ -400,10 +436,10 @@ async function createNewTask(config, eventPayload) {
     // Corrected to use relatedDoc
     const leadData = eventPayload.relatedDoc;
     const { coachId } = leadData;
-    
+
     // Support multiple field naming conventions
-    let taskName = config.taskName || config.title || config.name;
-    let taskDescription = config.taskDescription || config.description;
+    let taskName = config.taskName || config.title || config.name || config.task_name;
+    let taskDescription = config.taskDescription || config.description || config.task_description;
     let dueDate = config.dueDate;
     
     if (!leadData || !coachId) { 
@@ -419,16 +455,19 @@ async function createNewTask(config, eventPayload) {
             lastName: leadData.lastName,
             email: leadData.email,
             phone: leadData.phone,
-            status: leadData.status
+            source: leadData.source,
+            status: leadData.status,
+            temperature: leadData.temperature,
+            score: leadData.score,
+            createdAt: leadData.createdAt,
+            updatedAt: leadData.updatedAt,
+            created_at: leadData.createdAt,
+            updated_at: leadData.updatedAt
         },
         coach: {
             name: eventPayload.coach?.name,
             email: eventPayload.coach?.email
-        },
-        // Legacy support
-        leadName: leadData.name,
-        leadEmail: leadData.email,
-        coachName: eventPayload.coach?.name
+        }
     };
     
     // Parse template variables
@@ -634,56 +673,95 @@ See you there! 👋`;
      * Creates a Zoom meeting for an appointment.
      */
     async function createZoomMeeting(config, eventPayload) {
-    console.log('[ActionExecutor] createZoomMeeting called with eventPayload:', JSON.stringify(eventPayload, null, 2));
-    
-    // Extract data from the appointment_booked event
-    let appointmentId, coachId;
-    
-    if (eventPayload.relatedDoc) {
-        // Try to get from relatedDoc first
-        appointmentId = eventPayload.relatedDoc.appointmentId || eventPayload.relatedDoc._id;
-        coachId = eventPayload.relatedDoc.coachId;
-    }
-    
-    // If not found in relatedDoc, try from payload
-    if (!appointmentId) {
-        appointmentId = eventPayload.payload?.appointmentId;
-    }
-    if (!coachId) {
-        coachId = eventPayload.payload?.coachId;
-    }
-    
-    console.log(`[ActionExecutor] Extracted - appointmentId: ${appointmentId}, coachId: ${coachId}`);
-    
-    if (!appointmentId || !coachId) {
-        throw new Error(`Appointment ID and coach ID are required for creating Zoom meeting. Got: appointmentId=${appointmentId}, coachId=${coachId}`);
+        console.log('[ActionExecutor] createZoomMeeting called with config:', JSON.stringify(config, null, 2));
+
+        // Extract coach ID from event payload
+        let coachId = eventPayload.coachId || eventPayload.payload?.coachId;
+
+        if (!coachId) {
+            // Try to get from related document
+            if (eventPayload.relatedDoc?.coachId) {
+                coachId = eventPayload.relatedDoc.coachId;
+            } else {
+                throw new Error('Coach ID is required for creating Zoom meeting');
+            }
+        }
+
+        try {
+            // Import Zoom service
+            const zoomService = require('./zoomService');
+
+            // Create custom Zoom meeting using the configuration from automation rule
+            const zoomMeeting = await zoomService.createCustomMeeting(config, coachId);
+
+            console.log(`[ActionExecutor] Custom Zoom meeting created successfully: ${zoomMeeting.meetingId}`);
+
+            // Try to send meeting details to the lead if we have lead information
+            try {
+                const leadId = eventPayload.leadId || eventPayload.payload?.leadId || eventPayload.relatedDoc?.leadId;
+
+                if (leadId) {
+                    // Send notification with meeting details
+                    await sendMeetingNotificationToLead(leadId, zoomMeeting, config);
+                    console.log(`[ActionExecutor] Meeting notification sent to lead ${leadId}`);
+                }
+            } catch (notificationError) {
+                console.error(`[ActionExecutor] Failed to send meeting notification:`, notificationError.message);
+                // Don't fail the entire process if notification fails
+            }
+
+            return zoomMeeting;
+        } catch (error) {
+            console.error(`[ActionExecutor] Failed to create custom Zoom meeting:`, error.message);
+            throw error;
+        }
     }
 
-    try {
-        // Import Zoom service
-        const zoomService = require('./zoomService');
-        
-        // Create Zoom meeting for the appointment
-        const zoomMeeting = await zoomService.createMeetingForAppointment(appointmentId);
-        
-        console.log(`[ActionExecutor] Zoom meeting created successfully for appointment ${appointmentId}: ${zoomMeeting.meetingId}`);
-        
-        // Send notification to lead with Zoom meeting details
+    async function sendMeetingNotificationToLead(leadId, meetingData, config) {
         try {
-            await this.sendZoomMeetingNotification(appointmentId, zoomMeeting);
-            console.log(`[ActionExecutor] Zoom meeting notification sent to lead for appointment ${appointmentId}`);
+            // Get lead details
+            const lead = await Lead.findById(leadId);
+            if (!lead) return;
+
+            // Create notification message
+            const message = `Your Zoom meeting has been scheduled: "${meetingData.topic}"
+
+Meeting ID: ${meetingData.meetingId}
+Join URL: ${meetingData.joinUrl}
+${meetingData.password ? `Password: ${meetingData.password}` : ''}
+${meetingData.startTime ? `Start Time: ${new Date(meetingData.startTime).toLocaleString()}` : ''}
+
+Duration: ${meetingData.duration} minutes`;
+
+            // Send WhatsApp message if lead has phone
+            if (lead.phone && config.sendInvites !== false) {
+                try {
+                    await sendSMS({
+                        to: lead.phone,
+                        message: message
+                    });
+                } catch (error) {
+                    console.error('[ActionExecutor] Failed to send WhatsApp meeting notification:', error);
+                }
+            }
+
+            // Send email if lead has email
+            if (lead.email && config.sendInvites !== false) {
+                try {
+                    await sendEmail({
+                        to: lead.email,
+                        subject: `Zoom Meeting: ${meetingData.topic}`,
+                        body: message.replace(/\n/g, '<br>')
+                    });
+                } catch (error) {
+                    console.error('[ActionExecutor] Failed to send email meeting notification:', error);
+                }
+            }
+
         } catch (error) {
-            console.error(`[ActionExecutor] Failed to send Zoom notification to lead:`, error.message);
-            // Don't fail the entire process if notification fails
+            console.error('[ActionExecutor] Error sending meeting notification:', error);
         }
-        
-        return zoomMeeting;
-    } catch (error) {
-        console.error(`[ActionExecutor] Failed to create Zoom meeting for appointment ${appointmentId}:`, error.message);
-        // Don't throw error to prevent automation loops
-        return null;
     }
-}
 
 /**
  * Sends a notification to a coach's dashboard.
@@ -806,17 +884,31 @@ async function updateLeadField(config, eventPayload) {
     let processedValue = value;
     
     // Process template variables in the value
-    if (typeof value === 'string' && value.includes('{{lead.')) {
+    if (typeof value === 'string') {
+        const { parseTemplateString } = require('../utils/templateParser');
         const leadData = eventPayload.relatedDoc;
-        if (value.includes('{{lead.name}}')) {
-            processedValue = value.replace('{{lead.name}}', leadData.name || 'Unknown');
-        }
-        if (value.includes('{{lead.email}}')) {
-            processedValue = value.replace('{{lead.email}}', leadData.email || 'No email');
-        }
-        if (value.includes('{{lead.phone}}')) {
-            processedValue = value.replace('{{lead.phone}}', leadData.phone || 'No phone');
-        }
+        const templateData = {
+            lead: {
+                name: leadData.name,
+                firstName: leadData.firstName,
+                lastName: leadData.lastName,
+                email: leadData.email,
+                phone: leadData.phone,
+                source: leadData.source,
+                status: leadData.status,
+                temperature: leadData.temperature,
+                score: leadData.score,
+                createdAt: leadData.createdAt,
+                updatedAt: leadData.updatedAt,
+                created_at: leadData.createdAt,
+                updated_at: leadData.updatedAt
+            },
+            coach: {
+                name: eventPayload.coach?.name,
+                email: eventPayload.coach?.email
+            }
+        };
+        processedValue = parseTemplateString(value, templateData);
     }
     
     const updateObject = {};
@@ -979,9 +1071,38 @@ async function removeFromFunnel(config, eventPayload) {
 async function createDeal(config, eventPayload) {
     const leadId = eventPayload.relatedDoc._id;
     const { dealValue, dealType = 'consultation', description } = config;
-    
+
     if (!leadId) {
         throw new Error('Lead ID is required for creating deal.');
+    }
+
+    // Process template variables in description
+    let processedDescription = description;
+    if (description) {
+        const { parseTemplateString } = require('../utils/templateParser');
+        const leadData = eventPayload.relatedDoc;
+        const templateData = {
+            lead: {
+                name: leadData.name,
+                firstName: leadData.firstName,
+                lastName: leadData.lastName,
+                email: leadData.email,
+                phone: leadData.phone,
+                source: leadData.source,
+                status: leadData.status,
+                temperature: leadData.temperature,
+                score: leadData.score,
+                createdAt: leadData.createdAt,
+                updatedAt: leadData.updatedAt,
+                created_at: leadData.createdAt,
+                updated_at: leadData.updatedAt
+            },
+            coach: {
+                name: eventPayload.coach?.name,
+                email: eventPayload.coach?.email
+            }
+        };
+        processedDescription = parseTemplateString(description, templateData);
     }
     
     // This would typically create a deal in a separate collection
@@ -991,7 +1112,7 @@ async function createDeal(config, eventPayload) {
             dealStatus: 'created',
             dealValue: dealValue,
             dealType: dealType,
-            dealDescription: description,
+            dealDescription: processedDescription,
             dealCreatedAt: new Date()
         } 
     });
@@ -1000,10 +1121,38 @@ async function createDeal(config, eventPayload) {
 }
 async function sendPushNotification(config, eventPayload) {
     const { recipientId, message, title } = config;
-    
+
     if (!recipientId || !message) {
         throw new Error('Recipient ID and message are required for push notification.');
     }
+
+    // Process template variables in message and title
+    const { parseTemplateString } = require('../utils/templateParser');
+    const leadData = eventPayload.relatedDoc;
+    const templateData = {
+        lead: {
+            name: leadData.name,
+            firstName: leadData.firstName,
+            lastName: leadData.lastName,
+            email: leadData.email,
+            phone: leadData.phone,
+            source: leadData.source,
+            status: leadData.status,
+            temperature: leadData.temperature,
+            score: leadData.score,
+            createdAt: leadData.createdAt,
+            updatedAt: leadData.updatedAt,
+            created_at: leadData.createdAt,
+            updated_at: leadData.updatedAt
+        },
+        coach: {
+            name: eventPayload.coach?.name,
+            email: eventPayload.coach?.email
+        }
+    };
+
+    const processedMessage = parseTemplateString(message, templateData);
+    const processedTitle = title ? parseTemplateString(title, templateData) : title;
     
     // This would typically integrate with a push notification service
     // For now, we'll log it and could store it in a notifications collection
@@ -1039,15 +1188,42 @@ async function scheduleDripSequence(config, eventPayload) {
 async function addNoteToLead(config, eventPayload) {
     const leadId = eventPayload.relatedDoc._id;
     const { note, noteType = 'automation' } = config;
-    
+
     if (!leadId || !note) {
         throw new Error('Lead ID and note are required for adding note to lead.');
     }
+
+    // Process template variables in note
+    const { parseTemplateString } = require('../utils/templateParser');
+    const leadData = eventPayload.relatedDoc;
+    const templateData = {
+        lead: {
+            name: leadData.name,
+            firstName: leadData.firstName,
+            lastName: leadData.lastName,
+            email: leadData.email,
+            phone: leadData.phone,
+            source: leadData.source,
+            status: leadData.status,
+            temperature: leadData.temperature,
+            score: leadData.score,
+            createdAt: leadData.createdAt,
+            updatedAt: leadData.updatedAt,
+            created_at: leadData.createdAt,
+            updated_at: leadData.updatedAt
+        },
+        coach: {
+            name: eventPayload.coach?.name,
+            email: eventPayload.coach?.email
+        }
+    };
+
+    const processedNote = parseTemplateString(note, templateData);
     
     await Lead.findByIdAndUpdate(leadId, { 
         $push: { 
             notes: {
-                content: note,
+                content: processedNote,
                 type: noteType,
                 createdAt: new Date(),
                 createdBy: 'automation_system'
@@ -1092,9 +1268,38 @@ async function addFollowupDate(config, eventPayload) {
 async function createInvoice(config, eventPayload) {
     const leadId = eventPayload.relatedDoc._id;
     const { amount, currency = 'USD', description, dueDate } = config;
-    
+
     if (!leadId || !amount) {
         throw new Error('Lead ID and amount are required for creating invoice.');
+    }
+
+    // Process template variables in description
+    let processedDescription = description;
+    if (description) {
+        const { parseTemplateString } = require('../utils/templateParser');
+        const leadData = eventPayload.relatedDoc;
+        const templateData = {
+            lead: {
+                name: leadData.name,
+                firstName: leadData.firstName,
+                lastName: leadData.lastName,
+                email: leadData.email,
+                phone: leadData.phone,
+                source: leadData.source,
+                status: leadData.status,
+                temperature: leadData.temperature,
+                score: leadData.score,
+                createdAt: leadData.createdAt,
+                updatedAt: leadData.updatedAt,
+                created_at: leadData.createdAt,
+                updated_at: leadData.updatedAt
+            },
+            coach: {
+                name: eventPayload.coach?.name,
+                email: eventPayload.coach?.email
+            }
+        };
+        processedDescription = parseTemplateString(description, templateData);
     }
     
     // This would typically create an invoice in a separate collection
@@ -1104,7 +1309,7 @@ async function createInvoice(config, eventPayload) {
             invoiceStatus: 'created',
             invoiceAmount: amount,
             invoiceCurrency: currency,
-            invoiceDescription: description,
+            invoiceDescription: processedDescription,
             invoiceDueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default 30 days
             invoiceCreatedAt: new Date()
         } 
