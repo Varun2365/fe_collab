@@ -36,6 +36,8 @@ import { CloseIcon } from '@chakra-ui/icons';
  * - Same styling as calendar section
  * - Blocked when account is deactivated
  */
+
+//.....
 // Create a blocked toast function
 const createBlockedToast = () => ({
   success: () => console.log('Toast blocked: Account is deactivated'),
